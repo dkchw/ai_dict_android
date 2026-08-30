@@ -1,0 +1,1 @@
+sed -i '/Text("Dict Mode BG")/i \            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {' android_app/app/src/main/java/com/aidict/app/ui/screens/SettingsScreen.kt

@@ -1,0 +1,1 @@
+sed -i '/fun saveSetting(key: String, value: String) {/i \    fun refreshModels() {\n        viewModelScope.launch {\n            _availableModels.value = llmRepository.fetchModels()\n        }\n    }\n' android_app/app/src/main/java/com/aidict/app/ui/viewmodels/SettingsViewModel.kt

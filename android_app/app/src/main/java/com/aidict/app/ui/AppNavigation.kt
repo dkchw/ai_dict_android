@@ -1,0 +1,269 @@
+package com.aidict.app.ui
+
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
+import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.Alignment
+import com.aidict.app.ui.screens.CompareScreen
+import com.aidict.app.ui.screens.ExplainScreen
+import com.aidict.app.ui.screens.HistoryScreen
+import com.aidict.app.ui.screens.SearchScreen
+import com.aidict.app.ui.screens.SettingsScreen
+import com.aidict.app.ui.screens.TranslateScreen
+import com.aidict.app.ui.viewmodels.CompareViewModel
+import com.aidict.app.ui.viewmodels.ExplainViewModel
+import com.aidict.app.ui.viewmodels.HistoryViewModel
+import com.aidict.app.ui.viewmodels.SearchViewModel
+import com.aidict.app.ui.viewmodels.SettingsViewModel
+import com.aidict.app.ui.viewmodels.TranslateViewModel
+
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Translate
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.automirrored.filled.CompareArrows
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.ui.graphics.vector.ImageVector
+
+data class TabItem(val title: String, val icon: ImageVector)
+
+enum class Screen { MAIN, HISTORY, SETTINGS }
+
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+fun AppNavigation(
+    windowSizeClass: WindowSizeClass,
+    appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
+    searchViewModel: SearchViewModel,
+    explainViewModel: ExplainViewModel,
+    translateViewModel: TranslateViewModel,
+    compareViewModel: CompareViewModel,
+    historyViewModel: HistoryViewModel,
+    settingsViewModel: SettingsViewModel,
+    onColorExtracted: (androidx.compose.ui.graphics.Color?) -> Unit
+) {
+    val isExpanded = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Expanded
+    
+    var currentScreen by remember { mutableStateOf(Screen.MAIN) }
+    var currentMode by remember { mutableStateOf(0) }
+    androidx.activity.compose.BackHandler(enabled = currentScreen != Screen.MAIN || currentMode != 0 || searchViewModel.uiState.value.word != null) {
+
+        if (currentScreen != Screen.MAIN) {
+
+            currentScreen = Screen.MAIN
+
+        } else if (currentMode != 0) {
+            currentMode = 0
+        } else if (searchViewModel.uiState.value.word != null) {
+            searchViewModel.clearCurrentSearch()
+        }
+    }
+    
+    val appState by appViewModel.uiState.collectAsState()
+
+    val bgDict by settingsViewModel.bgDict.collectAsState()
+    val bgCompare by settingsViewModel.bgCompare.collectAsState()
+    val bgTranslate by settingsViewModel.bgTranslate.collectAsState()
+    val bgExplain by settingsViewModel.bgExplain.collectAsState()
+    val bgBlur by settingsViewModel.bgBlurRadius.collectAsState()
+        val bgUniversal by settingsViewModel.bgUniversal.collectAsState()
+    val bgOpacity by settingsViewModel.bgOpacity.collectAsState()
+
+    val activeBg = when {
+        currentScreen != Screen.MAIN -> null
+        currentMode == 0 -> bgDict ?: bgUniversal
+        currentMode == 1 -> bgCompare ?: bgUniversal
+        currentMode == 2 -> bgTranslate ?: bgUniversal
+        currentMode == 3 -> bgExplain ?: bgUniversal
+        else -> null
+    }
+
+    LaunchedEffect(activeBg) { if (activeBg == null) onColorExtracted(null) }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+
+        if (activeBg != null) {
+            coil.compose.AsyncImage(
+                model = activeBg,
+                contentDescription = null,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().blur(bgBlur.dp).alpha(bgOpacity),
+                onSuccess = { state ->
+                    val bitmap = (state.result.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
+                    if (bitmap != null) {
+                        androidx.palette.graphics.Palette.from(bitmap).generate { palette ->
+                            val swatch = palette?.vibrantSwatch ?: palette?.mutedSwatch ?: palette?.dominantSwatch
+                            if (swatch != null) {
+                                onColorExtracted(androidx.compose.ui.graphics.Color(swatch.rgb))
+                            }
+                        }
+                    }
+                }
+            )
+        }
+    val modes = listOf(
+        TabItem("Dict", Icons.Default.Search),
+        TabItem("Compare", Icons.AutoMirrored.Filled.CompareArrows),
+        TabItem("Translate", Icons.Default.Translate),
+        TabItem("Explain", Icons.Default.Description)
+    )
+
+        val quoteMode by settingsViewModel.quoteMode.collectAsState()
+        val quoteStyleStr by settingsViewModel.quoteStyle.collectAsState()
+        val fontFamily = when(quoteStyleStr) { "Serif" -> androidx.compose.ui.text.font.FontFamily.Serif; "Sans Serif" -> androidx.compose.ui.text.font.FontFamily.SansSerif; "Monospace" -> androidx.compose.ui.text.font.FontFamily.Monospace; "Cursive" -> androidx.compose.ui.text.font.FontFamily.Cursive; else -> androidx.compose.ui.text.font.FontFamily.Default }
+
+        val quotesList by settingsViewModel.allQuotes.collectAsState()
+
+        var shuffledQuote by remember { mutableStateOf(quotesList.random()) }
+
+        LaunchedEffect(currentMode) { if (quoteMode == "Shuffle") shuffledQuote = quotesList.random() }
+
+        val displayQuote = when (quoteMode) { "None" -> null; "Shuffle" -> shuffledQuote; else -> quoteMode }
+
+
+
+        if (displayQuote != null && currentScreen == Screen.MAIN) {
+
+            Box(modifier = Modifier.fillMaxSize().padding(bottom = 120.dp), contentAlignment = Alignment.Center) {
+
+                Text(
+
+                    text = displayQuote,
+
+                    style = MaterialTheme.typography.headlineMedium.copy(fontFamily = fontFamily, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic),
+
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
+
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+
+                    modifier = Modifier.padding(32.dp)
+
+                )
+
+            }
+
+        }
+    Scaffold(containerColor = androidx.compose.ui.graphics.Color.Transparent,
+        topBar = {
+            TopAppBar(
+colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
+
+                navigationIcon = {
+                    if (currentScreen == Screen.MAIN) {
+                        IconButton(onClick = { 
+                            appViewModel.clearHistoryUnseen()
+                            currentScreen = Screen.HISTORY 
+                        }) {
+                            if (appState.unseenHistoryItems > 0) {
+                                BadgedBox(badge = { Badge { Text(appState.unseenHistoryItems.toString()) } }) {
+                                    Icon(Icons.Default.History, contentDescription = "History")
+                                }
+                            } else {
+                                Icon(Icons.Default.History, contentDescription = "History")
+                            }
+                        }
+                    } else {
+                        IconButton(onClick = { currentScreen = Screen.MAIN }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        }
+                    }
+                },
+                title = { 
+                    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("AI Dict", style = MaterialTheme.typography.titleLarge)
+                        var expanded by remember { mutableStateOf(false) }
+                        Box {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically, 
+                                modifier = Modifier.clickable { expanded = true }.padding(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Text(appState.activeProfile?.name ?: "Default", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                                Icon(Icons.Default.ArrowDropDown, contentDescription = "Select", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                            }
+                            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                                appState.profiles.forEach { profile ->
+                                    DropdownMenuItem(
+                                        text = { Text(profile.name) },
+                                        onClick = { 
+                                            appViewModel.setActiveProfile(profile)
+                                            expanded = false 
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                },
+                actions = {
+                    if (currentScreen == Screen.MAIN) {
+                        IconButton(onClick = { currentScreen = Screen.SETTINGS }) {
+                            Icon(Icons.Default.Settings, contentDescription = "Settings")
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.width(48.dp)) // Balance the title centering
+                    }
+                }
+            )
+        },
+        bottomBar = {
+            if (currentScreen == Screen.MAIN) {
+                NavigationBar(containerColor = androidx.compose.ui.graphics.Color.Transparent) {
+                    modes.forEachIndexed { index, tab ->
+                        NavigationBarItem(
+                            selected = currentMode == index,
+                            onClick = { currentMode = index },
+                            icon = { Icon(tab.icon, contentDescription = tab.title) },
+                            label = { Text(tab.title) }
+                        )
+                    }
+                }
+            }
+        }
+    ) { paddingValues ->
+        Surface(modifier = Modifier.padding(paddingValues).fillMaxSize(), color = androidx.compose.ui.graphics.Color.Transparent) {
+            when (currentScreen) {
+                Screen.SETTINGS -> SettingsScreen(settingsViewModel)
+                Screen.HISTORY -> {
+                    val modeStr = when (currentMode) {
+                        0 -> "dict"
+                        1 -> "compare"
+                        2 -> "translate"
+                        3 -> "explain"
+                        else -> "dict"
+                    }
+                    LaunchedEffect(currentMode) {
+                        historyViewModel.setMode(modeStr)
+                    }
+                    LaunchedEffect(appState.activeProfile?.id) {
+                        historyViewModel.setActiveProfileId(appState.activeProfile?.id ?: 1)
+                    }
+                    HistoryScreen(appViewModel, historyViewModel, windowSizeClass)
+                }
+                Screen.MAIN -> {
+                    val pid = appState.activeProfile?.id ?: 1
+                    LaunchedEffect(currentMode) {
+                        searchViewModel.clearCurrentSearch()
+                    }
+                    when (currentMode) {
+                        0 -> SearchScreen(searchViewModel, pid)
+                        1 -> CompareScreen(searchViewModel, pid)
+                        2 -> TranslateScreen(searchViewModel, pid)
+                        3 -> ExplainScreen(searchViewModel, pid)
+                    }
+                }
+            }
+        }
+    }
+}
+}

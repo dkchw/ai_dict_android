@@ -1,0 +1,1 @@
+sed -i 's/val quotesList = listOf("Per studium ad sapientiam", "Labor omnia vincit", "Assiduitas mater scientiae", "Nulla dies sine linea", "Carpe diem", "Vincit qui se vincit")/val quotesList by settingsViewModel.allQuotes.collectAsState()/' android_app/app/src/main/java/com/aidict/app/ui/AppNavigation.kt

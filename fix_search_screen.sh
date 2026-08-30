@@ -1,0 +1,5 @@
+sed -i 's/var sourceLang by remember { mutableStateOf(viewModel.defaultSourceLang) }/var sourceLang by remember { mutableStateOf("Auto Detect") }/g' android_app/app/src/main/java/com/aidict/app/ui/screens/SearchScreen.kt
+sed -i 's/var targetLang by remember { mutableStateOf(viewModel.defaultTargetLang) }/var targetLang by remember { mutableStateOf("English") }\n    LaunchedEffect(profileId) {\n        sourceLang = viewModel.getProfileSetting(profileId, "SEARCH_SOURCE") ?: "Auto Detect"\n        targetLang = viewModel.getProfileSetting(profileId, "SEARCH_TARGET") ?: "English"\n    }/g' android_app/app/src/main/java/com/aidict/app/ui/screens/SearchScreen.kt
+
+sed -i 's/onSourceLangChange = { sourceLang = it }/onSourceLangChange = { sourceLang = it; viewModel.saveProfileSetting(profileId, "SEARCH_SOURCE", it) }/g' android_app/app/src/main/java/com/aidict/app/ui/screens/SearchScreen.kt
+sed -i 's/onTargetLangChange = { targetLang = it }/onTargetLangChange = { targetLang = it; viewModel.saveProfileSetting(profileId, "SEARCH_TARGET", it) }/g' android_app/app/src/main/java/com/aidict/app/ui/screens/SearchScreen.kt

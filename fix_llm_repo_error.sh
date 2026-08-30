@@ -1,0 +1,1 @@
+sed -i 's/val finalMessage = if (errorBody != null) "API Error: $errorBody" else t?.message ?: "Unknown SSE failure"/val finalMessage = if (errorBody != null \&\& errorBody.isNotBlank()) "API Error: $errorBody" else "API Error: ${response?.code} ${response?.message} ${t?.message ?: ""}"/' android_app/app/src/main/java/com/aidict/app/data/LlmRepository.kt

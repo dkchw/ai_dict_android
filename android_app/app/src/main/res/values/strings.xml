@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AI Dict</string>
+    <string name="settings_title">Settings</string>
+    <string name="history_title">History</string>
+    <string name="export_data">Export Data</string>
+    <string name="import_data">Import Data</string>
+</resources>

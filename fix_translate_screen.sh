@@ -1,0 +1,5 @@
+sed -i 's/var sourceLang by remember { mutableStateOf(viewModel.defaultSourceLang) }/var sourceLang by remember { mutableStateOf("Auto Detect") }/g' android_app/app/src/main/java/com/aidict/app/ui/screens/TranslateScreen.kt
+sed -i 's/var targetLang by remember { mutableStateOf(viewModel.defaultTargetLang) }/var targetLang by remember { mutableStateOf("English") }\n    LaunchedEffect(profileId) {\n        sourceLang = viewModel.getProfileSetting(profileId, "TRANSLATE_SOURCE") ?: "Auto Detect"\n        targetLang = viewModel.getProfileSetting(profileId, "TRANSLATE_TARGET") ?: "English"\n    }/g' android_app/app/src/main/java/com/aidict/app/ui/screens/TranslateScreen.kt
+
+sed -i 's/onSourceLangChange = { sourceLang = it }/onSourceLangChange = { sourceLang = it; viewModel.saveProfileSetting(profileId, "TRANSLATE_SOURCE", it) }/g' android_app/app/src/main/java/com/aidict/app/ui/screens/TranslateScreen.kt
+sed -i 's/onTargetLangChange = { targetLang = it }/onTargetLangChange = { targetLang = it; viewModel.saveProfileSetting(profileId, "TRANSLATE_TARGET", it) }/g' android_app/app/src/main/java/com/aidict/app/ui/screens/TranslateScreen.kt

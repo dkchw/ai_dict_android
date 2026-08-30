@@ -1,0 +1,5 @@
+sed -i '/import kotlinx.coroutines.flow.StateFlow/a import kotlinx.coroutines.flow.map' android_app/app/src/main/java/com/aidict/app/ui/viewmodels/SearchViewModel.kt
+sed -i '/val defaultTargetLang/a \    val orderedLanguages = database.appDao().getSettingsFlow().map { s -> com.aidict.app.utils.LanguageManager.getOrderedLanguages(s.find { it.key == "STARRED_LANGUAGES" }?.value) }.stateIn(viewModelScope, SharingStarted.Lazily, com.aidict.app.utils.LanguageManager.getOrderedLanguages(null))' android_app/app/src/main/java/com/aidict/app/ui/viewmodels/SearchViewModel.kt
+
+sed -i '/import kotlinx.coroutines.flow.StateFlow/a import kotlinx.coroutines.flow.map' android_app/app/src/main/java/com/aidict/app/ui/viewmodels/TranslateViewModel.kt
+sed -i '/val defaultTargetLang/a \    val orderedLanguages = database.appDao().getSettingsFlow().map { s -> com.aidict.app.utils.LanguageManager.getOrderedLanguages(s.find { it.key == "STARRED_LANGUAGES" }?.value) }.stateIn(viewModelScope, SharingStarted.Lazily, com.aidict.app.utils.LanguageManager.getOrderedLanguages(null))' android_app/app/src/main/java/com/aidict/app/ui/viewmodels/TranslateViewModel.kt

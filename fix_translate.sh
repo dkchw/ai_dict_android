@@ -1,0 +1,1 @@
+sed -i '/import androidx.compose.ui.Modifier/a import androidx.compose.ui.Alignment\nimport androidx.compose.foundation.layout.Arrangement\nimport androidx.compose.material.icons.Icons\nimport androidx.compose.material.icons.filled.ArrowForward' android_app/app/src/main/java/com/aidict/app/ui/screens/TranslateScreen.kt

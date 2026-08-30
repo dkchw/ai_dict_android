@@ -1,0 +1,86 @@
+[
+    {
+        "merged": "com.aidict.app-debug-61:/mipmap-xhdpi_app_icon_round.png.flat",
+        "source": "com.aidict.app-main-63:/mipmap-xhdpi/app_icon_round.png"
+    },
+    {
+        "merged": "com.aidict.app-debug-61:/mipmap-xhdpi_app_icon_foreground.png.flat",
+        "source": "com.aidict.app-main-63:/mipmap-xhdpi/app_icon_foreground.png"
+    },
+    {
+        "merged": "com.aidict.app-debug-61:/mipmap-hdpi_app_icon_foreground.png.flat",
+        "source": "com.aidict.app-main-63:/mipmap-hdpi/app_icon_foreground.png"
+    },
+    {
+        "merged": "com.aidict.app-debug-61:/mipmap-xxhdpi_app_icon_foreground.png.flat",
+        "source": "com.aidict.app-main-63:/mipmap-xxhdpi/app_icon_foreground.png"
+    },
+    {
+        "merged": "com.aidict.app-debug-61:/mipmap-xxhdpi_app_icon.png.flat",
+        "source": "com.aidict.app-main-63:/mipmap-xxhdpi/app_icon.png"
+    },
+    {
+        "merged": "com.aidict.app-debug-61:/mipmap-hdpi_app_icon.png.flat",
+        "source": "com.aidict.app-main-63:/mipmap-hdpi/app_icon.png"
+    },
+    {
+        "merged": "com.aidict.app-debug-61:/mipmap-xxxhdpi_app_icon_foreground.png.flat",
+        "source": "com.aidict.app-main-63:/mipmap-xxxhdpi/app_icon_foreground.png"
+    },
+    {
+        "merged": "com.aidict.app-debug-61:/mipmap-xxhdpi_app_icon_round.png.flat",
+        "source": "com.aidict.app-main-63:/mipmap-xxhdpi/app_icon_round.png"
+    },
+    {
+        "merged": "com.aidict.app-debug-61:/mipmap-mdpi_app_icon_round.png.flat",
+        "source": "com.aidict.app-main-63:/mipmap-mdpi/app_icon_round.png"
+    },
+    {
+        "merged": "com.aidict.app-debug-61:/mipmap-mdpi_app_icon.png.flat",
+        "source": "com.aidict.app-main-63:/mipmap-mdpi/app_icon.png"
+    },
+    {
+        "merged": "com.aidict.app-debug-61:/mipmap-xxxhdpi_app_icon.png.flat",
+        "source": "com.aidict.app-main-63:/mipmap-xxxhdpi/app_icon.png"
+    },
+    {
+        "merged": "com.aidict.app-debug-61:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "com.aidict.app-main-63:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "com.aidict.app-debug-61:/mipmap-xxxhdpi_app_icon_round.png.flat",
+        "source": "com.aidict.app-main-63:/mipmap-xxxhdpi/app_icon_round.png"
+    },
+    {
+        "merged": "com.aidict.app-debug-61:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "com.aidict.app-main-63:/mipmap-anydpi-v26/ic_launcher_round.xml"
+    },
+    {
+        "merged": "com.aidict.app-debug-61:/mipmap-anydpi-v26_app_icon_round.xml.flat",
+        "source": "com.aidict.app-main-63:/mipmap-anydpi-v26/app_icon_round.xml"
+    },
+    {
+        "merged": "com.aidict.app-debug-61:/mipmap-mdpi_app_icon_foreground.png.flat",
+        "source": "com.aidict.app-main-63:/mipmap-mdpi/app_icon_foreground.png"
+    },
+    {
+        "merged": "com.aidict.app-debug-61:/drawable_ic_launcher_foreground.xml.flat",
+        "source": "com.aidict.app-main-63:/drawable/ic_launcher_foreground.xml"
+    },
+    {
+        "merged": "com.aidict.app-debug-61:/mipmap-hdpi_app_icon_round.png.flat",
+        "source": "com.aidict.app-main-63:/mipmap-hdpi/app_icon_round.png"
+    },
+    {
+        "merged": "com.aidict.app-debug-61:/drawable_ic_launcher_background.xml.flat",
+        "source": "com.aidict.app-main-63:/drawable/ic_launcher_background.xml"
+    },
+    {
+        "merged": "com.aidict.app-debug-61:/mipmap-xhdpi_app_icon.png.flat",
+        "source": "com.aidict.app-main-63:/mipmap-xhdpi/app_icon.png"
+    },
+    {
+        "merged": "com.aidict.app-debug-61:/mipmap-anydpi-v26_app_icon.xml.flat",
+        "source": "com.aidict.app-main-63:/mipmap-anydpi-v26/app_icon.xml"
+    }
+]
