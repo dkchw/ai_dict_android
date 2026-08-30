@@ -24,6 +24,7 @@ import androidx.compose.material3.*
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import com.aidict.app.ui.components.MarkdownText
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.filled.ArrowForward
@@ -36,7 +37,7 @@ fun TranslateScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
-    var sourceText by remember { mutableStateOf("") }
+    
     val context = LocalContext.current
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     var sourceLang by remember { mutableStateOf("Auto Detect") }
@@ -48,6 +49,10 @@ fun TranslateScreen(
     
     Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
         // Chat History & Streaming
+        state.error?.let {
+            Text(text = "Error: $it", color = MaterialTheme.colorScheme.error)
+            Spacer(modifier = Modifier.height(8.dp))
+        }
         LazyColumn(modifier = Modifier.weight(1f)) {
             items(state.chatMessages) { msg ->
                 var isEditing by remember { mutableStateOf(false) }
@@ -69,7 +74,7 @@ fun TranslateScreen(
                                 .padding(12.dp)
                         ) {
                             if (isUser) {
-                                Text(text = msg.content, color = MaterialTheme.colorScheme.onPrimary)
+                                MarkdownText(text = msg.content, color = MaterialTheme.colorScheme.onPrimary)
                             } else {
                                 if (isEditing) {
                                     Column {
@@ -87,7 +92,7 @@ fun TranslateScreen(
                                         }
                                     }
                                 } else {
-                                    Text(text = msg.content, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                    MarkdownText(text = msg.content, color = MaterialTheme.colorScheme.onSecondaryContainer)
                                 }
                             }
                         }
@@ -133,15 +138,15 @@ fun TranslateScreen(
         // Bottom Input Bar
 
         com.aidict.app.ui.components.ChatInputBar(availableLanguages = viewModel.orderedLanguages.collectAsState().value, 
-            inputTerm = sourceText,
-            onValueChange = { sourceText = it },
+            inputTerm = viewModel.translateInput,
+            onValueChange = { viewModel.translateInput = it },
             onSend = {
                 if (state.word != null) {
-                    viewModel.sendFollowUpMessage(sourceText)
+                    viewModel.sendFollowUpMessage(viewModel.translateInput)
                 } else {
-                    viewModel.streamTranslation(sourceText, sourceLang, targetLang, profileId)
+                    viewModel.streamTranslation(viewModel.translateInput, sourceLang, targetLang, profileId)
                 }
-                sourceText = ""
+                viewModel.translateInput = ""
             },
             isLoading = state.isLoading,
             isFollowUp = state.word != null,

@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Star
@@ -17,17 +18,23 @@ import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.*
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.activity.compose.BackHandler
 import com.aidict.app.ui.viewmodels.HistoryViewModel
 import com.aidict.app.data.entities.Word
 import com.aidict.app.data.entities.Session
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel, 
+fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
+    onNavigateToChat: (Word) -> Unit, 
     viewModel: HistoryViewModel,
     windowSizeClass: WindowSizeClass,
     modifier: Modifier = Modifier
@@ -38,7 +45,13 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
     val starsFilter by viewModel.starsFilter.collectAsState()
     var query by remember { mutableStateOf("") }
     
-    var selectedWord by remember { mutableStateOf<Word?>(null) }
+        var selectedWord by remember { mutableStateOf<Word?>(null) }
+    
+    if (selectedWord != null) {
+        BackHandler {
+            selectedWord = null
+        }
+    }
     
     var showCreateSession by remember { mutableStateOf(false) }
     var showRenameSession by remember { mutableStateOf<Session?>(null) }
@@ -199,31 +212,72 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
         if (selectedWord != null) {
             Column(modifier = Modifier.fillMaxSize().padding(16.dp).background(MaterialTheme.colorScheme.surface)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "Details for: ${selectedWord!!.term}", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+                    Text(text = "Details", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+                    Button(onClick = { onNavigateToChat(selectedWord!!) }) { Text("Resume Chat") }
+                    Spacer(modifier = Modifier.width(8.dp))
                     IconButton(onClick = { selectedWord = null }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Close")
+                        Icon(Icons.Default.Close, contentDescription = "Close Details")
                     }
                 }
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                Text("Chat history for this word will appear here.")
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Word: ${selectedWord?.term}", style = MaterialTheme.typography.titleMedium)
+                Text("Language/Mode: ${selectedWord?.language}", style = MaterialTheme.typography.bodyMedium)
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Click 'Resume Chat' to view the full conversation history and continue where you left off.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
 
+    val splitFraction by viewModel.splitFraction.collectAsState()
+    val configuration = LocalConfiguration.current
+    val density = LocalDensity.current
+
     if (isTablet) {
+        val totalWidthDp = configuration.screenWidthDp.dp
         Row(modifier = modifier.fillMaxSize()) {
-            Box(modifier = Modifier.weight(1f)) { listContent() }
+            Box(modifier = Modifier.weight(if (selectedWord != null) splitFraction else 1f)) { listContent() }
             if (selectedWord != null) {
-                VerticalDivider()
-                Box(modifier = Modifier.weight(1f)) { detailContent() }
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(8.dp)
+                        .background(MaterialTheme.colorScheme.outlineVariant)
+                        .pointerInput(Unit) {
+                            detectDragGestures { change, dragAmount ->
+                                change.consume()
+                                val dragAmountFraction = dragAmount.x / (totalWidthDp.toPx())
+                                val newFraction = (splitFraction + dragAmountFraction).coerceIn(0.2f, 0.8f)
+                                viewModel.updateSplitFraction(newFraction)
+                            }
+                        }
+                ) {
+                    VerticalDivider(modifier = Modifier.align(Alignment.Center))
+                }
+                Box(modifier = Modifier.weight(1f - splitFraction)) { detailContent() }
             }
         }
     } else {
+        val totalHeightDp = configuration.screenHeightDp.dp
         Column(modifier = modifier.fillMaxSize()) {
-            Box(modifier = Modifier.weight(if (selectedWord != null) 1f else 2f)) { listContent() }
+            Box(modifier = Modifier.weight(if (selectedWord != null) splitFraction else 1f)) { listContent() }
             if (selectedWord != null) {
-                HorizontalDivider()
-                Box(modifier = Modifier.weight(1f)) { detailContent() }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .background(MaterialTheme.colorScheme.outlineVariant)
+                        .pointerInput(Unit) {
+                            detectDragGestures { change, dragAmount ->
+                                change.consume()
+                                val dragAmountFraction = dragAmount.y / (totalHeightDp.toPx())
+                                val newFraction = (splitFraction + dragAmountFraction).coerceIn(0.2f, 0.8f)
+                                viewModel.updateSplitFraction(newFraction)
+                            }
+                        }
+                ) {
+                    HorizontalDivider(modifier = Modifier.align(Alignment.Center))
+                }
+                Box(modifier = Modifier.weight(1f - splitFraction)) { detailContent() }
             }
         }
     }

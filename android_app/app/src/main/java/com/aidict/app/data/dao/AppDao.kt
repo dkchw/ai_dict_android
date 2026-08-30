@@ -5,6 +5,7 @@ import com.aidict.app.data.entities.AppSetting
 import com.aidict.app.data.entities.ChatMessage
 import com.aidict.app.data.entities.Profile
 import com.aidict.app.data.entities.Word
+import com.aidict.app.data.entities.Note
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -84,4 +85,20 @@ interface AppDao {
 
     @Query("DELETE FROM chat_message")
     suspend fun clearChatMessages()
+
+    @androidx.room.Query("SELECT * FROM note ORDER BY createdAt DESC")
+    fun getNotesFlow(): kotlinx.coroutines.flow.Flow<List<Note>>
+
+    @androidx.room.Insert
+    suspend fun insertNote(note: Note): Long
+
+    @androidx.room.Update
+    suspend fun updateNote(note: Note)
+
+    @androidx.room.Delete
+    suspend fun deleteNote(note: Note)
+
+    @androidx.room.Query("DELETE FROM note WHERE id IN (:ids)")
+    suspend fun deleteNotesByIds(ids: List<Int>)
 }
+

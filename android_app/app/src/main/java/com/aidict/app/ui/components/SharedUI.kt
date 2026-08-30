@@ -151,7 +151,7 @@ fun ChatInputBar(
             if (sourceLang != null && targetLang != null && onSourceLangChange != null && onTargetLangChange != null) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(start = 8.dp),
-                    horizontalArrangement = Arrangement.Start,
+                    horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     SmallLanguageSelector(availableLanguages = availableLanguages, currentValue = sourceLang, onSelected = onSourceLangChange)
@@ -173,13 +173,14 @@ fun ChatInputBar(
                 verticalAlignment = Alignment.Bottom
             ) {
                 if (onClear != null) {
-
-                    IconButton(onClick = onClear, modifier = Modifier.padding(bottom = 8.dp)) {
-
-                        Icon(Icons.Default.Add, contentDescription = "New Search", tint = MaterialTheme.colorScheme.primary)
-
+                    IconButton(
+                        onClick = onClear, 
+                        modifier = Modifier
+                            .padding(bottom = 8.dp, start = 8.dp, end = 8.dp)
+                            .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "New Search", tint = MaterialTheme.colorScheme.onSecondaryContainer)
                     }
-
                 }
                 OutlinedTextField(
                     value = inputTerm,

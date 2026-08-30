@@ -1,4 +1,7 @@
 package com.aidict.app.ui.viewmodels
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -30,6 +33,11 @@ class SearchViewModel(
     private val llmRepository: LlmRepository,
     private val database: AppDatabase
 ) : ViewModel() {
+    var searchInput by mutableStateOf("")
+    var translateInput by mutableStateOf("")
+    var explainInput by mutableStateOf("")
+    var compareInput by mutableStateOf("")
+
 
     private val _uiState = MutableStateFlow(SearchState())
     val uiState: StateFlow<SearchState> = _uiState.asStateFlow()
@@ -112,7 +120,7 @@ class SearchViewModel(
             _uiState.value = _uiState.value.copy(chatMessages = updatedMessages, isLoading = true, currentStream = "")
 
             try {
-                llmRepository.streamChat(updatedMessages).collect { currentText ->
+                llmRepository.streamChat(word, updatedMessages).collect { currentText ->
                     _uiState.value = _uiState.value.copy(currentStream = currentText)
                 }
 
@@ -144,6 +152,20 @@ class SearchViewModel(
         }
     }
 
+    
+    fun loadWord(word: com.aidict.app.data.entities.Word) {
+        viewModelScope.launch {
+            val messages = database.appDao().getChatMessagesSync(word.id)
+            _uiState.value = SearchState(
+                isLoading = false,
+                word = word,
+                chatMessages = messages,
+                currentStream = "",
+                error = null
+            )
+        }
+    }
+
     fun clearCurrentSearch() {
         _uiState.value = SearchState()
     }
@@ -170,6 +192,7 @@ class SearchViewModel(
     }
 
     fun retryMessage(assistantMsg: com.aidict.app.data.entities.ChatMessage, forceFallback: Boolean) {
+        val word = _uiState.value.word ?: return
         viewModelScope.launch {
             // Delete the assistant message to restart generation from that point
             database.appDao().deleteChatMessage(assistantMsg)
@@ -186,11 +209,11 @@ class SearchViewModel(
                 if (historyBefore.size == 1 && historyBefore.first().role == "user") {
                     val userMsg = historyBefore.first()
                     // Re-run searchWord logic essentially, or just stream chat
-                    llmRepository.streamChat(historyBefore, forceFallback).collect { currentText ->
+                    llmRepository.streamChat(word, historyBefore, forceFallback).collect { currentText ->
                         _uiState.value = _uiState.value.copy(currentStream = currentText)
                     }
                 } else {
-                    llmRepository.streamChat(historyBefore, forceFallback).collect { currentText ->
+                    llmRepository.streamChat(word, historyBefore, forceFallback).collect { currentText ->
                         _uiState.value = _uiState.value.copy(currentStream = currentText)
                     }
                 }

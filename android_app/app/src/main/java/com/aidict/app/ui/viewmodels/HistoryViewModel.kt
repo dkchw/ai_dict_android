@@ -29,7 +29,7 @@ class HistoryViewModel(private val database: AppDatabase) : ViewModel() {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val allHistory = kotlinx.coroutines.flow.combine(currentMode, activeProfileId) { m, p -> Pair(m, p) }.flatMapLatest { (mode, pid) ->
-        database.appDao().getWordsByMode(pid, mode) // Hardcoding profileId 1 for now
+        database.appDao().getWordsByMode(pid, mode)
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         
     val sessions = activeProfileId.flatMapLatest { pid -> database.appDao().getSessions(pid.toLong()) }
@@ -80,6 +80,23 @@ class HistoryViewModel(private val database: AppDatabase) : ViewModel() {
     fun deleteSession(session: Session) {
         viewModelScope.launch {
             database.appDao().deleteSession(session)
+        }
+    }
+    
+    val splitFraction = kotlinx.coroutines.flow.MutableStateFlow(0.5f)
+    init {
+        viewModelScope.launch {
+            val saved = database.appDao().getSetting("HISTORY_SPLIT_FRACTION")?.value?.toFloatOrNull()
+            if (saved != null) {
+                splitFraction.value = saved
+            }
+        }
+    }
+    
+    fun updateSplitFraction(fraction: Float) {
+        splitFraction.value = fraction
+        viewModelScope.launch {
+            database.appDao().insertSetting(com.aidict.app.data.entities.AppSetting("HISTORY_SPLIT_FRACTION", fraction.toString()))
         }
     }
 }

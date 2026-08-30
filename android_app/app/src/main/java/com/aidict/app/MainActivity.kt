@@ -23,6 +23,7 @@ import com.aidict.app.ui.viewmodels.HistoryViewModel
 import com.aidict.app.ui.viewmodels.SearchViewModel
 import com.aidict.app.ui.viewmodels.SettingsViewModel
 import com.aidict.app.ui.viewmodels.TranslateViewModel
+import com.aidict.app.ui.viewmodels.NotesViewModel
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
@@ -40,7 +41,8 @@ class MainActivity : ComponentActivity() {
                     modelClass.isAssignableFrom(TranslateViewModel::class.java) -> TranslateViewModel(repository, database) as T
                     modelClass.isAssignableFrom(CompareViewModel::class.java) -> CompareViewModel(repository, database) as T
                     modelClass.isAssignableFrom(HistoryViewModel::class.java) -> HistoryViewModel(database) as T
-                    modelClass.isAssignableFrom(SettingsViewModel::class.java) -> SettingsViewModel(database, repository) as T
+                                        modelClass.isAssignableFrom(SettingsViewModel::class.java) -> SettingsViewModel(database, repository) as T
+                    modelClass.isAssignableFrom(NotesViewModel::class.java) -> NotesViewModel(database) as T
                     else -> throw IllegalArgumentException("Unknown ViewModel class")
                 }
             }
@@ -54,7 +56,8 @@ class MainActivity : ComponentActivity() {
             val translateViewModel: TranslateViewModel = viewModel(factory = factory)
             val compareViewModel: CompareViewModel = viewModel(factory = factory)
             val historyViewModel: HistoryViewModel = viewModel(factory = factory)
-            val settingsViewModel: SettingsViewModel = viewModel(factory = factory)
+                        val settingsViewModel: SettingsViewModel = viewModel(factory = factory)
+            val notesViewModel: NotesViewModel = viewModel(factory = factory)
             val appViewModel: com.aidict.app.ui.viewmodels.AppViewModel = viewModel(factory = object : ViewModelProvider.Factory {
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
                     return com.aidict.app.ui.viewmodels.AppViewModel(database) as T
@@ -95,6 +98,7 @@ class MainActivity : ComponentActivity() {
                         compareViewModel = compareViewModel,
                         historyViewModel = historyViewModel,
                         settingsViewModel = settingsViewModel,
+                    notesViewModel = notesViewModel,
                         onColorExtracted = { dynamicColorState.value = it }
                     )
                 }

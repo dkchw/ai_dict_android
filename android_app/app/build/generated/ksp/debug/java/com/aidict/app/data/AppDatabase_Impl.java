@@ -34,7 +34,7 @@ public final class AppDatabase_Impl extends AppDatabase {
   @Override
   @NonNull
   protected SupportSQLiteOpenHelper createOpenHelper(@NonNull final DatabaseConfiguration config) {
-    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(4) {
+    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(5) {
       @Override
       public void createAllTables(@NonNull final SupportSQLiteDatabase db) {
         db.execSQL("CREATE TABLE IF NOT EXISTS `profile` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `rank` INTEGER NOT NULL, `isDefault` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL)");
@@ -44,8 +44,9 @@ public final class AppDatabase_Impl extends AppDatabase {
         db.execSQL("CREATE TABLE IF NOT EXISTS `chat_message` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `wordId` INTEGER NOT NULL, `role` TEXT NOT NULL, `content` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, FOREIGN KEY(`wordId`) REFERENCES `word`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )");
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_chat_message_wordId` ON `chat_message` (`wordId`)");
         db.execSQL("CREATE TABLE IF NOT EXISTS `session` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `profileId` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`id`))");
+        db.execSQL("CREATE TABLE IF NOT EXISTS `note` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `content` TEXT NOT NULL, `createdAt` INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)");
-        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1262c5851f81dc6bf6f7e567f0a39120')");
+        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '74610f53eb621dec06f43a4464306875')");
       }
 
       @Override
@@ -55,6 +56,7 @@ public final class AppDatabase_Impl extends AppDatabase {
         db.execSQL("DROP TABLE IF EXISTS `word`");
         db.execSQL("DROP TABLE IF EXISTS `chat_message`");
         db.execSQL("DROP TABLE IF EXISTS `session`");
+        db.execSQL("DROP TABLE IF EXISTS `note`");
         final List<? extends RoomDatabase.Callback> _callbacks = mCallbacks;
         if (_callbacks != null) {
           for (RoomDatabase.Callback _callback : _callbacks) {
@@ -180,9 +182,23 @@ public final class AppDatabase_Impl extends AppDatabase {
                   + " Expected:\n" + _infoSession + "\n"
                   + " Found:\n" + _existingSession);
         }
+        final HashMap<String, TableInfo.Column> _columnsNote = new HashMap<String, TableInfo.Column>(4);
+        _columnsNote.put("id", new TableInfo.Column("id", "INTEGER", true, 1, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsNote.put("title", new TableInfo.Column("title", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsNote.put("content", new TableInfo.Column("content", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsNote.put("createdAt", new TableInfo.Column("createdAt", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        final HashSet<TableInfo.ForeignKey> _foreignKeysNote = new HashSet<TableInfo.ForeignKey>(0);
+        final HashSet<TableInfo.Index> _indicesNote = new HashSet<TableInfo.Index>(0);
+        final TableInfo _infoNote = new TableInfo("note", _columnsNote, _foreignKeysNote, _indicesNote);
+        final TableInfo _existingNote = TableInfo.read(db, "note");
+        if (!_infoNote.equals(_existingNote)) {
+          return new RoomOpenHelper.ValidationResult(false, "note(com.aidict.app.data.entities.Note).\n"
+                  + " Expected:\n" + _infoNote + "\n"
+                  + " Found:\n" + _existingNote);
+        }
         return new RoomOpenHelper.ValidationResult(true, null);
       }
-    }, "1262c5851f81dc6bf6f7e567f0a39120", "592248cb59c943a58aa76ac7f9faff86");
+    }, "74610f53eb621dec06f43a4464306875", "4700cf2408a5cedb980812a29fb3d6ee");
     final SupportSQLiteOpenHelper.Configuration _sqliteConfig = SupportSQLiteOpenHelper.Configuration.builder(config.context).name(config.name).callback(_openCallback).build();
     final SupportSQLiteOpenHelper _helper = config.sqliteOpenHelperFactory.create(_sqliteConfig);
     return _helper;
@@ -193,7 +209,7 @@ public final class AppDatabase_Impl extends AppDatabase {
   protected InvalidationTracker createInvalidationTracker() {
     final HashMap<String, String> _shadowTablesMap = new HashMap<String, String>(0);
     final HashMap<String, Set<String>> _viewTables = new HashMap<String, Set<String>>(0);
-    return new InvalidationTracker(this, _shadowTablesMap, _viewTables, "profile","app_setting","word","chat_message","session");
+    return new InvalidationTracker(this, _shadowTablesMap, _viewTables, "profile","app_setting","word","chat_message","session","note");
   }
 
   @Override
@@ -214,6 +230,7 @@ public final class AppDatabase_Impl extends AppDatabase {
       _db.execSQL("DELETE FROM `word`");
       _db.execSQL("DELETE FROM `chat_message`");
       _db.execSQL("DELETE FROM `session`");
+      _db.execSQL("DELETE FROM `note`");
       super.setTransactionSuccessful();
     } finally {
       super.endTransaction();

@@ -22,6 +22,7 @@ import androidx.compose.foundation.background
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import com.aidict.app.ui.components.MarkdownText
 import androidx.compose.ui.unit.dp
 import com.aidict.app.ui.viewmodels.CompareViewModel
 
@@ -37,6 +38,10 @@ fun CompareScreen(
 
     Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
         // Chat History & Streaming
+        state.error?.let {
+            Text(text = "Error: $it", color = MaterialTheme.colorScheme.error)
+            Spacer(modifier = Modifier.height(8.dp))
+        }
         LazyColumn(modifier = Modifier.weight(1f)) {
             items(state.chatMessages) { msg ->
                 var isEditing by remember { mutableStateOf(false) }
@@ -58,7 +63,7 @@ fun CompareScreen(
                                 .padding(12.dp)
                         ) {
                             if (isUser) {
-                                Text(text = msg.content, color = MaterialTheme.colorScheme.onPrimary)
+                                MarkdownText(text = msg.content, color = MaterialTheme.colorScheme.onPrimary)
                             } else {
                                 if (isEditing) {
                                     Column {
@@ -76,7 +81,7 @@ fun CompareScreen(
                                         }
                                     }
                                 } else {
-                                    Text(text = msg.content, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                    MarkdownText(text = msg.content, color = MaterialTheme.colorScheme.onSecondaryContainer)
                                 }
                             }
                         }

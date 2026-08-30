@@ -27,6 +27,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.aidict.app.ui.components.MarkdownText
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -38,7 +39,7 @@ fun SearchScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
-    var inputTerm by remember { mutableStateOf("") }
+    
     val context = LocalContext.current
 
     val colors = listOf(
@@ -153,7 +154,7 @@ fun SearchScreen(
                                 .padding(12.dp)
                         ) {
                             if (isUser) {
-                                Text(text = msg.content, color = MaterialTheme.colorScheme.onPrimary)
+                                MarkdownText(text = msg.content, color = MaterialTheme.colorScheme.onPrimary)
                             } else {
                                 if (isEditing) {
                                     Column {
@@ -171,7 +172,7 @@ fun SearchScreen(
                                         }
                                     }
                                 } else {
-                                    Text(text = msg.content, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                    MarkdownText(text = msg.content, color = MaterialTheme.colorScheme.onSecondaryContainer)
                                 }
                             }
                         }
@@ -219,15 +220,15 @@ fun SearchScreen(
 
 
         com.aidict.app.ui.components.ChatInputBar(availableLanguages = viewModel.orderedLanguages.collectAsState().value, 
-            inputTerm = inputTerm,
-            onValueChange = { inputTerm = it },
+            inputTerm = viewModel.searchInput,
+            onValueChange = { viewModel.searchInput = it },
             onSend = {
                 if (isFollowUp) {
-                    viewModel.sendFollowUpMessage(inputTerm)
+                    viewModel.sendFollowUpMessage(viewModel.searchInput)
                 } else {
-                    viewModel.searchWord(inputTerm, sourceLang, targetLang, profileId)
+                    viewModel.searchWord(viewModel.searchInput, sourceLang, targetLang, profileId)
                 }
-                inputTerm = ""
+                viewModel.searchInput = ""
             },
             isLoading = state.isLoading,
             placeholder = if (isFollowUp) "Ask a follow up question..." else "Search word...",
@@ -236,7 +237,7 @@ fun SearchScreen(
             targetLang = if (!isFollowUp) targetLang else null,
             onSourceLangChange = if (!isFollowUp) { { sourceLang = it; viewModel.saveProfileSetting(profileId, "SEARCH_SOURCE", it) } } else null,
             onTargetLangChange = if (!isFollowUp) { { targetLang = it; viewModel.saveProfileSetting(profileId, "SEARCH_TARGET", it) } } else null,
-            onClear = if (isFollowUp) { { viewModel.clearCurrentSearch() } } else null
+            onClear = { viewModel.clearCurrentSearch(); viewModel.searchInput = "" }
         )
     }
 }

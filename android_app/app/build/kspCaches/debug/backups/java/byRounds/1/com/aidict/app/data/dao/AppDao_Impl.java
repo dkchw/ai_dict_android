@@ -12,18 +12,22 @@ import androidx.room.RoomSQLiteQuery;
 import androidx.room.SharedSQLiteStatement;
 import androidx.room.util.CursorUtil;
 import androidx.room.util.DBUtil;
+import androidx.room.util.StringUtil;
 import androidx.sqlite.db.SupportSQLiteStatement;
 import com.aidict.app.data.entities.AppSetting;
 import com.aidict.app.data.entities.ChatMessage;
+import com.aidict.app.data.entities.Note;
 import com.aidict.app.data.entities.Profile;
 import com.aidict.app.data.entities.Session;
 import com.aidict.app.data.entities.Word;
 import java.lang.Class;
 import java.lang.Exception;
+import java.lang.Integer;
 import java.lang.Long;
 import java.lang.Object;
 import java.lang.Override;
 import java.lang.String;
+import java.lang.StringBuilder;
 import java.lang.SuppressWarnings;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -49,6 +53,8 @@ public final class AppDao_Impl implements AppDao {
 
   private final EntityInsertionAdapter<Session> __insertionAdapterOfSession;
 
+  private final EntityInsertionAdapter<Note> __insertionAdapterOfNote;
+
   private final EntityDeletionOrUpdateAdapter<Word> __deletionAdapterOfWord;
 
   private final EntityDeletionOrUpdateAdapter<ChatMessage> __deletionAdapterOfChatMessage;
@@ -56,6 +62,10 @@ public final class AppDao_Impl implements AppDao {
   private final EntityDeletionOrUpdateAdapter<Profile> __deletionAdapterOfProfile;
 
   private final EntityDeletionOrUpdateAdapter<Session> __deletionAdapterOfSession;
+
+  private final EntityDeletionOrUpdateAdapter<Note> __deletionAdapterOfNote;
+
+  private final EntityDeletionOrUpdateAdapter<Note> __updateAdapterOfNote;
 
   private final SharedSQLiteStatement __preparedStmtOfClearSettings;
 
@@ -167,6 +177,22 @@ public final class AppDao_Impl implements AppDao {
         statement.bindLong(4, entity.getCreatedAt());
       }
     };
+    this.__insertionAdapterOfNote = new EntityInsertionAdapter<Note>(__db) {
+      @Override
+      @NonNull
+      protected String createQuery() {
+        return "INSERT OR ABORT INTO `note` (`id`,`title`,`content`,`createdAt`) VALUES (nullif(?, 0),?,?,?)";
+      }
+
+      @Override
+      protected void bind(@NonNull final SupportSQLiteStatement statement,
+          @NonNull final Note entity) {
+        statement.bindLong(1, entity.getId());
+        statement.bindString(2, entity.getTitle());
+        statement.bindString(3, entity.getContent());
+        statement.bindLong(4, entity.getCreatedAt());
+      }
+    };
     this.__deletionAdapterOfWord = new EntityDeletionOrUpdateAdapter<Word>(__db) {
       @Override
       @NonNull
@@ -217,6 +243,36 @@ public final class AppDao_Impl implements AppDao {
       protected void bind(@NonNull final SupportSQLiteStatement statement,
           @NonNull final Session entity) {
         statement.bindString(1, entity.getId());
+      }
+    };
+    this.__deletionAdapterOfNote = new EntityDeletionOrUpdateAdapter<Note>(__db) {
+      @Override
+      @NonNull
+      protected String createQuery() {
+        return "DELETE FROM `note` WHERE `id` = ?";
+      }
+
+      @Override
+      protected void bind(@NonNull final SupportSQLiteStatement statement,
+          @NonNull final Note entity) {
+        statement.bindLong(1, entity.getId());
+      }
+    };
+    this.__updateAdapterOfNote = new EntityDeletionOrUpdateAdapter<Note>(__db) {
+      @Override
+      @NonNull
+      protected String createQuery() {
+        return "UPDATE OR ABORT `note` SET `id` = ?,`title` = ?,`content` = ?,`createdAt` = ? WHERE `id` = ?";
+      }
+
+      @Override
+      protected void bind(@NonNull final SupportSQLiteStatement statement,
+          @NonNull final Note entity) {
+        statement.bindLong(1, entity.getId());
+        statement.bindString(2, entity.getTitle());
+        statement.bindString(3, entity.getContent());
+        statement.bindLong(4, entity.getCreatedAt());
+        statement.bindLong(5, entity.getId());
       }
     };
     this.__preparedStmtOfClearSettings = new SharedSQLiteStatement(__db) {
@@ -346,6 +402,24 @@ public final class AppDao_Impl implements AppDao {
   }
 
   @Override
+  public Object insertNote(final Note note, final Continuation<? super Long> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Long>() {
+      @Override
+      @NonNull
+      public Long call() throws Exception {
+        __db.beginTransaction();
+        try {
+          final Long _result = __insertionAdapterOfNote.insertAndReturnId(note);
+          __db.setTransactionSuccessful();
+          return _result;
+        } finally {
+          __db.endTransaction();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
   public Object deleteWord(final Word word, final Continuation<? super Unit> $completion) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
@@ -409,6 +483,42 @@ public final class AppDao_Impl implements AppDao {
         __db.beginTransaction();
         try {
           __deletionAdapterOfSession.handle(session);
+          __db.setTransactionSuccessful();
+          return Unit.INSTANCE;
+        } finally {
+          __db.endTransaction();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Object deleteNote(final Note note, final Continuation<? super Unit> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        __db.beginTransaction();
+        try {
+          __deletionAdapterOfNote.handle(note);
+          __db.setTransactionSuccessful();
+          return Unit.INSTANCE;
+        } finally {
+          __db.endTransaction();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Object updateNote(final Note note, final Continuation<? super Unit> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        __db.beginTransaction();
+        try {
+          __updateAdapterOfNote.handle(note);
           __db.setTransactionSuccessful();
           return Unit.INSTANCE;
         } finally {
@@ -1134,6 +1244,78 @@ public final class AppDao_Impl implements AppDao {
         } finally {
           _cursor.close();
           _statement.release();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Flow<List<Note>> getNotesFlow() {
+    final String _sql = "SELECT * FROM note ORDER BY createdAt DESC";
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 0);
+    return CoroutinesRoom.createFlow(__db, false, new String[] {"note"}, new Callable<List<Note>>() {
+      @Override
+      @NonNull
+      public List<Note> call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
+          final int _cursorIndexOfTitle = CursorUtil.getColumnIndexOrThrow(_cursor, "title");
+          final int _cursorIndexOfContent = CursorUtil.getColumnIndexOrThrow(_cursor, "content");
+          final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
+          final List<Note> _result = new ArrayList<Note>(_cursor.getCount());
+          while (_cursor.moveToNext()) {
+            final Note _item;
+            final int _tmpId;
+            _tmpId = _cursor.getInt(_cursorIndexOfId);
+            final String _tmpTitle;
+            _tmpTitle = _cursor.getString(_cursorIndexOfTitle);
+            final String _tmpContent;
+            _tmpContent = _cursor.getString(_cursorIndexOfContent);
+            final long _tmpCreatedAt;
+            _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt);
+            _item = new Note(_tmpId,_tmpTitle,_tmpContent,_tmpCreatedAt);
+            _result.add(_item);
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+        }
+      }
+
+      @Override
+      protected void finalize() {
+        _statement.release();
+      }
+    });
+  }
+
+  @Override
+  public Object deleteNotesByIds(final List<Integer> ids,
+      final Continuation<? super Unit> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        final StringBuilder _stringBuilder = StringUtil.newStringBuilder();
+        _stringBuilder.append("DELETE FROM note WHERE id IN (");
+        final int _inputSize = ids.size();
+        StringUtil.appendPlaceholders(_stringBuilder, _inputSize);
+        _stringBuilder.append(")");
+        final String _sql = _stringBuilder.toString();
+        final SupportSQLiteStatement _stmt = __db.compileStatement(_sql);
+        int _argIndex = 1;
+        for (int _item : ids) {
+          _stmt.bindLong(_argIndex, _item);
+          _argIndex++;
+        }
+        __db.beginTransaction();
+        try {
+          _stmt.executeUpdateDelete();
+          __db.setTransactionSuccessful();
+          return Unit.INSTANCE;
+        } finally {
+          __db.endTransaction();
         }
       }
     }, $completion);

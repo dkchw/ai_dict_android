@@ -17,17 +17,20 @@ import com.aidict.app.ui.screens.HistoryScreen
 import com.aidict.app.ui.screens.SearchScreen
 import com.aidict.app.ui.screens.SettingsScreen
 import com.aidict.app.ui.screens.TranslateScreen
+import com.aidict.app.ui.screens.NotesScreen
 import com.aidict.app.ui.viewmodels.CompareViewModel
 import com.aidict.app.ui.viewmodels.ExplainViewModel
 import com.aidict.app.ui.viewmodels.HistoryViewModel
 import com.aidict.app.ui.viewmodels.SearchViewModel
 import com.aidict.app.ui.viewmodels.SettingsViewModel
 import com.aidict.app.ui.viewmodels.TranslateViewModel
+import com.aidict.app.ui.viewmodels.NotesViewModel
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Translate
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.automirrored.filled.CompareArrows
@@ -38,7 +41,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 
 data class TabItem(val title: String, val icon: ImageVector)
 
-enum class Screen { MAIN, HISTORY, SETTINGS }
+enum class Screen { MAIN, HISTORY, SETTINGS, NOTES }
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
@@ -51,6 +54,7 @@ fun AppNavigation(
     compareViewModel: CompareViewModel,
     historyViewModel: HistoryViewModel,
     settingsViewModel: SettingsViewModel,
+    notesViewModel: NotesViewModel,
     onColorExtracted: (androidx.compose.ui.graphics.Color?) -> Unit
 ) {
     val isExpanded = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Expanded
@@ -180,13 +184,14 @@ colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.
                     }
                 },
                 title = { 
-                    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(end = 8.dp), horizontalAlignment = Alignment.End) {
                         Text("AI Dict", style = MaterialTheme.typography.titleLarge)
                         var expanded by remember { mutableStateOf(false) }
                         Box {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically, 
-                                modifier = Modifier.clickable { expanded = true }.padding(horizontal = 8.dp, vertical = 2.dp)
+                                modifier = Modifier.clickable { expanded = true }.padding(horizontal = 8.dp, vertical = 2.dp),
+                                horizontalArrangement = Arrangement.End
                             ) {
                                 Text(appState.activeProfile?.name ?: "Default", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                                 Icon(Icons.Default.ArrowDropDown, contentDescription = "Select", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
@@ -206,11 +211,16 @@ colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.
                     }
                 },
                 actions = {
+
                     if (currentScreen == Screen.MAIN) {
+                        IconButton(onClick = { currentScreen = Screen.NOTES }) {
+                            Icon(Icons.Default.EditNote, contentDescription = "Notes")
+                        }
                         IconButton(onClick = { currentScreen = Screen.SETTINGS }) {
                             Icon(Icons.Default.Settings, contentDescription = "Settings")
                         }
                     } else {
+
                         Spacer(modifier = Modifier.width(48.dp)) // Balance the title centering
                     }
                 }
@@ -233,7 +243,8 @@ colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.
     ) { paddingValues ->
         Surface(modifier = Modifier.padding(paddingValues).fillMaxSize(), color = androidx.compose.ui.graphics.Color.Transparent) {
             when (currentScreen) {
-                Screen.SETTINGS -> SettingsScreen(settingsViewModel)
+                                Screen.SETTINGS -> SettingsScreen(settingsViewModel)
+                Screen.NOTES -> NotesScreen(notesViewModel)
                 Screen.HISTORY -> {
                     val modeStr = when (currentMode) {
                         0 -> "dict"
@@ -248,7 +259,23 @@ colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.
                     LaunchedEffect(appState.activeProfile?.id) {
                         historyViewModel.setActiveProfileId(appState.activeProfile?.id ?: 1)
                     }
-                    HistoryScreen(appViewModel, historyViewModel, windowSizeClass)
+                                        HistoryScreen(
+                        appViewModel = appViewModel,
+                        onNavigateToChat = { word ->
+                            searchViewModel.loadWord(word)
+                            val modeInt = when (word.mode) {
+                                "dict" -> 0
+                                "compare" -> 1
+                                "translate" -> 2
+                                "explain" -> 3
+                                else -> 0
+                            }
+                            currentMode = modeInt
+                            currentScreen = Screen.MAIN
+                        },
+                        viewModel = historyViewModel,
+                        windowSizeClass = windowSizeClass
+                    )
                 }
                 Screen.MAIN -> {
                     val pid = appState.activeProfile?.id ?: 1

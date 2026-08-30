@@ -22,6 +22,7 @@ import androidx.compose.foundation.background
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import com.aidict.app.ui.components.MarkdownText
 import androidx.compose.ui.unit.dp
 import com.aidict.app.ui.viewmodels.ExplainViewModel
 
