@@ -30,8 +30,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.ui.platform.LocalContext
 import com.aidict.app.ui.components.MarkdownText
 import androidx.compose.ui.graphics.Color
@@ -45,8 +43,6 @@ fun SearchScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.dictState.collectAsState()
-    val externalLinks by viewModel.externalLinks.collectAsState()
-    
     val context = LocalContext.current
 
     val colors = listOf(
@@ -240,15 +236,6 @@ fun SearchScreen(
             isLoading = state.isLoading,
             placeholder = if (isFollowUp) "Enter your question..." else "Search word...",
             isFollowUp = isFollowUp,
-            externalLinks = if (isFollowUp) externalLinks else emptyList(),
-            onExternalLinkClick = { link ->
-                val term = if (state.word != null) state.word!!.term else viewModel.searchInput
-                if (term.isNotBlank()) {
-                    val url = link.url.replace("{word}", term.trim()).replace("{{str}}", term.trim())
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                    context.startActivity(intent)
-                }
-            },
             sourceLang = if (!isFollowUp) sourceLang else null,
             targetLang = if (!isFollowUp) targetLang else null,
             onSourceLangChange = if (!isFollowUp) { { sourceLang = it; viewModel.saveProfileSetting(profileId, "SEARCH_SOURCE", it) } } else null,

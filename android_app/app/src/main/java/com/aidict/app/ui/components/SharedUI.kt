@@ -17,11 +17,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.*
 import coil.compose.AsyncImage
-import com.aidict.app.models.ExternalLink
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -146,8 +143,6 @@ fun ChatInputBar(
     onSourceLangChange: ((String) -> Unit)? = null,
     onTargetLangChange: ((String) -> Unit)? = null,
     onClear: (() -> Unit)? = null,
-    externalLinks: List<ExternalLink> = emptyList(),
-    onExternalLinkClick: ((ExternalLink) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -177,29 +172,6 @@ fun ChatInputBar(
                 }
             }
 
-            if (onExternalLinkClick != null && externalLinks.isNotEmpty()) {
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp, start = 8.dp, end = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    items(externalLinks) { link ->
-                        AssistChip(
-                            onClick = { onExternalLinkClick(link) },
-                            label = { Text(link.name, style = MaterialTheme.typography.labelSmall) },
-                            leadingIcon = {
-                                if (link.iconUrl.isNotBlank()) {
-                                    AsyncImage(model = link.iconUrl, contentDescription = link.name, modifier = Modifier.size(16.dp))
-                                } else {
-                                    Icon(Icons.Default.Language, contentDescription = link.name, modifier = Modifier.size(16.dp))
-                                }
-                            },
-                            shape = CircleShape,
-                            colors = AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer, labelColor = MaterialTheme.colorScheme.onTertiaryContainer)
-                        )
-                    }
-                }
-            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Bottom

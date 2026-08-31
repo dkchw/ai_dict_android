@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
-import com.aidict.app.models.ExternalLink
 import com.aidict.app.data.AppDatabase
 import com.aidict.app.data.LlmRepository
 import com.aidict.app.data.entities.AppSetting
@@ -48,24 +47,7 @@ class SettingsViewModel(
 
     val translatePrompt = getSettingFlow("TRANSLATE_PROMPT", DefaultPrompts.TRANSLATE_PROMPT)
     val comparePrompt = getSettingFlow("COMPARE_PROMPT", DefaultPrompts.COMPARE_PROMPT)
-    private val defaultLinks = listOf(
-        ExternalLink("Cambridge", "https://dictionary.cambridge.org/dictionary/english/{{str}}", "https://dictionary.cambridge.org/favicon.ico"),
-        ExternalLink("Google", "https://www.google.com/search?q={{str}}", "https://www.google.com/favicon.ico"),
-        ExternalLink("Wikipedia", "https://en.wikipedia.org/wiki/{{str}}", "https://en.wikipedia.org/favicon.ico")
-    )
-    val externalLinks: StateFlow<List<ExternalLink>> = database.appDao().getSettingsFlow()
-        .map { settings ->
-            val jsonStr = settings.find { it.key == "EXTERNAL_LINKS" }?.value
-            if (jsonStr != null) {
-                try { Json.decodeFromString<List<ExternalLink>>(jsonStr) } catch (e: Exception) { defaultLinks }
-            } else defaultLinks
-        }.stateIn(viewModelScope, SharingStarted.Lazily, defaultLinks)
-
-    fun saveExternalLinks(links: List<ExternalLink>) {
-        val jsonStr = Json.encodeToString(links)
-        saveSetting("EXTERNAL_LINKS", jsonStr)
-    }
-
+    
     
     val profiles = database.appDao().getProfiles()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())

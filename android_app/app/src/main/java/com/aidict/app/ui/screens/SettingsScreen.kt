@@ -47,8 +47,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
     val fallbackModels by viewModel.fallbackModels.collectAsState()
     val chatModel by viewModel.chatModel.collectAsState()
     
-    val externalLinks by viewModel.externalLinks.collectAsState()
-            val dictPrompt by viewModel.dictPrompt.collectAsState()
+    val dictPrompt by viewModel.dictPrompt.collectAsState()
     val explainPrompt by viewModel.explainPrompt.collectAsState()
     val translatePrompt by viewModel.translatePrompt.collectAsState()
     val comparePrompt by viewModel.comparePrompt.collectAsState()
@@ -397,74 +396,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
 
         
         item { Spacer(Modifier.height(16.dp)) }
-        item { Text("External Link", style = MaterialTheme.typography.titleLarge) }
-        items(externalLinks.size) { index ->
-            val link = externalLinks[index]
-            Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                Column(modifier = Modifier.padding(8.dp)) {
-                    OutlinedTextField(value = link.name, onValueChange = { 
-                        val newLinks = externalLinks.toMutableList()
-                        newLinks[index] = link.copy(name = it)
-                        viewModel.saveExternalLinks(newLinks)
-                    }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth())
-                    
-                    OutlinedTextField(value = link.url, onValueChange = { 
-                        val newLinks = externalLinks.toMutableList()
-                        newLinks[index] = link.copy(url = it)
-                        viewModel.saveExternalLinks(newLinks)
-                    }, label = { Text("URL (use {{str}})") }, modifier = Modifier.fillMaxWidth())
-                    
-                    OutlinedTextField(value = link.iconUrl, onValueChange = { 
-                        val newLinks = externalLinks.toMutableList()
-                        newLinks[index] = link.copy(iconUrl = it)
-                        viewModel.saveExternalLinks(newLinks)
-                    }, label = { Text("Icon URL (optional)") }, modifier = Modifier.fillMaxWidth())
-                    
-                    Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Row {
-                            IconButton(onClick = { 
-                                if (index > 0) {
-                                    val newLinks = externalLinks.toMutableList()
-                                    val temp = newLinks[index]
-                                    newLinks[index] = newLinks[index - 1]
-                                    newLinks[index - 1] = temp
-                                    viewModel.saveExternalLinks(newLinks)
-                                }
-                            }, enabled = index > 0) {
-                                Icon(Icons.Default.ArrowUpward, contentDescription = "Move Up")
-                            }
-                            IconButton(onClick = { 
-                                if (index < externalLinks.size - 1) {
-                                    val newLinks = externalLinks.toMutableList()
-                                    val temp = newLinks[index]
-                                    newLinks[index] = newLinks[index + 1]
-                                    newLinks[index + 1] = temp
-                                    viewModel.saveExternalLinks(newLinks)
-                                }
-                            }, enabled = index < externalLinks.size - 1) {
-                                Icon(Icons.Default.ArrowDownward, contentDescription = "Move Down")
-                            }
-                        }
-                        Button(onClick = { 
-                            val newLinks = externalLinks.toMutableList()
-                            newLinks.removeAt(index)
-                            viewModel.saveExternalLinks(newLinks)
-                        }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
-                            Text("Remove")
-                        }
-                    }
-                }
-            }
-        }
-        item {
-            Button(onClick = {
-                val newLinks = externalLinks.toMutableList()
-                newLinks.add(com.aidict.app.models.ExternalLink("New Link", "https://"))
-                viewModel.saveExternalLinks(newLinks)
-            }, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                Text("Add External Link")
-            }
-        }
+        
 
         item { Spacer(Modifier.height(16.dp)) }
         item { Text("Prompts", style = MaterialTheme.typography.titleLarge) }
