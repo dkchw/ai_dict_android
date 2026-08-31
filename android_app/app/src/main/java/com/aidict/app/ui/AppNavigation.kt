@@ -76,7 +76,15 @@ fun AppNavigation(
             currentMode = pagerState.currentPage
         }
     }
-    androidx.activity.compose.BackHandler(enabled = currentScreen != Screen.MAIN || currentMode != 0 || searchViewModel.uiState.value.word != null) {
+    val currentSearchState = when (currentMode) {
+        0 -> searchViewModel.dictState.collectAsState().value
+        1 -> searchViewModel.compareState.collectAsState().value
+        2 -> searchViewModel.translateState.collectAsState().value
+        3 -> searchViewModel.explainState.collectAsState().value
+        else -> searchViewModel.dictState.collectAsState().value
+    }
+
+    androidx.activity.compose.BackHandler(enabled = currentScreen != Screen.MAIN || currentMode != 0 || currentSearchState.word != null) {
 
         if (currentScreen != Screen.MAIN) {
 
@@ -84,7 +92,7 @@ fun AppNavigation(
 
         } else if (currentMode != 0) {
             currentMode = 0
-        } else if (searchViewModel.uiState.value.word != null) {
+        } else if (currentSearchState.word != null) {
             searchViewModel.clearCurrentSearch()
         }
     }

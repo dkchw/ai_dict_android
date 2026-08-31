@@ -96,13 +96,33 @@ class SearchViewModel(
     }
 
 
-    private val _uiState = MutableStateFlow(SearchState())
-    val uiState: StateFlow<SearchState> = _uiState.asStateFlow()
+    private val _dictState = MutableStateFlow(SearchState())
+    val dictState: StateFlow<SearchState> = _dictState.asStateFlow()
+    
+    private val _compareState = MutableStateFlow(SearchState())
+    val compareState: StateFlow<SearchState> = _compareState.asStateFlow()
+    
+    private val _translateState = MutableStateFlow(SearchState())
+    val translateState: StateFlow<SearchState> = _translateState.asStateFlow()
+    
+    private val _explainState = MutableStateFlow(SearchState())
+    val explainState: StateFlow<SearchState> = _explainState.asStateFlow()
+    
+    fun getUiState(mode: String): MutableStateFlow<SearchState> {
+        return when (mode) {
+            "dict" -> _dictState
+            "compare" -> _compareState
+            "translate" -> _translateState
+            "explain" -> _explainState
+            else -> _dictState
+        }
+    }
 
 
     val orderedLanguages = database.appDao().getSettingsFlow().map { s -> com.aidict.app.utils.LanguageManager.getOrderedLanguages(s.find { it.key == "STARRED_LANGUAGES" }?.value, s.find { it.key == "CUSTOM_LANGUAGES" }?.value) }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Lazily, com.aidict.app.utils.LanguageManager.getOrderedLanguages(null, null))
 
     fun searchWord(term: String, sourceLang: String, targetLang: String, profileId: Int) {
+        val _uiState = _dictState
         viewModelScope.launch {
             _uiState.value = SearchState(isLoading = true, currentStream = "")
             
@@ -138,7 +158,8 @@ class SearchViewModel(
         }
     }
 
-    fun deleteCurrentWord() {
+    fun deleteCurrentWord(mode: String = "dict") {
+        val _uiState = getUiState(mode)
         viewModelScope.launch {
             _uiState.value.word?.let {
                 database.appDao().deleteWord(it)
@@ -147,7 +168,8 @@ class SearchViewModel(
         }
     }
 
-    fun updateWordColor(color: String) {
+    fun updateWordColor(color: String, mode: String = "dict") {
+        val _uiState = getUiState(mode)
         viewModelScope.launch {
             _uiState.value.word?.let { word ->
                 val updatedWord = word.copy(color = color)
@@ -157,7 +179,8 @@ class SearchViewModel(
         }
     }
 
-    fun updateWordStars(stars: Int) {
+    fun updateWordStars(stars: Int, mode: String = "dict") {
+        val _uiState = getUiState(mode)
         viewModelScope.launch {
             _uiState.value.word?.let { word ->
                 val updatedWord = word.copy(stars = stars)
@@ -167,7 +190,8 @@ class SearchViewModel(
         }
     }
 
-    fun sendFollowUpMessage(content: String) {
+    fun sendFollowUpMessage(content: String, mode: String = "dict") {
+        val _uiState = getUiState(mode)
         val word = _uiState.value.word ?: return
         viewModelScope.launch {
             val userMsg = ChatMessage(wordId = word.id, role = "user", content = content)
@@ -211,6 +235,7 @@ class SearchViewModel(
 
     
     fun loadWord(word: com.aidict.app.data.entities.Word) {
+        val _uiState = getUiState(word.mode)
         viewModelScope.launch {
             val messages = database.appDao().getChatMessagesSync(word.id)
             _uiState.value = SearchState(
@@ -224,14 +249,17 @@ class SearchViewModel(
     }
 
     fun clearCurrentSearch() {
-        searchInput = ""
-        translateInput = ""
-        explainInput = ""
-        compareInput = ""
-        _uiState.value = SearchState()
+        // we keep drafts but reset state outputs if explicitly requested, but maybe not?
+        // Actually, we should probably reset all states? No, only reset when switching if desired.
+        // Wait, the prompt says output bleeds. Let's just leave clearCurrentSearch as is but resetting all states.
+        _dictState.value = SearchState()
+        _compareState.value = SearchState()
+        _translateState.value = SearchState()
+        _explainState.value = SearchState()
     }
 
-    fun deleteMessage(msg: com.aidict.app.data.entities.ChatMessage) {
+    fun deleteMessage(msg: com.aidict.app.data.entities.ChatMessage, mode: String) {
+        val _uiState = getUiState(mode)
         viewModelScope.launch {
             database.appDao().deleteChatMessage(msg)
             val updated = database.appDao().getChatMessagesSync(msg.wordId)
@@ -243,7 +271,8 @@ class SearchViewModel(
         }
     }
 
-    fun editMessage(msg: com.aidict.app.data.entities.ChatMessage, newContent: String) {
+    fun editMessage(msg: com.aidict.app.data.entities.ChatMessage, newContent: String, mode: String) {
+        val _uiState = getUiState(mode)
         viewModelScope.launch {
             val updatedMsg = msg.copy(content = newContent)
             database.appDao().insertChatMessage(updatedMsg)
@@ -252,7 +281,8 @@ class SearchViewModel(
         }
     }
 
-    fun retryMessage(assistantMsg: com.aidict.app.data.entities.ChatMessage, forceFallback: Boolean) {
+    fun retryMessage(assistantMsg: com.aidict.app.data.entities.ChatMessage, forceFallback: Boolean, mode: String = "dict") {
+        val _uiState = getUiState(mode)
         val word = _uiState.value.word ?: return
         viewModelScope.launch {
             // Delete the assistant message to restart generation from that point
@@ -297,6 +327,7 @@ class SearchViewModel(
         }
     }
     fun streamTranslation(text: String, source: String, target: String, profileId: Int) {
+        val _uiState = _translateState
         viewModelScope.launch {
             _uiState.value = SearchState(isLoading = true, currentStream = "")
             try {
@@ -313,6 +344,7 @@ class SearchViewModel(
     }
 
     fun streamExplain(text: String, profileId: Int) {
+        val _uiState = _explainState
         viewModelScope.launch {
             _uiState.value = SearchState(isLoading = true, currentStream = "")
             try {
@@ -327,6 +359,7 @@ class SearchViewModel(
     }
 
     fun streamCompare(words: String, profileId: Int) {
+        val _uiState = _compareState
         viewModelScope.launch {
             _uiState.value = SearchState(isLoading = true, currentStream = "")
             try {

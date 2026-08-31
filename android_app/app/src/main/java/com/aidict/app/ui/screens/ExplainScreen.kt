@@ -31,8 +31,8 @@ fun ExplainScreen(
     viewModel: com.aidict.app.ui.viewmodels.SearchViewModel, profileId: Int,
     modifier: Modifier = Modifier
 ) {
-    val state by viewModel.uiState.collectAsState()
-    var text by remember { mutableStateOf("") }
+    val state by viewModel.explainState.collectAsState()
+    
     val context = LocalContext.current
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
 
@@ -51,13 +51,13 @@ fun ExplainScreen(
         }
 
         com.aidict.app.ui.components.ChatInputBar(
-            inputTerm = text,
-            onValueChange = { text = it },
-            onSend = { if (state.word != null) viewModel.sendFollowUpMessage(text) else viewModel.streamExplain(text, profileId); text = "" },
+            inputTerm = viewModel.explainInput,
+            onValueChange = { viewModel.explainInput = it },
+            onSend = { if (state.word != null) viewModel.sendFollowUpMessage(viewModel.explainInput, "explain") else viewModel.streamExplain(viewModel.explainInput, profileId); viewModel.explainInput = "" },
             isLoading = state.isLoading,
             isFollowUp = state.word != null,
             onClear = { viewModel.clearCurrentSearch() },
-            placeholder = "Paste sentence/paragraph to explain..."
+            placeholder = if (state.word != null) "Enter your question..." else "Paste sentence/paragraph to explain..."
         )
     }
 }

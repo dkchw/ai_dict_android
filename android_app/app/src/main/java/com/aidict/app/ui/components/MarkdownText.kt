@@ -42,13 +42,13 @@ fun MarkdownText(text: String, color: Color, modifier: Modifier = Modifier) {
         ),
         headingStyle = { level, textStyle ->
             when (level) {
-                0 -> textStyle.copy(color = Color(0xFFBB9AF7)) // H1 - Purple
-                1 -> textStyle.copy(color = Color(0xFF7DCFFF)) // H2 - Cyan
-                2 -> textStyle.copy(color = Color(0xFF7AA2F7)) // H3 - Blue
-                3 -> textStyle.copy(color = Color(0xFFE0AF68)) // H4 - Orange
-                4 -> textStyle.copy(color = Color(0xFFF7768E)) // H5 - Red
-                5 -> textStyle.copy(color = Color(0xFF9ECE6A)) // H6 - Green
-                else -> textStyle.copy(color = Color(0xFFC0CAF5))
+                0 -> textStyle.copy(color = Color(0xFFBB9AF7), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) // H1 - Purple
+                1 -> textStyle.copy(color = Color(0xFF7DCFFF), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) // H2 - Cyan
+                2 -> textStyle.copy(color = Color(0xFF7AA2F7), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) // H3 - Blue
+                3 -> textStyle.copy(color = Color(0xFFE0AF68), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) // H4 - Orange
+                4 -> textStyle.copy(color = Color(0xFFF7768E), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) // H5 - Red
+                5 -> textStyle.copy(color = Color(0xFF9ECE6A), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) // H6 - Green
+                else -> textStyle.copy(color = Color(0xFFC0CAF5), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
             }
         },
         stringStyle = RichTextStringStyle(

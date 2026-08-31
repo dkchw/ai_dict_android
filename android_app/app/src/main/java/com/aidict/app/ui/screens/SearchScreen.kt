@@ -38,7 +38,7 @@ fun SearchScreen(
     viewModel: SearchViewModel, profileId: Int,
     modifier: Modifier = Modifier
 ) {
-    val state by viewModel.uiState.collectAsState()
+    val state by viewModel.dictState.collectAsState()
     
     val context = LocalContext.current
 
@@ -166,7 +166,7 @@ fun SearchScreen(
                                         Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
                                             TextButton(onClick = { isEditing = false }) { Text("Cancel", color = MaterialTheme.colorScheme.primary) }
                                             TextButton(onClick = { 
-                                                viewModel.editMessage(msg, editingContent)
+                                                viewModel.editMessage(msg, editingContent, "dict")
                                                 isEditing = false 
                                             }) { Text("Save", color = MaterialTheme.colorScheme.primary) }
                                         }
@@ -184,9 +184,9 @@ fun SearchScreen(
                                     Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
                                 }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.ContentCopy, "Copy", modifier = Modifier.size(16.dp)) }
                                 IconButton(onClick = { isEditing = true; editingContent = msg.content }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Edit, "Edit", modifier = Modifier.size(16.dp)) }
-                                IconButton(onClick = { viewModel.retryMessage(msg, false) }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Refresh, "Retry", modifier = Modifier.size(16.dp)) }
-                                IconButton(onClick = { viewModel.retryMessage(msg, true) }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Warning, "Retry Fallback", modifier = Modifier.size(16.dp)) }
-                                IconButton(onClick = { viewModel.deleteMessage(msg) }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Delete, "Delete", modifier = Modifier.size(16.dp)) }
+                                IconButton(onClick = { viewModel.retryMessage(msg, false, "dict") }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Refresh, "Retry", modifier = Modifier.size(16.dp)) }
+                                IconButton(onClick = { viewModel.retryMessage(msg, true, "dict") }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Warning, "Retry Fallback", modifier = Modifier.size(16.dp)) }
+                                IconButton(onClick = { viewModel.deleteMessage(msg, "dict") }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Delete, "Delete", modifier = Modifier.size(16.dp)) }
                             }
                         }
                     }
@@ -224,14 +224,14 @@ fun SearchScreen(
             onValueChange = { viewModel.searchInput = it },
             onSend = {
                 if (isFollowUp) {
-                    viewModel.sendFollowUpMessage(viewModel.searchInput)
+                    viewModel.sendFollowUpMessage(viewModel.searchInput, "dict")
                 } else {
                     viewModel.searchWord(viewModel.searchInput, sourceLang, targetLang, profileId)
                 }
                 viewModel.searchInput = ""
             },
             isLoading = state.isLoading,
-            placeholder = if (isFollowUp) "Ask a follow up question..." else "Search word...",
+            placeholder = if (isFollowUp) "Enter your question..." else "Search word...",
             isFollowUp = isFollowUp,
             sourceLang = if (!isFollowUp) sourceLang else null,
             targetLang = if (!isFollowUp) targetLang else null,

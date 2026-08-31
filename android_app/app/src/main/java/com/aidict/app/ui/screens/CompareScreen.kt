@@ -31,8 +31,8 @@ fun CompareScreen(
     viewModel: com.aidict.app.ui.viewmodels.SearchViewModel, profileId: Int,
     modifier: Modifier = Modifier
 ) {
-    val state by viewModel.uiState.collectAsState()
-    var text by remember { mutableStateOf("") }
+    val state by viewModel.compareState.collectAsState()
+    
     val context = LocalContext.current
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
 
@@ -75,7 +75,7 @@ fun CompareScreen(
                                         Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
                                             TextButton(onClick = { isEditing = false }) { Text("Cancel", color = MaterialTheme.colorScheme.primary) }
                                             TextButton(onClick = { 
-                                                viewModel.editMessage(msg, editingContent)
+                                                viewModel.editMessage(msg, editingContent, "compare")
                                                 isEditing = false 
                                             }) { Text("Save", color = MaterialTheme.colorScheme.primary) }
                                         }
@@ -93,9 +93,9 @@ fun CompareScreen(
                                     Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
                                 }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.ContentCopy, "Copy", modifier = Modifier.size(16.dp)) }
                                 IconButton(onClick = { isEditing = true; editingContent = msg.content }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Edit, "Edit", modifier = Modifier.size(16.dp)) }
-                                IconButton(onClick = { viewModel.retryMessage(msg, false) }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Refresh, "Retry", modifier = Modifier.size(16.dp)) }
-                                IconButton(onClick = { viewModel.retryMessage(msg, true) }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Warning, "Retry Fallback", modifier = Modifier.size(16.dp)) }
-                                IconButton(onClick = { viewModel.deleteMessage(msg) }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Delete, "Delete", modifier = Modifier.size(16.dp)) }
+                                IconButton(onClick = { viewModel.retryMessage(msg, false, "compare") }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Refresh, "Retry", modifier = Modifier.size(16.dp)) }
+                                IconButton(onClick = { viewModel.retryMessage(msg, true, "compare") }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Warning, "Retry Fallback", modifier = Modifier.size(16.dp)) }
+                                IconButton(onClick = { viewModel.deleteMessage(msg, "compare") }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Delete, "Delete", modifier = Modifier.size(16.dp)) }
                             }
                         }
                     }
@@ -125,13 +125,13 @@ fun CompareScreen(
         }
 
         com.aidict.app.ui.components.ChatInputBar(
-            inputTerm = text,
-            onValueChange = { text = it },
-            onSend = { if (state.word != null) viewModel.sendFollowUpMessage(text) else viewModel.streamCompare(text, profileId); text = "" },
+            inputTerm = viewModel.compareInput,
+            onValueChange = { viewModel.compareInput = it },
+            onSend = { if (state.word != null) viewModel.sendFollowUpMessage(viewModel.compareInput, "compare") else viewModel.streamCompare(viewModel.compareInput, profileId); viewModel.compareInput = "" },
             isLoading = state.isLoading,
             isFollowUp = state.word != null,
             onClear = { viewModel.clearCurrentSearch() },
-            placeholder = "Words to compare (comma separated)..."
+            placeholder = if (state.word != null) "Enter your question..." else "Words to compare (comma separated)..."
         )
     }
 }

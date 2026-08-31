@@ -36,7 +36,7 @@ fun TranslateScreen(
     viewModel: com.aidict.app.ui.viewmodels.SearchViewModel, profileId: Int,
     modifier: Modifier = Modifier
 ) {
-    val state by viewModel.uiState.collectAsState()
+    val state by viewModel.translateState.collectAsState()
     
     val context = LocalContext.current
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -86,7 +86,7 @@ fun TranslateScreen(
                                         Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
                                             TextButton(onClick = { isEditing = false }) { Text("Cancel", color = MaterialTheme.colorScheme.primary) }
                                             TextButton(onClick = { 
-                                                viewModel.editMessage(msg, editingContent)
+                                                viewModel.editMessage(msg, editingContent, "translate")
                                                 isEditing = false 
                                             }) { Text("Save", color = MaterialTheme.colorScheme.primary) }
                                         }
@@ -104,9 +104,9 @@ fun TranslateScreen(
                                     Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
                                 }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.ContentCopy, "Copy", modifier = Modifier.size(16.dp)) }
                                 IconButton(onClick = { isEditing = true; editingContent = msg.content }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Edit, "Edit", modifier = Modifier.size(16.dp)) }
-                                IconButton(onClick = { viewModel.retryMessage(msg, false) }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Refresh, "Retry", modifier = Modifier.size(16.dp)) }
-                                IconButton(onClick = { viewModel.retryMessage(msg, true) }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Warning, "Retry Fallback", modifier = Modifier.size(16.dp)) }
-                                IconButton(onClick = { viewModel.deleteMessage(msg) }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Delete, "Delete", modifier = Modifier.size(16.dp)) }
+                                IconButton(onClick = { viewModel.retryMessage(msg, false, "translate") }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Refresh, "Retry", modifier = Modifier.size(16.dp)) }
+                                IconButton(onClick = { viewModel.retryMessage(msg, true, "translate") }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Warning, "Retry Fallback", modifier = Modifier.size(16.dp)) }
+                                IconButton(onClick = { viewModel.deleteMessage(msg, "translate") }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Delete, "Delete", modifier = Modifier.size(16.dp)) }
                             }
                         }
                     }
@@ -142,7 +142,7 @@ fun TranslateScreen(
             onValueChange = { viewModel.translateInput = it },
             onSend = {
                 if (state.word != null) {
-                    viewModel.sendFollowUpMessage(viewModel.translateInput)
+                    viewModel.sendFollowUpMessage(viewModel.translateInput, "translate")
                 } else {
                     viewModel.streamTranslation(viewModel.translateInput, sourceLang, targetLang, profileId)
                 }
@@ -151,7 +151,7 @@ fun TranslateScreen(
             isLoading = state.isLoading,
             isFollowUp = state.word != null,
             onClear = { viewModel.clearCurrentSearch() },
-            placeholder = "Text to translate...",
+            placeholder = if (state.word != null) "Enter your question..." else "Text to translate...",
             sourceLang = sourceLang,
             targetLang = targetLang,
             onSourceLangChange = { sourceLang = it; viewModel.saveProfileSetting(profileId, "TRANSLATE_SOURCE", it) },
