@@ -132,53 +132,49 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
             ) { Text("Check for Updates") }
         }
-        item { Text("App Behavior", style = MaterialTheme.typography.titleLarge) }
         item {
-            val autoNewSearchStr by viewModel.autoNewSearch.collectAsState()
-            val autoNewSearch = autoNewSearchStr.toBooleanStrictOrNull() ?: false
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Auto New Search", style = MaterialTheme.typography.titleMedium)
-                    Text("Automatically clear chat and start a new search when submitting", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            SettingsGroup("App Behavior") {
+                val autoNewSearchStr by viewModel.autoNewSearch.collectAsState()
+                val autoNewSearch = autoNewSearchStr.toBooleanStrictOrNull() ?: false
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Auto New Search", style = MaterialTheme.typography.titleMedium)
+                        Text("Automatically clear chat and start a new search when submitting", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(checked = autoNewSearch, onCheckedChange = { viewModel.saveSetting("AUTO_NEW_SEARCH", it.toString()) })
                 }
-                Switch(checked = autoNewSearch, onCheckedChange = { viewModel.saveSetting("AUTO_NEW_SEARCH", it.toString()) })
+                val enterToSendStr by viewModel.enterToSend.collectAsState()
+                val enterToSend = enterToSendStr.toBooleanStrictOrNull() ?: false
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Enter to Send", style = MaterialTheme.typography.titleMedium)
+                        Text("Pressing enter on the keyboard sends the message instead of new line", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(checked = enterToSend, onCheckedChange = { viewModel.saveSetting("ENTER_TO_SEND", it.toString()) })
+                }
             }
         }
         item {
-            val enterToSendStr by viewModel.enterToSend.collectAsState()
-            val enterToSend = enterToSendStr.toBooleanStrictOrNull() ?: false
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Enter to Send", style = MaterialTheme.typography.titleMedium)
-                    Text("Pressing enter on the keyboard sends the message instead of new line", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Switch(checked = enterToSend, onCheckedChange = { viewModel.saveSetting("ENTER_TO_SEND", it.toString()) })
+            SettingsGroup("Display & Scaling") {
+                val uiScaleStr by viewModel.getSettingFlow("UI_SCALE", "1.0").collectAsState()
+                var uiScale by remember(uiScaleStr) { mutableStateOf(uiScaleStr.toFloatOrNull() ?: 1.0f) }
+                Text(text = "UI Scale: ${java.lang.String.format("%.2f", uiScale)}", modifier = Modifier.padding(top = 8.dp))
+                Slider(
+                    value = uiScale,
+                    onValueChange = { uiScale = it },
+                    onValueChangeFinished = { viewModel.saveSetting("UI_SCALE", uiScale.toString()) },
+                    valueRange = 0.5f..2.0f
+                )
+                val textScaleStr by viewModel.getSettingFlow("TEXT_SIZE_SCALE", "1.0").collectAsState()
+                var textScale by remember(textScaleStr) { mutableStateOf(textScaleStr.toFloatOrNull() ?: 1.0f) }
+                Text(text = "Text Size: ${java.lang.String.format("%.2f", textScale)}", modifier = Modifier.padding(top = 8.dp))
+                Slider(
+                    value = textScale,
+                    onValueChange = { textScale = it },
+                    onValueChangeFinished = { viewModel.saveSetting("TEXT_SIZE_SCALE", textScale.toString()) },
+                    valueRange = 0.5f..2.0f
+                )
             }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-        item { Text("Display & Scaling", style = MaterialTheme.typography.titleLarge) }
-        item {
-            val uiScaleStr by viewModel.getSettingFlow("UI_SCALE", "1.0").collectAsState()
-            var uiScale by remember(uiScaleStr) { mutableStateOf(uiScaleStr.toFloatOrNull() ?: 1.0f) }
-            Text(text = "UI Scale: ${java.lang.String.format("%.2f", uiScale)}", modifier = Modifier.padding(top = 8.dp))
-            Slider(
-                value = uiScale,
-                onValueChange = { uiScale = it },
-                onValueChangeFinished = { viewModel.saveSetting("UI_SCALE", uiScale.toString()) },
-                valueRange = 0.5f..2.0f
-            )
-        }
-        item {
-            val textScaleStr by viewModel.getSettingFlow("TEXT_SIZE_SCALE", "1.0").collectAsState()
-            var textScale by remember(textScaleStr) { mutableStateOf(textScaleStr.toFloatOrNull() ?: 1.0f) }
-            Text(text = "Text Size: ${java.lang.String.format("%.2f", textScale)}", modifier = Modifier.padding(top = 8.dp))
-            Slider(
-                value = textScale,
-                onValueChange = { textScale = it },
-                onValueChangeFinished = { viewModel.saveSetting("TEXT_SIZE_SCALE", textScale.toString()) },
-                valueRange = 0.5f..2.0f
-            )
-            Spacer(modifier = Modifier.height(16.dp))
         }
         
         item {
@@ -233,11 +229,9 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
 
         }
 
-        item { Text("Inspirational Quote", style = MaterialTheme.typography.titleLarge) }
-
         item {
-
-            val quote by viewModel.quoteMode.collectAsState()
+            SettingsGroup("Inspirational Quote") {
+                val quote by viewModel.quoteMode.collectAsState()
 
             val allQuotesList by viewModel.allQuotes.collectAsState()
             val quotes = listOf("None", "Shuffle") + allQuotesList
@@ -335,14 +329,13 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                     }
                 }
             }
-
+            } // end group
         }
 
         item { Spacer(Modifier.height(16.dp)) }
 
-        item { Text("General", style = MaterialTheme.typography.titleLarge) }
-        
         item {
+            SettingsGroup("General") {
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                 Button(onClick = { exportLauncher.launch("aidict_backup.json") }) {
                     Text("Export Data")
@@ -353,8 +346,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
             }
         }
         
-        item {
-            var expanded by remember { mutableStateOf(false) }
+        var expanded by remember { mutableStateOf(false) }
             ExposedDropdownMenuBox(
                 expanded = expanded,
                 onExpandedChange = { expanded = !expanded },
@@ -399,36 +391,36 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                     }
                 }
             }
-        }
-
-        item { Spacer(Modifier.height(16.dp)) }
-        item { com.aidict.app.ui.components.MultiSelectSearchableDropdown(label = "Search to add Starred Languages", currentCsv = viewModel.starredLanguages.collectAsState().value, options = viewModel.allAvailableLanguages.collectAsState().value, onCsvChange = { viewModel.saveSetting("STARRED_LANGUAGES", it) }) }
+        Spacer(Modifier.height(16.dp))
+        com.aidict.app.ui.components.MultiSelectSearchableDropdown(label = "Search to add Starred Languages", currentCsv = viewModel.starredLanguages.collectAsState().value, options = viewModel.allAvailableLanguages.collectAsState().value, onCsvChange = { viewModel.saveSetting("STARRED_LANGUAGES", it) }) }
         item {
         }
-        item { Text("API Configuration", style = MaterialTheme.typography.titleLarge) }
         item {
-            var passwordVisible by remember { mutableStateOf(false) }
-            OutlinedTextField(
-                value = apiKey,
-                onValueChange = { viewModel.saveSetting("OPENROUTER_API_KEY", it) },
-                label = { Text("OpenRouter API Key") },
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                trailingIcon = {
-                    val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
-                    val description = if (passwordVisible) "Hide API key" else "Show API key"
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(imageVector = image, contentDescription = description)
-                    }
-                },
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
-            )
+            SettingsGroup("API Configuration") {
+                var passwordVisible by remember { mutableStateOf(false) }
+                OutlinedTextField(
+                    value = apiKey,
+                    onValueChange = { viewModel.saveSetting("OPENROUTER_API_KEY", it) },
+                    label = { Text("OpenRouter API Key") },
+                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        val image = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                        val description = if (passwordVisible) "Hide API key" else "Show API key"
+                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            Icon(imageVector = image, contentDescription = description)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                )
+            }
         }
         
         item { Spacer(Modifier.height(16.dp)) }
-        item { Row(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Text("Models", style = MaterialTheme.typography.titleLarge); Button(onClick = { viewModel.refreshModels() }) { Icon(Icons.Default.Refresh, contentDescription = "Refresh Models", modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Refresh") } } }
-
         item {
-            Column {
+            SettingsGroup("Models") {
+                Row(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.End) {
+                    Button(onClick = { viewModel.refreshModels() }) { Icon(Icons.Default.Refresh, contentDescription = "Refresh Models", modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Refresh") }
+                }
                 SearchableModelDropdown("Dict Model", dictModel, availableModels) { viewModel.saveSetting("DICT_MODEL", it) }
                 SearchableModelDropdown("Compare Model", compareModel, availableModels) { viewModel.saveSetting("COMPARE_MODEL", it) }
                 SearchableModelDropdown("Explain Model", explainModel, availableModels) { viewModel.saveSetting("EXPLAIN_MODEL", it) }
@@ -443,13 +435,13 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
         
 
         item { Spacer(Modifier.height(16.dp)) }
-        item { Text("Prompts", style = MaterialTheme.typography.titleLarge) }
-        
         item {
-            OutlinedTextField(value = dictPrompt, onValueChange = { viewModel.saveSetting("DICT_PROMPT", it) }, label = { Text("Dictionary Prompt") }, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), minLines = 3, maxLines = 10)
-            OutlinedTextField(value = explainPrompt, onValueChange = { viewModel.saveSetting("EXPLAIN_PROMPT", it) }, label = { Text("Explain Prompt") }, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), minLines = 3, maxLines = 10)
-            OutlinedTextField(value = translatePrompt, onValueChange = { viewModel.saveSetting("TRANSLATE_PROMPT", it) }, label = { Text("Translate Prompt") }, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), minLines = 3, maxLines = 10)
-            OutlinedTextField(value = comparePrompt, onValueChange = { viewModel.saveSetting("COMPARE_PROMPT", it) }, label = { Text("Compare Prompt") }, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), minLines = 3, maxLines = 10)
+            SettingsGroup("Prompts") {
+                OutlinedTextField(value = dictPrompt, onValueChange = { viewModel.saveSetting("DICT_PROMPT", it) }, label = { Text("Dictionary Prompt") }, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), minLines = 3, maxLines = 10)
+                OutlinedTextField(value = explainPrompt, onValueChange = { viewModel.saveSetting("EXPLAIN_PROMPT", it) }, label = { Text("Explain Prompt") }, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), minLines = 3, maxLines = 10)
+                OutlinedTextField(value = translatePrompt, onValueChange = { viewModel.saveSetting("TRANSLATE_PROMPT", it) }, label = { Text("Translate Prompt") }, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), minLines = 3, maxLines = 10)
+                OutlinedTextField(value = comparePrompt, onValueChange = { viewModel.saveSetting("COMPARE_PROMPT", it) }, label = { Text("Compare Prompt") }, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), minLines = 3, maxLines = 10)
+            }
         }
 
         item { Spacer(Modifier.height(16.dp)) }
