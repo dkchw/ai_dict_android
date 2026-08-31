@@ -100,6 +100,26 @@ class HistoryViewModel(private val database: AppDatabase) : ViewModel() {
             database.appDao().deleteSession(session)
         }
     }
+
+    fun deleteSelectedSessions(sessionIds: Set<String>) {
+        viewModelScope.launch {
+            database.appDao().deleteSessionsByIds(sessionIds.toList())
+            val active = database.appDao().getSetting("ACTIVE_SESSION_ID")?.value
+            if (active in sessionIds) {
+                setActiveSession(null)
+            }
+        }
+    }
+
+    fun deleteSelectedWords(wordIds: Set<Int>) {
+        viewModelScope.launch {
+            database.appDao().deleteWordsByIds(wordIds.toList())
+            if (selectedWordId.value in wordIds) {
+                setSelectedWordId(null)
+            }
+        }
+    }
+
     
     fun renameWord(word: com.aidict.app.data.entities.Word, newTerm: String) {
         viewModelScope.launch {

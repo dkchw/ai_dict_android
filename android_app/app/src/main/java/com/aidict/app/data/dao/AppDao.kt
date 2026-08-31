@@ -113,5 +113,11 @@ interface AppDao {
 
     @androidx.room.Query("DELETE FROM note WHERE id IN (:ids)")
     suspend fun deleteNotesByIds(ids: List<Int>)
+
+    @Query("DELETE FROM session WHERE id IN (:ids)")
+    suspend fun deleteSessionsByIds(ids: List<String>)
+
+    @Query("DELETE FROM word WHERE id IN (:ids)")
+    suspend fun deleteWordsByIds(ids: List<Int>)
 }
 

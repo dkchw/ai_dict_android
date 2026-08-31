@@ -18,8 +18,6 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
@@ -53,10 +51,6 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
     var query by remember { mutableStateOf("") }
     
         var selectedWord by remember { mutableStateOf<Word?>(null) }
-    var isSelectionMode by remember { mutableStateOf(false) }
-    var selectedSessionIds by remember { mutableStateOf(setOf<String>()) }
-    var selectedWordIds by remember { mutableStateOf(setOf<Int>()) }
-    var collapsedSessionIds by remember { mutableStateOf(setOf<String>()) }
     
     LaunchedEffect(selectedWord) {
         viewModel.setSelectedWordId(selectedWord?.id)
@@ -80,6 +74,11 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
     var showRenameWord by remember { mutableStateOf<com.aidict.app.data.entities.Word?>(null) }
     var wordNameInput by remember { mutableStateOf("") }
     var sessionNameInput by remember { mutableStateOf("") }
+
+    var isSelectionMode by remember { mutableStateOf(false) }
+    var selectedSessionIds by remember { mutableStateOf(setOf<String>()) }
+    var selectedWordIds by remember { mutableStateOf(setOf<Int>()) }
+    var collapsedSessionIds by remember { mutableStateOf(setOf<String>()) }
 
     val isTablet = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Expanded
 
@@ -182,7 +181,7 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
 
             val grouped = history.groupBy { it.sessionId }
 
-            @OptIn(ExperimentalFoundationApi::class)
+            @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
             LazyColumn(modifier = Modifier.weight(1f)) {
                 sessions.forEach { session ->
                     val wordsInSession = grouped[session.id] ?: emptyList()
@@ -190,8 +189,8 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                     val isCollapsed = collapsedSessionIds.contains(session.id)
                     item {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
-                            .background(if (isSelectionMode && selectedSessionIds.contains(session.id)) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else if (isSessionActive) MaterialTheme.colorScheme.primaryContainer else Color.Transparent, shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
-                            .combinedClickable(
+                            .background(if (isSelectionMode && selectedSessionIds.contains(session.id)) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else if (isSessionActive) MaterialTheme.colorScheme.primaryContainer else androidx.compose.ui.graphics.Color.Transparent, shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                            .androidx.compose.foundation.combinedClickable(
                                 onClick = {
                                     if (isSelectionMode) {
                                         selectedSessionIds = if (selectedSessionIds.contains(session.id)) selectedSessionIds - session.id else selectedSessionIds + session.id
@@ -239,7 +238,7 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                     if (!isCollapsed) {
                         items(wordsInSession, key = { it.id }) { word ->
                             Card(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).combinedClickable(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).androidx.compose.foundation.combinedClickable(
                                     onClick = {
                                         if (isSelectionMode) {
                                             selectedWordIds = if (selectedWordIds.contains(word.id)) selectedWordIds - word.id else selectedWordIds + word.id
@@ -307,7 +306,7 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                     if (!isCollapsed) {
                         items(grouped[sid] ?: emptyList(), key = { it.id }) { word ->
                             Card(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).combinedClickable(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).androidx.compose.foundation.combinedClickable(
                                     onClick = {
                                         if (isSelectionMode) {
                                             selectedWordIds = if (selectedWordIds.contains(word.id)) selectedWordIds - word.id else selectedWordIds + word.id
@@ -364,7 +363,6 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
             }
         }
     }
-
     val detailContent = @Composable {
         val messages by viewModel.selectedChatMessages.collectAsState()
         if (selectedWord != null) {
