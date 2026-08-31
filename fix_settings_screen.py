@@ -3,13 +3,9 @@ import re
 with open('android_app/app/src/main/java/com/aidict/app/ui/screens/SettingsScreen.kt', 'r') as f:
     text = f.read()
 
-# I will add a new section for Display & Scaling under Background Settings or above it.
-old_bg_settings = """        item { Text("Background", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)) }"""
-
-new_scaling_settings = """        item { Text("Display & Scaling", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)) }
-        item {
+old_scaling = """        item {
             var uiScale by remember { mutableStateOf(viewModel.getSetting("UI_SCALE")?.toFloatOrNull() ?: 1.0f) }
-            Text(text = "UI Scale: ${String.format("%.2f", uiScale)}")
+            Text(text = "UI Scale: ${String.format("%.2f", uiScale)}", modifier = Modifier.padding(top = 8.dp))
             Slider(
                 value = uiScale,
                 onValueChange = { uiScale = it },
@@ -19,18 +15,41 @@ new_scaling_settings = """        item { Text("Display & Scaling", style = Mater
         }
         item {
             var textScale by remember { mutableStateOf(viewModel.getSetting("TEXT_SIZE_SCALE")?.toFloatOrNull() ?: 1.0f) }
-            Text(text = "Text Size: ${String.format("%.2f", textScale)}")
+            Text(text = "Text Size: ${String.format("%.2f", textScale)}", modifier = Modifier.padding(top = 8.dp))
             Slider(
                 value = textScale,
                 onValueChange = { textScale = it },
                 onValueChangeFinished = { viewModel.saveSetting("TEXT_SIZE_SCALE", textScale.toString()) },
                 valueRange = 0.5f..2.0f
             )
-        }
-        
-        item { Text("Background", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)) }"""
+            Spacer(modifier = Modifier.height(16.dp))
+        }"""
 
-text = text.replace(old_bg_settings, new_scaling_settings)
+new_scaling = """        item {
+            val uiScaleStr by viewModel.getSettingFlow("UI_SCALE", "1.0").collectAsState()
+            var uiScale by remember(uiScaleStr) { mutableStateOf(uiScaleStr.toFloatOrNull() ?: 1.0f) }
+            Text(text = "UI Scale: ${java.lang.String.format("%.2f", uiScale)}", modifier = Modifier.padding(top = 8.dp))
+            Slider(
+                value = uiScale,
+                onValueChange = { uiScale = it },
+                onValueChangeFinished = { viewModel.saveSetting("UI_SCALE", uiScale.toString()) },
+                valueRange = 0.5f..2.0f
+            )
+        }
+        item {
+            val textScaleStr by viewModel.getSettingFlow("TEXT_SIZE_SCALE", "1.0").collectAsState()
+            var textScale by remember(textScaleStr) { mutableStateOf(textScaleStr.toFloatOrNull() ?: 1.0f) }
+            Text(text = "Text Size: ${java.lang.String.format("%.2f", textScale)}", modifier = Modifier.padding(top = 8.dp))
+            Slider(
+                value = textScale,
+                onValueChange = { textScale = it },
+                onValueChangeFinished = { viewModel.saveSetting("TEXT_SIZE_SCALE", textScale.toString()) },
+                valueRange = 0.5f..2.0f
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }"""
+
+text = text.replace(old_scaling, new_scaling)
 
 with open('android_app/app/src/main/java/com/aidict/app/ui/screens/SettingsScreen.kt', 'w') as f:
     f.write(text)

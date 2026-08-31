@@ -92,6 +92,31 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
     }
 
     LazyColumn(modifier = modifier.fillMaxSize().padding(16.dp)) {
+        item { Text("Display & Scaling", style = MaterialTheme.typography.titleLarge) }
+        item {
+            val uiScaleStr by viewModel.getSettingFlow("UI_SCALE", "1.0").collectAsState()
+            var uiScale by remember(uiScaleStr) { mutableStateOf(uiScaleStr.toFloatOrNull() ?: 1.0f) }
+            Text(text = "UI Scale: ${java.lang.String.format("%.2f", uiScale)}", modifier = Modifier.padding(top = 8.dp))
+            Slider(
+                value = uiScale,
+                onValueChange = { uiScale = it },
+                onValueChangeFinished = { viewModel.saveSetting("UI_SCALE", uiScale.toString()) },
+                valueRange = 0.5f..2.0f
+            )
+        }
+        item {
+            val textScaleStr by viewModel.getSettingFlow("TEXT_SIZE_SCALE", "1.0").collectAsState()
+            var textScale by remember(textScaleStr) { mutableStateOf(textScaleStr.toFloatOrNull() ?: 1.0f) }
+            Text(text = "Text Size: ${java.lang.String.format("%.2f", textScale)}", modifier = Modifier.padding(top = 8.dp))
+            Slider(
+                value = textScale,
+                onValueChange = { textScale = it },
+                onValueChangeFinished = { viewModel.saveSetting("TEXT_SIZE_SCALE", textScale.toString()) },
+                valueRange = 0.5f..2.0f
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+        
         item { Text("Backgrounds", style = MaterialTheme.typography.titleLarge) }
 
         item {
