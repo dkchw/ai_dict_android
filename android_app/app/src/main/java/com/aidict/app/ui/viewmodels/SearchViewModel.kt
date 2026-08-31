@@ -176,6 +176,17 @@ class SearchViewModel(
         }
     }
 
+        fun renameWord(word: com.aidict.app.data.entities.Word, newTerm: String, mode: String) {
+        val _uiState = getUiState(mode)
+        viewModelScope.launch {
+            val updatedWord = word.copy(term = newTerm)
+            database.appDao().insertWord(updatedWord)
+            if (_uiState.value.word?.id == word.id) {
+                _uiState.value = _uiState.value.copy(word = updatedWord)
+            }
+        }
+    }
+
     fun updateWordColor(color: String, mode: String = "dict") {
         val _uiState = getUiState(mode)
         viewModelScope.launch {

@@ -1,5 +1,7 @@
 package com.aidict.app.ui.screens
 
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.foundation.layout.wrapContentWidth
 
 
 import androidx.compose.foundation.layout.*
@@ -102,8 +104,7 @@ fun CompareScreen(
                                     Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
                                 }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.ContentCopy, "Copy", modifier = Modifier.size(16.dp)) }
                                 IconButton(onClick = { isEditing = true; editingContent = msg.content }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Edit, "Edit", modifier = Modifier.size(16.dp)) }
-                                IconButton(onClick = { viewModel.retryMessage(msg, false, "compare") }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Refresh, "Retry", modifier = Modifier.size(16.dp)) }
-                                IconButton(onClick = { viewModel.retryMessage(msg, true, "compare") }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Warning, "Retry Fallback", modifier = Modifier.size(16.dp)) }
+                                IconButton(onClick = { viewModel.retryMessage(msg, true, "compare") }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Refresh, "Regenerate", modifier = Modifier.size(16.dp)) }
                                 IconButton(onClick = { viewModel.deleteMessage(msg, "compare") }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Delete, "Delete", modifier = Modifier.size(16.dp)) }
                             }
                         }
@@ -129,7 +130,7 @@ fun CompareScreen(
             }
             
             if (state.isLoading && state.currentStream.isEmpty()) {
-                item { CircularProgressIndicator(modifier = Modifier.padding(16.dp)) }
+                item { com.aidict.app.ui.components.PulsingDots(modifier = Modifier.fillMaxWidth().wrapContentWidth(androidx.compose.ui.Alignment.CenterHorizontally)) }
             }
         }
 

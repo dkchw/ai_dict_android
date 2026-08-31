@@ -1,5 +1,7 @@
 package com.aidict.app.ui.screens
 
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.foundation.layout.wrapContentWidth
 
 
 import androidx.compose.foundation.layout.*
@@ -51,7 +53,7 @@ fun ExplainScreen(
     Column(modifier = modifier.fillMaxSize().scrollable(rememberScrollState(), Orientation.Vertical).padding(16.dp)) {
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             if (state.isLoading && state.currentStream.isEmpty()) {
-                CircularProgressIndicator(modifier = Modifier.align(androidx.compose.ui.Alignment.Center))
+                com.aidict.app.ui.components.PulsingDots(modifier = Modifier.align(androidx.compose.ui.Alignment.Center))
             } else {
                 androidx.compose.foundation.lazy.LazyColumn(modifier = Modifier.fillMaxSize()) {
                     item { Text(text = state.currentStream) }

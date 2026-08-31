@@ -1,5 +1,7 @@
 package com.aidict.app.ui.screens
 
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.clickable
 
 import androidx.compose.foundation.layout.*
