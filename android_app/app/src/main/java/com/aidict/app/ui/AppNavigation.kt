@@ -226,6 +226,12 @@ colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.
                 actions = {
 
                     if (currentScreen == Screen.MAIN) {
+                        androidx.compose.material3.Text(
+                            text = modes[currentMode].title,
+                            style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                            modifier = androidx.compose.ui.Modifier.padding(end = 8.dp).align(androidx.compose.ui.Alignment.CenterVertically),
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                        )
                         IconButton(onClick = { currentScreen = Screen.NOTES }) {
                             Icon(Icons.Default.EditNote, contentDescription = "Notes")
                         }
