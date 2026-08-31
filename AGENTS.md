@@ -35,8 +35,11 @@ This Android application is a testament to the power of AI-assisted software eng
 The architecture, Jetpack Compose layouts, Room Database integrations, LLM streaming implementation, StateFlow segregation, and Custom Markdown UI components (featuring the Tokyo Night palette) were largely written, debugged, and iterated upon by **Antigravity (Google DeepMind)** in tight collaboration with the repository owner (`dkchw`).
 
 ### Notable AI-Assisted Milestones:
-* **UI/UX Overhaul:** Implementing fluid `HorizontalPager` swipe navigation and nested scrolling for pull-to-refresh (`PullToRefreshContainer`) integration without breaking native LazyColumn behaviors.
+* **UI/UX Overhaul:** Implementing fluid `HorizontalPager` swipe navigation and nested scrolling for pull-to-refresh (`PullToRefreshContainer`) integration without breaking native LazyColumn behaviors. Condensing Top/Bottom navigation bars to maximize screen real estate.
 * **State Isolation:** Decoupling monolithic UI state streams into strictly isolated asynchronous `StateFlow` channels, preventing prompt and output bleed between the 4 core modes.
 * **Resilience:** Implementing 300ms debounced auto-saving mechanisms that serialize drafts directly into SQLite, surviving sudden app closures and lifecycle deaths.
 * **Custom Markdown Engine:** Mapping `RichTextStyle` parameters to natively parse and render Markdown tables, codeblocks, and bold H1-H6 headers dynamically in Compose.
+* **Dynamic Profiles & Data Architecture:** Building complex Room Database foreign key cascades to allow for custom user Profiles. Implementing stable layout nodes (`key = { it.id }`) to eliminate list scrolling lag.
+* **Complex UI Recomposition Optimization:** Identifying and isolating state reads (`collectAsState()`) from high-level screens into heavily localized composables (like `SettingsGroup` accordions and `ChatInputBar` overrides) to rescue the UI from dropping frames.
+* **Android File Scoped Permissions:** Resolving strict API 33+ (Android 13/14) limitations on `READ_EXTERNAL_STORAGE` and `FileProvider` by migrating the background Updater to purely native `DownloadManager` URI broadcast receivers, eliminating silent failures during auto-installation.
 

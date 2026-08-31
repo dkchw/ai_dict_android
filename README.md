@@ -12,10 +12,13 @@ Designed to go far beyond a simple dictionary, AI Dict acts as a comprehensive l
   * 🗣️ **Translate Mode:** A true "reverse dictionary." Express a concept in your native tongue and let the AI find the exact, natural phrase in your target language.
   * 🧠 **Explain Mode:** Paste entire paragraphs, idioms, or sentences and receive a detailed, sentence-by-sentence linguistic breakdown.
 * **Intelligent Swipe Navigation:** Seamlessly swipe left and right between modes using Jetpack Compose's fluid `HorizontalPager`.
+* **Dynamic Profiles:** Create custom Profiles (e.g., "Spanish Learner", "Japanese Slang", etc.), each holding unique target languages, models, and prompts. Easily rearrange, rename, and set default fallback profiles.
+* **Smart History Sessions:** Automatically groups searches by day (Default Session), or manually group deep dives into Custom Named Sessions with exact timestamps and full chat resume functionality.
 * **Isolated Conversations:** Your chat history and ongoing outputs are securely isolated per mode. You can ask a follow-up question in Dict mode, swipe to Translate, and your place is perfectly saved without any data bleed!
 * **Auto-Saving Drafts:** Never lose your train of thought. Type a prompt, close the app, and come back—your drafts are instantly restored.
 * **Quick External Links:** Instantly bounce from the app to external web dictionaries (like Cambridge or Wikipedia) using a highly customizable URL template setting.
-* **Notes & History:** Deeply integrated SQLite (Room) database to save important chats, tag history, and keep persistent Markdown notes of things you've learned. Pull down from anywhere to access your history instantly.
+* **Custom Backgrounds:** Deeply customize your UX by importing local images to use as backgrounds for specific modes, complete with variable blur radius and opacity sliders.
+* **Workflow Modifiers:** Enable "Auto New Search" or "Enter to Send" to seamlessly speed up your querying workflow directly from the condensed chat bar.
 * **Stunning UI & Theming:** Ships with a custom rendering engine that beautifully formats Markdown responses (complete with tables and syntax highlighting) in premium palettes like **Tokyo Night**, Nord, and Dracula.
 * **Built-in Auto Updater:** Securely fetches and installs the latest GitHub Releases automatically right from within the app.
 
