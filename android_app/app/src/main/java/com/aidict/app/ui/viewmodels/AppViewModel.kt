@@ -22,6 +22,10 @@ class AppViewModel(private val database: AppDatabase) : ViewModel() {
 
     init {
         viewModelScope.launch {
+            val savedProfileId = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                database.appDao().getSetting("ACTIVE_PROFILE_ID")?.value?.toIntOrNull()
+            }
+            
             database.appDao().getProfiles().collectLatest { profileList ->
                 var list = profileList
                 if (list.isEmpty()) {
@@ -30,7 +34,7 @@ class AppViewModel(private val database: AppDatabase) : ViewModel() {
                     list = listOf(defaultProfile.copy(id = id))
                 }
                 
-                val active = _uiState.value.activeProfile ?: list.firstOrNull { it.isDefault } ?: list.firstOrNull()
+                val active = _uiState.value.activeProfile ?: list.find { it.id == savedProfileId } ?: list.firstOrNull { it.isDefault } ?: list.firstOrNull()
                 _uiState.value = _uiState.value.copy(
                     profiles = list,
                     activeProfile = active
@@ -41,6 +45,9 @@ class AppViewModel(private val database: AppDatabase) : ViewModel() {
 
     fun setActiveProfile(profile: Profile) {
         _uiState.value = _uiState.value.copy(activeProfile = profile)
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            database.appDao().insertSetting(com.aidict.app.data.entities.AppSetting("ACTIVE_PROFILE_ID", profile.id.toString()))
+        }
     }
 
     fun markHistoryUnseen() {

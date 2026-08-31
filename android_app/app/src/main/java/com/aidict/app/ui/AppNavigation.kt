@@ -3,6 +3,7 @@ package com.aidict.app.ui
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.ExperimentalFoundationApi
 
@@ -57,19 +58,11 @@ fun AppNavigation(
     val isExpanded = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Expanded
     
     var currentScreen by remember { mutableStateOf(Screen.MAIN) }
-    var currentMode by remember { mutableStateOf(0) }
+    val coroutineScope = rememberCoroutineScope()
     val pagerState = androidx.compose.foundation.pager.rememberPagerState(initialPage = 0, pageCount = { 4 })
+    val currentMode = pagerState.targetPage
 
-    LaunchedEffect(currentMode) {
-        if (pagerState.currentPage != currentMode) {
-            pagerState.animateScrollToPage(currentMode)
-        }
-    }
-    LaunchedEffect(pagerState.currentPage) {
-        if (currentMode != pagerState.currentPage) {
-            currentMode = pagerState.currentPage
-        }
-    }
+
     val currentSearchState = when (currentMode) {
         0 -> searchViewModel.dictState.collectAsState().value
         1 -> searchViewModel.compareState.collectAsState().value
@@ -85,7 +78,7 @@ fun AppNavigation(
             currentScreen = Screen.MAIN
 
         } else if (currentMode != 0) {
-            currentMode = 0
+            coroutineScope.launch { pagerState.animateScrollToPage(0) }
         } else if (currentSearchState.word != null) {
             searchViewModel.clearCurrentSearch()
         }
@@ -251,7 +244,7 @@ colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.
                             selected = currentMode == index,
                             onClick = { 
                                 if (currentMode != index) {
-                                    currentMode = index
+                                    coroutineScope.launch { pagerState.animateScrollToPage(index) }
                                     searchViewModel.clearCurrentSearch()
                                 }
                             },
@@ -292,7 +285,7 @@ colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.
                                 "explain" -> 3
                                 else -> 0
                             }
-                            currentMode = modeInt
+                            coroutineScope.launch { pagerState.scrollToPage(modeInt) }
                             currentScreen = Screen.MAIN
                         },
                         viewModel = historyViewModel,
