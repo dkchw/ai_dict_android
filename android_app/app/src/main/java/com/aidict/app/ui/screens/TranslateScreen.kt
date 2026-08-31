@@ -54,7 +54,7 @@ fun TranslateScreen(
         targetLang = viewModel.getProfileSetting(profileId, "TRANSLATE_TARGET") ?: "English"
     }
     
-    Column(modifier = modifier.fillMaxSize().scrollable(rememberScrollState(), Orientation.Vertical).padding(16.dp)) {
+    Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
         // Chat History & Streaming
         state.error?.let {
             Text(text = "Error: $it", color = MaterialTheme.colorScheme.error)

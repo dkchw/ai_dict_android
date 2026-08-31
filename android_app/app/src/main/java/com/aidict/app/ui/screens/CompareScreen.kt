@@ -47,7 +47,7 @@ fun CompareScreen(
     val context = LocalContext.current
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
 
-    Column(modifier = modifier.fillMaxSize().scrollable(rememberScrollState(), Orientation.Vertical).padding(16.dp)) {
+    Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
         // Chat History & Streaming
         state.error?.let {
             Text(text = "Error: $it", color = MaterialTheme.colorScheme.error)

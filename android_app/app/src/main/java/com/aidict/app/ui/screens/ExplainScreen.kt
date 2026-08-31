@@ -50,12 +50,15 @@ fun ExplainScreen(
     val context = LocalContext.current
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
 
-    Column(modifier = modifier.fillMaxSize().scrollable(rememberScrollState(), Orientation.Vertical).padding(16.dp)) {
+    Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             if (state.isLoading && state.currentStream.isEmpty()) {
                 com.aidict.app.ui.components.PulsingDots(modifier = Modifier.align(androidx.compose.ui.Alignment.Center))
             } else {
                 androidx.compose.foundation.lazy.LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    if (state.chatMessages.isEmpty()) {
+                        item { Spacer(modifier = Modifier.fillParentMaxSize()) }
+                    }
                     item { Text(text = state.currentStream) }
                     state.error?.let {
                         item { Text(text = "Error: $it", color = MaterialTheme.colorScheme.error) }
