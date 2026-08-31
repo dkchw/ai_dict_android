@@ -12,7 +12,12 @@ NEW_VCODE=$((OLD_VCODE + 1))
 MAJOR=$(echo $OLD_VNAME | cut -d. -f1)
 MINOR=$(echo $OLD_VNAME | cut -d. -f2)
 NEW_MINOR=$((MINOR + 1))
-NEW_VNAME="${MAJOR}.${NEW_MINOR}"
+if [ "$OLD_VNAME" = "3.0" ]; then
+  NEW_VNAME="3.0"
+  NEW_VCODE=$OLD_VCODE
+else
+  NEW_VNAME="${MAJOR}.${NEW_MINOR}"
+fi
 
 echo "====================================="
 echo "Bumping version: $OLD_VNAME -> $NEW_VNAME"
