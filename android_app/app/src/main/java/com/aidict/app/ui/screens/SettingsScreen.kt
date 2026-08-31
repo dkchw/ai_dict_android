@@ -1,6 +1,7 @@
 package com.aidict.app.ui.screens
 
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.Slider
 import androidx.compose.foundation.clickable
@@ -391,9 +392,50 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                     }
                 }
             }
-        Spacer(Modifier.height(16.dp))
-        com.aidict.app.ui.components.MultiSelectSearchableDropdown(label = "Search to add Starred Languages", currentCsv = viewModel.starredLanguages.collectAsState().value, options = viewModel.allAvailableLanguages.collectAsState().value, onCsvChange = { viewModel.saveSetting("STARRED_LANGUAGES", it) }) }
+        }
         item {
+            SettingsGroup("Languages") {
+                com.aidict.app.ui.components.MultiSelectSearchableDropdown(
+                    label = "Starred Languages", 
+                    currentCsv = viewModel.starredLanguages.collectAsState().value, 
+                    options = viewModel.allAvailableLanguages.collectAsState().value, 
+                    onCsvChange = { viewModel.saveSetting("STARRED_LANGUAGES", it) }
+                )
+                
+                Spacer(Modifier.height(16.dp))
+                Text("Add Custom Language", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
+                
+                var newLangName by remember { mutableStateOf("") }
+                var newLangFlag by remember { mutableStateOf("") }
+                
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = newLangName,
+                        onValueChange = { newLangName = it },
+                        label = { Text("Name (e.g. Dothraki)") },
+                        modifier = Modifier.weight(1.5f).padding(end = 8.dp),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = newLangFlag,
+                        onValueChange = { newLangFlag = it },
+                        label = { Text("Flag / Icon") },
+                        modifier = Modifier.weight(1f).padding(end = 8.dp),
+                        singleLine = true
+                    )
+                    IconButton(
+                        onClick = { 
+                            if (newLangName.isNotBlank()) {
+                                viewModel.addCustomLanguage(newLangName.trim(), newLangFlag.trim())
+                                newLangName = ""
+                                newLangFlag = ""
+                            }
+                        }
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Add Language")
+                    }
+                }
+            }
         }
         item {
             SettingsGroup("API Configuration") {
