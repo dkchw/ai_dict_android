@@ -484,7 +484,7 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
             },
             confirmButton = {
                 TextButton(onClick = {
-                    if (sessionNameInput.isNotBlank()) viewModel.createSession(sessionNameInput)
+                    viewModel.createSession(sessionNameInput)
                     sessionNameInput = ""
                     showCreateSession = false
                 }) { Text("Create") }

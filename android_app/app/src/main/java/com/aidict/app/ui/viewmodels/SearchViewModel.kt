@@ -133,7 +133,7 @@ class SearchViewModel(
                 if (existingWord != null) {
                     database.appDao().incrementSearchCount(existingWord.id)
                     val updatedWord = existingWord.copy(searchCount = existingWord.searchCount + 1, sessionId = sessionId)
-                    database.appDao().insertWord(updatedWord)
+                    database.appDao().updateWord(updatedWord)
                     loadWord(updatedWord)
                     return@launch
                 }
@@ -158,7 +158,7 @@ class SearchViewModel(
                 val (language, lemma) = MarkdownParser.extractMetadata(finalMarkdown)
                 
                 val finalWord = savedWord.copy(language = language, lemma = lemma)
-                database.appDao().insertWord(finalWord)
+                database.appDao().updateWord(finalWord)
                 val finalMsg = savedMsg.copy(content = finalMarkdown)
                 database.appDao().insertChatMessage(finalMsg)
                 
@@ -187,7 +187,7 @@ class SearchViewModel(
         val _uiState = getUiState(mode)
         viewModelScope.launch {
             val updatedWord = word.copy(term = newTerm)
-            database.appDao().insertWord(updatedWord)
+            database.appDao().updateWord(updatedWord)
             if (_uiState.value.word?.id == word.id) {
                 _uiState.value = _uiState.value.copy(word = updatedWord)
             }
@@ -199,7 +199,7 @@ class SearchViewModel(
         viewModelScope.launch {
             _uiState.value.word?.let { word ->
                 val updatedWord = word.copy(color = color)
-                database.appDao().insertWord(updatedWord) // REPLACE strategy
+                database.appDao().updateWord(updatedWord) // REPLACE strategy
                 _uiState.value = _uiState.value.copy(word = updatedWord)
             }
         }
@@ -210,7 +210,7 @@ class SearchViewModel(
         viewModelScope.launch {
             _uiState.value.word?.let { word ->
                 val updatedWord = word.copy(stars = stars)
-                database.appDao().insertWord(updatedWord)
+                database.appDao().updateWord(updatedWord)
                 _uiState.value = _uiState.value.copy(word = updatedWord)
             }
         }
@@ -270,7 +270,6 @@ class SearchViewModel(
         viewModelScope.launch {
             database.appDao().incrementViewCount(word.id)
             val updatedWord = word.copy(viewCount = word.viewCount + 1)
-            database.appDao().insertWord(updatedWord)
             val messages = database.appDao().getChatMessagesSync(word.id)
             _uiState.value = SearchState(
                 word = updatedWord,
@@ -378,7 +377,7 @@ class SearchViewModel(
                 if (existingWord != null) {
                     database.appDao().incrementSearchCount(existingWord.id)
                     val updatedWord = existingWord.copy(searchCount = existingWord.searchCount + 1, sessionId = sessionId)
-                    database.appDao().insertWord(updatedWord)
+                    database.appDao().updateWord(updatedWord)
                     loadWord(updatedWord)
                     return@launch
                 }
@@ -421,7 +420,7 @@ class SearchViewModel(
                 if (existingWord != null) {
                     database.appDao().incrementSearchCount(existingWord.id)
                     val updatedWord = existingWord.copy(searchCount = existingWord.searchCount + 1, sessionId = sessionId)
-                    database.appDao().insertWord(updatedWord)
+                    database.appDao().updateWord(updatedWord)
                     loadWord(updatedWord)
                     return@launch
                 }
@@ -464,7 +463,7 @@ class SearchViewModel(
                 if (existingWord != null) {
                     database.appDao().incrementSearchCount(existingWord.id)
                     val updatedWord = existingWord.copy(searchCount = existingWord.searchCount + 1, sessionId = sessionId)
-                    database.appDao().insertWord(updatedWord)
+                    database.appDao().updateWord(updatedWord)
                     loadWord(updatedWord)
                     return@launch
                 }

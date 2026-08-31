@@ -44,6 +44,9 @@ interface AppDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertWord(word: Word): Long
 
+    @androidx.room.Update
+    suspend fun updateWord(word: Word)
+
     @Query("SELECT * FROM word WHERE id = :wordId")
     suspend fun getWord(wordId: Int): Word?
 
