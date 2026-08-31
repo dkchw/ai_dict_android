@@ -36,6 +36,11 @@ import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.platform.LocalDensity
+
 import androidx.compose.material.icons.automirrored.filled.CompareArrows
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -60,6 +65,39 @@ fun AppNavigation(
     val isExpanded = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Expanded
     
     var currentScreen by remember { mutableStateOf(Screen.MAIN) }
+    var showManualDialog by remember { mutableStateOf(false) }
+    if (showManualDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showManualDialog = false },
+            title = { androidx.compose.material3.Text("App Manual") },
+            text = {
+                androidx.compose.foundation.layout.Column(modifier = androidx.compose.ui.Modifier.verticalScroll(rememberScrollState())) {
+                    androidx.compose.material3.Text(
+                        text = "Welcome to AI Dict!\n\n" +
+                                "1. Swipe Navigation\n" +
+                                "Swipe left or right on the main screen to change modes (Dictionary, Compare, Translate, Explain).\n\n" +
+                                "2. Pull for History\n" +
+                                "Drag DOWN from the top of the main screen to quickly open your History.\n\n" +
+                                "3. Drag for Notes\n" +
+                                "Drag UP from the bottom of the main screen to quickly open Quick Notes.\n\n" +
+                                "4. History Multi-Select\n" +
+                                "In the History view, Long-Press any session or word to enter Selection Mode. You can select multiple items to delete at once. Tap the chevron to collapse a session.\n\n" +
+                                "5. Auto-New Search\n" +
+                                "Hold down the 'New Chat' button in any mode to toggle Auto-New Search. When on, sending a new query instantly clears the old chat instead of continuing the conversation.\n\n" +
+                                "6. Custom Profiles\n" +
+                                "Tap the profile name at the top left to create or switch custom Profiles. Each profile has its own settings, language defaults, and isolated history.",
+                        style = androidx.compose.material3.MaterialTheme.typography.bodyMedium
+                    )
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { showManualDialog = false }) {
+                    androidx.compose.material3.Text("Got it!")
+                }
+            }
+        )
+    }
+
     val coroutineScope = rememberCoroutineScope()
     val pagerState = androidx.compose.foundation.pager.rememberPagerState(initialPage = 0, pageCount = { 4 })
     val currentMode = pagerState.targetPage
@@ -250,6 +288,9 @@ fun AppNavigation(
                             modifier = androidx.compose.ui.Modifier.padding(end = 8.dp),
                             color = androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
                         )
+                        IconButton(onClick = { showManualDialog = true }) {
+                            Icon(Icons.Default.HelpOutline, contentDescription = "Help")
+                        }
                         IconButton(onClick = { currentScreen = Screen.NOTES }) {
                             Icon(Icons.Default.EditNote, contentDescription = "Notes")
                         }
@@ -343,7 +384,40 @@ fun AppNavigation(
                         }
                     }
                     
-                    Box(modifier = Modifier.fillMaxSize().nestedScroll(pullRefreshState.nestedScrollConnection)) {
+                    var bottomOverscroll by remember { mutableFloatStateOf(0f) }
+                    val density = androidx.compose.ui.platform.LocalDensity.current
+                    val threshold: Float = with(density) { 80.dp.toPx() }
+                    
+                    val bottomOverscrollConnection = remember {
+                        object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
+                            override fun onPreScroll(available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
+                                if (bottomOverscroll > 0f && available.y > 0f) {
+                                    val consumed = available.y.coerceAtMost(bottomOverscroll)
+                                    bottomOverscroll -= consumed
+                                    return androidx.compose.ui.geometry.Offset(0f, consumed)
+                                }
+                                return androidx.compose.ui.geometry.Offset.Zero
+                            }
+                            
+                            override fun onPostScroll(consumed: androidx.compose.ui.geometry.Offset, available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
+                                if (available.y < 0f && source == androidx.compose.ui.input.nestedscroll.NestedScrollSource.Drag) {
+                                    bottomOverscroll -= available.y
+                                    return androidx.compose.ui.geometry.Offset(0f, available.y)
+                                }
+                                return androidx.compose.ui.geometry.Offset.Zero
+                            }
+                            
+                            override suspend fun onPreFling(available: androidx.compose.ui.unit.Velocity): androidx.compose.ui.unit.Velocity {
+                                if (bottomOverscroll > threshold) {
+                                    currentScreen = Screen.NOTES
+                                }
+                                bottomOverscroll = 0f
+                                return androidx.compose.ui.unit.Velocity.Zero
+                            }
+                        }
+                    }
+                    
+                    Box(modifier = Modifier.fillMaxSize().nestedScroll(pullRefreshState.nestedScrollConnection).nestedScroll(bottomOverscrollConnection)) {
                         androidx.compose.foundation.pager.HorizontalPager(
                             state = pagerState,
                             modifier = Modifier.fillMaxSize(),
@@ -361,6 +435,20 @@ fun AppNavigation(
                             state = pullRefreshState,
                             modifier = Modifier.align(Alignment.TopCenter)
                         )
+                        
+                        if (bottomOverscroll > 0f) {
+                            val progress = (bottomOverscroll / threshold).coerceIn(0f, 1f)
+                            Icon(
+                                imageVector = Icons.Default.EditNote,
+                                contentDescription = "Quick Notes",
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(bottom = (progress * 60).dp)
+                                    .alpha(progress)
+                                    .size(32.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 }
             }
