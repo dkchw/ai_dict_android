@@ -141,7 +141,7 @@ fun CompareScreen(
             onSend = { if (state.word != null) viewModel.sendFollowUpMessage(viewModel.compareInput, "compare") else viewModel.streamCompare(viewModel.compareInput, sourceLang, targetLang, profileId); viewModel.compareInput = "" },
             isLoading = state.isLoading,
             isFollowUp = state.word != null,
-            externalLinks = externalLinks,
+            externalLinks = if (state.word != null) externalLinks else emptyList(),
             onExternalLinkClick = { link ->
                 val term = if (state.word != null) state.word!!.term else viewModel.compareInput
                 if (term.isNotBlank()) {

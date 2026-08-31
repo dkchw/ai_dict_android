@@ -237,6 +237,15 @@ fun SearchScreen(
             isLoading = state.isLoading,
             placeholder = if (isFollowUp) "Enter your question..." else "Search word...",
             isFollowUp = isFollowUp,
+            externalLinks = if (isFollowUp) externalLinks else emptyList(),
+            onExternalLinkClick = { link ->
+                val term = if (state.word != null) state.word!!.term else viewModel.searchInput
+                if (term.isNotBlank()) {
+                    val url = link.url.replace("{word}", term.trim())
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    context.startActivity(intent)
+                }
+            },
             sourceLang = if (!isFollowUp) sourceLang else null,
             targetLang = if (!isFollowUp) targetLang else null,
             onSourceLangChange = if (!isFollowUp) { { sourceLang = it; viewModel.saveProfileSetting(profileId, "SEARCH_SOURCE", it) } } else null,

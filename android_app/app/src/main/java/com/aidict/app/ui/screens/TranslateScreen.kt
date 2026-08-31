@@ -39,7 +39,6 @@ fun TranslateScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.translateState.collectAsState()
-    val externalLinks by viewModel.externalLinks.collectAsState()
     
     val context = LocalContext.current
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -153,15 +152,6 @@ fun TranslateScreen(
             },
             isLoading = state.isLoading,
             isFollowUp = state.word != null,
-            externalLinks = externalLinks,
-            onExternalLinkClick = { link ->
-                val term = if (state.word != null) state.word!!.term else viewModel.translateInput
-                if (term.isNotBlank()) {
-                    val url = link.url.replace("{word}", term.trim())
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                    context.startActivity(intent)
-                }
-            },
             onClear = { viewModel.clearCurrentSearch() },
             placeholder = if (state.word != null) "Enter your question..." else "Text to translate...",
             sourceLang = sourceLang,
