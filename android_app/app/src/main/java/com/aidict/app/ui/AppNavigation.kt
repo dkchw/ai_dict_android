@@ -308,7 +308,8 @@ colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.
                     Box(modifier = Modifier.fillMaxSize().nestedScroll(pullRefreshState.nestedScrollConnection)) {
                         androidx.compose.foundation.pager.HorizontalPager(
                             state = pagerState,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxSize(),
+                            beyondBoundsPageCount = 1
                         ) { page ->
                             when (page) {
                                 0 -> SearchScreen(searchViewModel, pid)

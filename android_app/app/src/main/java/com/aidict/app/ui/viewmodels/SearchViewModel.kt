@@ -41,6 +41,8 @@ class SearchViewModel(
     private var explainJob: kotlinx.coroutines.Job? = null
     private var compareJob: kotlinx.coroutines.Job? = null
 
+    private val activeStreamJobs = mutableMapOf<String, kotlinx.coroutines.Job>()
+
     private var _searchInput = mutableStateOf("")
     var searchInput: String
         get() = _searchInput.value
@@ -265,9 +267,9 @@ class SearchViewModel(
     }
 
     fun clearCurrentSearch() {
-        // we keep drafts but reset state outputs if explicitly requested, but maybe not?
-        // Actually, we should probably reset all states? No, only reset when switching if desired.
-        // Wait, the prompt says output bleeds. Let's just leave clearCurrentSearch as is but resetting all states.
+        activeStreamJobs.values.forEach { it.cancel() }
+        activeStreamJobs.clear()
+        
         _dictState.value = SearchState()
         _compareState.value = SearchState()
         _translateState.value = SearchState()
@@ -344,7 +346,8 @@ class SearchViewModel(
     }
     fun streamTranslation(text: String, source: String, target: String, profileId: Int) {
         val _uiState = _translateState
-        viewModelScope.launch {
+        activeStreamJobs["translate"]?.cancel()
+        activeStreamJobs["translate"] = viewModelScope.launch {
             _uiState.value = SearchState(isLoading = true, currentStream = "")
             try {
                 llmRepository.streamTranslation(text, source, target).collect {
