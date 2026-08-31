@@ -3,6 +3,9 @@ package com.aidict.app.ui.screens
 
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.scrollable
+import androidx.compose.foundation.rememberScrollState
 
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -46,7 +49,7 @@ fun CompareScreen(
     val context = LocalContext.current
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
 
-    Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
+    Column(modifier = modifier.fillMaxSize().scrollable(rememberScrollState(), Orientation.Vertical).padding(16.dp)) {
         // Chat History & Streaming
         state.error?.let {
             Text(text = "Error: $it", color = MaterialTheme.colorScheme.error)
