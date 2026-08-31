@@ -162,10 +162,15 @@ fun TranslateScreen(
             inputTerm = viewModel.translateInput,
             onValueChange = { viewModel.translateInput = it },
             onSend = {
-                if (state.word != null) {
-                    viewModel.sendFollowUpMessage(viewModel.translateInput, "translate")
+                val query = viewModel.translateInput
+                if (autoNewSearch && state.word != null) {
+                    viewModel.clearCurrentSearch()
+                    viewModel.translateInput = query
+                    viewModel.streamTranslation(query, sourceLang, targetLang, profileId)
+                } else if (state.word != null) {
+                    viewModel.sendFollowUpMessage(query, "translate")
                 } else {
-                    viewModel.streamTranslation(viewModel.translateInput, sourceLang, targetLang, profileId)
+                    viewModel.streamTranslation(query, sourceLang, targetLang, profileId)
                 }
                 viewModel.translateInput = ""
             },

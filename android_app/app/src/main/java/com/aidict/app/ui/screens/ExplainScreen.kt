@@ -62,7 +62,79 @@ fun ExplainScreen(
                     if (state.chatMessages.isEmpty()) {
                         item { Spacer(modifier = Modifier.fillParentMaxSize()) }
                     }
-                    item { Text(text = state.currentStream) }
+                    items(state.chatMessages) { msg ->
+                        var isEditing by remember { mutableStateOf(false) }
+                        var editingContent by remember { mutableStateOf("") }
+                        val isUser = msg.role == "user"
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
+                        ) {
+                            Column(modifier = Modifier.fillMaxWidth(if (isUser) 0.85f else 1f)) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(if (isUser) 1f else 0.85f)
+                                        .padding(vertical = 4.dp)
+                                        .background(
+                                            color = if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                                            shape = RoundedCornerShape(12.dp)
+                                        )
+                                        .padding(12.dp)
+                                ) {
+                                    if (isUser) {
+                                        com.aidict.app.ui.components.MarkdownText(text = msg.content, color = MaterialTheme.colorScheme.onPrimary)
+                                    } else {
+                                        if (isEditing) {
+                                            Column {
+                                                OutlinedTextField(
+                                                    value = editingContent,
+                                                    onValueChange = { editingContent = it },
+                                                    modifier = Modifier.fillMaxWidth()
+                                                )
+                                                Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                                                    TextButton(onClick = { isEditing = false }) { Text("Cancel", color = MaterialTheme.colorScheme.primary) }
+                                                    TextButton(onClick = { 
+                                                        viewModel.editMessage(msg, editingContent, "explain")
+                                                        isEditing = false 
+                                                    }) { Text("Save", color = MaterialTheme.colorScheme.primary) }
+                                                }
+                                            }
+                                        } else {
+                                            com.aidict.app.ui.components.MarkdownText(text = msg.content, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                        }
+                                    }
+                                }
+                                if (!isUser && !isEditing) {
+                                    Row(modifier = Modifier.fillMaxWidth(0.85f), horizontalArrangement = Arrangement.Start) {
+                                        IconButton(onClick = {
+                                            val clip = ClipData.newPlainText("AI Dict", msg.content)
+                                            clipboardManager.setPrimaryClip(clip)
+                                            Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+                                        }) { Icon(Icons.Default.ContentCopy, contentDescription = "Copy", modifier = Modifier.size(16.dp)) }
+                                        IconButton(onClick = { 
+                                            editingContent = msg.content
+                                            isEditing = true 
+                                        }) { Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(16.dp)) }
+                                        IconButton(onClick = { viewModel.retryMessage(msg, false, "explain") }) { Icon(Icons.Default.Refresh, contentDescription = "Retry", modifier = Modifier.size(16.dp)) }
+                                        IconButton(onClick = { viewModel.deleteMessage(msg, "explain") }) { Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp)) }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (state.isLoading && state.currentStream.isNotEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(0.85f)
+                                    .padding(vertical = 4.dp)
+                                    .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(12.dp))
+                                    .padding(12.dp)
+                            ) {
+                                com.aidict.app.ui.components.MarkdownText(text = state.currentStream, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                            }
+                        }
+                    }
                     state.error?.let {
                         item { Text(text = "Error: $it", color = MaterialTheme.colorScheme.error) }
                     }
@@ -74,7 +146,19 @@ fun ExplainScreen(
             availableLanguages = viewModel.orderedLanguages.collectAsState().value,
             inputTerm = viewModel.explainInput,
             onValueChange = { viewModel.explainInput = it },
-            onSend = { if (state.word != null) viewModel.sendFollowUpMessage(viewModel.explainInput, "explain") else viewModel.streamExplain(viewModel.explainInput, sourceLang, targetLang, profileId); viewModel.explainInput = "" },
+            onSend = {
+                val query = viewModel.explainInput
+                if (autoNewSearch && state.word != null) {
+                    viewModel.clearCurrentSearch()
+                    viewModel.explainInput = query
+                    viewModel.streamExplain(query, sourceLang, targetLang, profileId)
+                } else if (state.word != null) {
+                    viewModel.sendFollowUpMessage(query, "explain")
+                } else {
+                    viewModel.streamExplain(query, sourceLang, targetLang, profileId)
+                }
+                viewModel.explainInput = ""
+            },
             isLoading = state.isLoading,
             autoNewSearch = autoNewSearch,
             onToggleAutoNewSearch = onToggleAutoNewSearch,
