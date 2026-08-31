@@ -261,6 +261,11 @@ class SearchViewModel(
         _compareState.value = SearchState()
         _translateState.value = SearchState()
         _explainState.value = SearchState()
+        
+        searchInput = ""
+        translateInput = ""
+        compareInput = ""
+        explainInput = ""
     }
 
     fun deleteMessage(msg: com.aidict.app.data.entities.ChatMessage, mode: String) {

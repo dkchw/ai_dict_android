@@ -215,6 +215,8 @@ colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.
                                         text = { Text(profile.name) },
                                         onClick = { 
                                             appViewModel.setActiveProfile(profile)
+                                            searchViewModel.clearCurrentSearch()
+                                            historyViewModel.setActiveSession(null)
                                             expanded = false 
                                         }
                                     )
