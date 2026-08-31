@@ -10,6 +10,16 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface AppDao {
+
+    @Query("SELECT * FROM word WHERE profileId = :profileId AND mode = :mode AND term = :term AND (language = :language OR (language IS NULL AND :language IS NULL)) ORDER BY createdAt DESC LIMIT 1")
+    suspend fun findWordExact(profileId: Int, mode: String, term: String, language: String?): com.aidict.app.data.entities.Word?
+    
+    @Query("UPDATE word SET searchCount = searchCount + 1 WHERE id = :wordId")
+    suspend fun incrementSearchCount(wordId: Int)
+    
+    @Query("UPDATE word SET viewCount = viewCount + 1 WHERE id = :wordId")
+    suspend fun incrementViewCount(wordId: Int)
+
     @Query("SELECT * FROM profile ORDER BY rank ASC")
     fun getProfiles(): Flow<List<Profile>>
 

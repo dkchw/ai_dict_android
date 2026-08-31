@@ -139,5 +139,8 @@ class HistoryViewModel(private val database: AppDatabase) : ViewModel() {
 
     fun setSelectedWordId(wordId: Int?) {
         selectedWordId.value = wordId
+        if (wordId != null) {
+            viewModelScope.launch { database.appDao().incrementViewCount(wordId) }
+        }
     }
 }

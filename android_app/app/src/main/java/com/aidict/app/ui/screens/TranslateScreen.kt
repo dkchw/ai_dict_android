@@ -63,6 +63,15 @@ fun TranslateScreen(
             Text(text = "Error: $it", color = MaterialTheme.colorScheme.error)
             Spacer(modifier = Modifier.height(8.dp))
         }
+        state.word?.let { word ->
+            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End) {
+                Text(
+                    text = "Searches: ${word.searchCount} | Views: ${word.viewCount}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
         LazyColumn(modifier = Modifier.weight(1f)) {
             if (state.chatMessages.isEmpty()) {
                 item { Spacer(modifier = Modifier.fillParentMaxSize()) }

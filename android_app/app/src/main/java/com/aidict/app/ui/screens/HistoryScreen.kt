@@ -274,6 +274,11 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                Text(
+                    text = "Searches: ${selectedWord!!.searchCount} | Views: ${selectedWord!!.viewCount}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Spacer(modifier = Modifier.height(8.dp))
                 LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     items(messages) { msg ->

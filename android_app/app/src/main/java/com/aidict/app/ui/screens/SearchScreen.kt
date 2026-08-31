@@ -82,11 +82,17 @@ fun SearchScreen(
                     .padding(8.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "${word.term} ${word.language?.let { "($it)" } ?: ""}",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.weight(1f)
-                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "${word.term} ${word.language?.let { "($it)" } ?: ""}",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = "Searches: ${word.searchCount} | Views: ${word.viewCount}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
 
                     IconButton(onClick = {
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager

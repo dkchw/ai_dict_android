@@ -129,6 +129,14 @@ class SearchViewModel(
         viewModelScope.launch {
             try {
                 val sessionId = getOrCreateActiveSessionId(profileId)
+                val existingWord = database.appDao().findWordExact(profileId, "dict", term, null)
+                if (existingWord != null) {
+                    database.appDao().incrementSearchCount(existingWord.id)
+                    val updatedWord = existingWord.copy(searchCount = existingWord.searchCount + 1, sessionId = sessionId)
+                    database.appDao().insertWord(updatedWord)
+                    loadWord(updatedWord)
+                    return@launch
+                }
                 val initialWord = com.aidict.app.data.entities.Word(profileId = profileId, term = term, sessionId = sessionId, mode = "dict")
                 val wordId = database.appDao().insertWord(initialWord).toInt()
                 val savedWord = initialWord.copy(id = wordId)
@@ -260,10 +268,14 @@ class SearchViewModel(
     fun loadWord(word: com.aidict.app.data.entities.Word) {
         val _uiState = getUiState(word.mode)
         viewModelScope.launch {
+            database.appDao().incrementViewCount(word.id)
+            val updatedWord = word.copy(viewCount = word.viewCount + 1)
+            database.appDao().insertWord(updatedWord)
             val messages = database.appDao().getChatMessagesSync(word.id)
             _uiState.value = SearchState(
+                word = updatedWord,
                 isLoading = false,
-                word = word,
+                
                 chatMessages = messages,
                 currentStream = "",
                 error = null
@@ -361,7 +373,16 @@ class SearchViewModel(
         viewModelScope.launch {
             try {
                 val sessionId = getOrCreateActiveSessionId(profileId)
-                val initialWord = com.aidict.app.data.entities.Word(profileId = profileId, term = text, language = "$source -> $target", sessionId = sessionId, mode = "translate")
+                val langKey = "$source -> $target"
+                val existingWord = database.appDao().findWordExact(profileId, "translate", text, langKey)
+                if (existingWord != null) {
+                    database.appDao().incrementSearchCount(existingWord.id)
+                    val updatedWord = existingWord.copy(searchCount = existingWord.searchCount + 1, sessionId = sessionId)
+                    database.appDao().insertWord(updatedWord)
+                    loadWord(updatedWord)
+                    return@launch
+                }
+                val initialWord = com.aidict.app.data.entities.Word(profileId = profileId, term = text, language = langKey, sessionId = sessionId, mode = "translate")
                 val wordId = database.appDao().insertWord(initialWord).toInt()
                 val savedWord = initialWord.copy(id = wordId)
                 val initialMsg = com.aidict.app.data.entities.ChatMessage(wordId = wordId, role = "assistant", content = "")
@@ -395,7 +416,16 @@ class SearchViewModel(
         viewModelScope.launch {
             try {
                 val sessionId = getOrCreateActiveSessionId(profileId)
-                val initialWord = com.aidict.app.data.entities.Word(profileId = profileId, term = text, language = "$sourceLang -> $targetLang", sessionId = sessionId, mode = "explain")
+                val langKey = "$sourceLang -> $targetLang"
+                val existingWord = database.appDao().findWordExact(profileId, "explain", text, langKey)
+                if (existingWord != null) {
+                    database.appDao().incrementSearchCount(existingWord.id)
+                    val updatedWord = existingWord.copy(searchCount = existingWord.searchCount + 1, sessionId = sessionId)
+                    database.appDao().insertWord(updatedWord)
+                    loadWord(updatedWord)
+                    return@launch
+                }
+                val initialWord = com.aidict.app.data.entities.Word(profileId = profileId, term = text, language = langKey, sessionId = sessionId, mode = "explain")
                 val wordId = database.appDao().insertWord(initialWord).toInt()
                 val savedWord = initialWord.copy(id = wordId)
                 val initialMsg = com.aidict.app.data.entities.ChatMessage(wordId = wordId, role = "assistant", content = "")
@@ -429,7 +459,16 @@ class SearchViewModel(
         viewModelScope.launch {
             try {
                 val sessionId = getOrCreateActiveSessionId(profileId)
-                val initialWord = com.aidict.app.data.entities.Word(profileId = profileId, term = words, language = "$sourceLang -> $targetLang", sessionId = sessionId, mode = "compare")
+                val langKey = "$sourceLang -> $targetLang"
+                val existingWord = database.appDao().findWordExact(profileId, "compare", words, langKey)
+                if (existingWord != null) {
+                    database.appDao().incrementSearchCount(existingWord.id)
+                    val updatedWord = existingWord.copy(searchCount = existingWord.searchCount + 1, sessionId = sessionId)
+                    database.appDao().insertWord(updatedWord)
+                    loadWord(updatedWord)
+                    return@launch
+                }
+                val initialWord = com.aidict.app.data.entities.Word(profileId = profileId, term = words, language = langKey, sessionId = sessionId, mode = "compare")
                 val wordId = database.appDao().insertWord(initialWord).toInt()
                 val savedWord = initialWord.copy(id = wordId)
                 val initialMsg = com.aidict.app.data.entities.ChatMessage(wordId = wordId, role = "assistant", content = "")
