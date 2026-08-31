@@ -130,7 +130,7 @@ fun CompareScreen(
             onSend = { if (state.word != null) viewModel.sendFollowUpMessage(text) else viewModel.streamCompare(text, profileId); text = "" },
             isLoading = state.isLoading,
             isFollowUp = state.word != null,
-            onClear = if (state.word != null) { { viewModel.clearCurrentSearch() } } else null,
+            onClear = { viewModel.clearCurrentSearch() },
             placeholder = "Words to compare (comma separated)..."
         )
     }

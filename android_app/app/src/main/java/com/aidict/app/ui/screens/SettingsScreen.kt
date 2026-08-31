@@ -433,6 +433,15 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                 }
             }
         }
+
+        item { Spacer(Modifier.height(32.dp)) }
+        item {
+            val context = androidx.compose.ui.platform.LocalContext.current
+            Button(
+                onClick = { com.aidict.app.utils.AutoUpdater(context).checkForUpdates() },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Check for Updates") }
+        }
     }
 
     if (showProfileDialog) {
@@ -481,6 +490,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                 TextButton(onClick = { showRenameDialog = null }) { Text("Cancel") }
             }
         )
+
     }
 }
 

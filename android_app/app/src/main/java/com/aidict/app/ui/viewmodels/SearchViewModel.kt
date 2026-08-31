@@ -167,6 +167,10 @@ class SearchViewModel(
     }
 
     fun clearCurrentSearch() {
+        searchInput = ""
+        translateInput = ""
+        explainInput = ""
+        compareInput = ""
         _uiState.value = SearchState()
     }
 

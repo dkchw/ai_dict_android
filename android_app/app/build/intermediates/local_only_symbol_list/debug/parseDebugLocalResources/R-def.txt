@@ -14,3 +14,4 @@ string history_title
 string import_data
 string settings_title
 style Theme.AIDict
+xml provider_paths

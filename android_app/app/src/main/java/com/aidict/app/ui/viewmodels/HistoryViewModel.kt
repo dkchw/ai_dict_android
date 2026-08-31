@@ -99,4 +99,15 @@ class HistoryViewModel(private val database: AppDatabase) : ViewModel() {
             database.appDao().insertSetting(com.aidict.app.data.entities.AppSetting("HISTORY_SPLIT_FRACTION", fraction.toString()))
         }
     }
+
+    private val selectedWordId = MutableStateFlow<Int?>(null)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val selectedChatMessages = selectedWordId.flatMapLatest { wordId ->
+        if (wordId == null) kotlinx.coroutines.flow.flowOf(emptyList())
+        else database.appDao().getChatMessages(wordId)
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    fun setSelectedWordId(wordId: Int?) {
+        selectedWordId.value = wordId
+    }
 }

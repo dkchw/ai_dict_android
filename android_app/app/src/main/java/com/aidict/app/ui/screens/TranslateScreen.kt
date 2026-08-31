@@ -150,7 +150,7 @@ fun TranslateScreen(
             },
             isLoading = state.isLoading,
             isFollowUp = state.word != null,
-            onClear = if (state.word != null) { { viewModel.clearCurrentSearch() } } else null,
+            onClear = { viewModel.clearCurrentSearch() },
             placeholder = "Text to translate...",
             sourceLang = sourceLang,
             targetLang = targetLang,

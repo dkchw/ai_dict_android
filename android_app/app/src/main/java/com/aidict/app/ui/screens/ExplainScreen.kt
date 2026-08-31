@@ -56,7 +56,7 @@ fun ExplainScreen(
             onSend = { if (state.word != null) viewModel.sendFollowUpMessage(text) else viewModel.streamExplain(text, profileId); text = "" },
             isLoading = state.isLoading,
             isFollowUp = state.word != null,
-            onClear = if (state.word != null) { { viewModel.clearCurrentSearch() } } else null,
+            onClear = { viewModel.clearCurrentSearch() },
             placeholder = "Paste sentence/paragraph to explain..."
         )
     }

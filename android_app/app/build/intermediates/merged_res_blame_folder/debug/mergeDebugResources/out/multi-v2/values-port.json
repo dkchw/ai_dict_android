@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.aidict.app-mergeDebugResources-70:/values-port/values-port.xml",
+            "map": [
+                {
+                    "source": "/home/dkchw/Distrobox/.gradle/caches/transforms-4/d188aadd5e097b223aa28a1d067e38f4/transformed/appcompat-1.6.1/res/values-port/values-port.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "55",
+                        "endOffsets": "106"
+                    }
+                }
+            ]
+        }
+    ]
+}

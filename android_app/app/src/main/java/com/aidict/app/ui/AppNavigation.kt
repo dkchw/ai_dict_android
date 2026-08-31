@@ -184,14 +184,14 @@ colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.
                     }
                 },
                 title = { 
-                    Column(modifier = Modifier.fillMaxWidth().padding(end = 8.dp), horizontalAlignment = Alignment.End) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(start = 8.dp), horizontalAlignment = Alignment.Start) {
                         Text("AI Dict", style = MaterialTheme.typography.titleLarge)
                         var expanded by remember { mutableStateOf(false) }
                         Box {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically, 
-                                modifier = Modifier.clickable { expanded = true }.padding(horizontal = 8.dp, vertical = 2.dp),
-                                horizontalArrangement = Arrangement.End
+                                modifier = Modifier.clickable { expanded = true }.padding(vertical = 2.dp),
+                                horizontalArrangement = Arrangement.Start
                             ) {
                                 Text(appState.activeProfile?.name ?: "Default", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                                 Icon(Icons.Default.ArrowDropDown, contentDescription = "Select", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
@@ -232,7 +232,12 @@ colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.
                     modes.forEachIndexed { index, tab ->
                         NavigationBarItem(
                             selected = currentMode == index,
-                            onClick = { currentMode = index },
+                            onClick = { 
+                                if (currentMode != index) {
+                                    currentMode = index
+                                    searchViewModel.clearCurrentSearch()
+                                }
+                            },
                             icon = { Icon(tab.icon, contentDescription = tab.title) },
                             label = { Text(tab.title) }
                         )
@@ -279,9 +284,6 @@ colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.
                 }
                 Screen.MAIN -> {
                     val pid = appState.activeProfile?.id ?: 1
-                    LaunchedEffect(currentMode) {
-                        searchViewModel.clearCurrentSearch()
-                    }
                     when (currentMode) {
                         0 -> SearchScreen(searchViewModel, pid)
                         1 -> CompareScreen(searchViewModel, pid)
