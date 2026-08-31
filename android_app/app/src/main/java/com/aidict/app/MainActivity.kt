@@ -76,8 +76,22 @@ class MainActivity : ComponentActivity() {
                 )
             } else colorScheme
 
+            val uiScaleStr by settingsViewModel.getSettingFlow("UI_SCALE", "1.0").collectAsState()
+            val textScaleStr by settingsViewModel.getSettingFlow("TEXT_SIZE_SCALE", "1.0").collectAsState()
+            val uiScale = uiScaleStr.toFloatOrNull() ?: 1.0f
+            val textScale = textScaleStr.toFloatOrNull() ?: 1.0f
+            
+            val currentDensity = androidx.compose.ui.platform.LocalDensity.current
+            val newDensity = androidx.compose.ui.unit.Density(
+                density = currentDensity.density * uiScale,
+                fontScale = currentDensity.fontScale * textScale
+            )
+
             MaterialTheme(colorScheme = modifiedColorScheme) {
-                Surface(color = MaterialTheme.colorScheme.background) {
+                androidx.compose.runtime.CompositionLocalProvider(
+                    androidx.compose.ui.platform.LocalDensity provides newDensity
+                ) {
+                    Surface(color = MaterialTheme.colorScheme.background) {
                     AppNavigation(
                         appViewModel = appViewModel,
                         windowSizeClass = windowSizeClass,
@@ -87,6 +101,7 @@ class MainActivity : ComponentActivity() {
                         notesViewModel = notesViewModel,
                         onColorExtracted = { dynamicColorState.value = it }
                     )
+                    }
                 }
             }
         }

@@ -61,7 +61,7 @@ class SettingsViewModel(
         }
     }
 
-    private fun getSettingFlow(key: String, default: String): StateFlow<String> {
+    fun getSettingFlow(key: String, default: String): StateFlow<String> {
         return database.appDao().getSettingsFlow()
             .map { settings -> settings.find { it.key == key }?.value ?: default }
             .stateIn(viewModelScope, SharingStarted.Lazily, default)

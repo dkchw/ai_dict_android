@@ -308,11 +308,25 @@ colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.
                     
                     // We can use nested scroll or a simple pull refresh state
                     val pullRefreshState = androidx.compose.material3.pulltorefresh.rememberPullToRefreshState()
+                    var maxProgress by remember { mutableStateOf(0f) }
+                    
+                    if (pullRefreshState.progress > maxProgress) {
+                        maxProgress = pullRefreshState.progress
+                    }
+                    if (pullRefreshState.progress == 0f && !pullRefreshState.isRefreshing) {
+                        maxProgress = 0f
+                    }
+                    
                     if (pullRefreshState.isRefreshing) {
                         LaunchedEffect(Unit) {
-                            appViewModel.clearHistoryUnseen()
-                            currentScreen = Screen.HISTORY
+                            if (maxProgress > 1.8f) {
+                                currentScreen = Screen.SETTINGS
+                            } else {
+                                appViewModel.clearHistoryUnseen()
+                                currentScreen = Screen.HISTORY
+                            }
                             pullRefreshState.endRefresh()
+                            maxProgress = 0f
                         }
                     }
                     
