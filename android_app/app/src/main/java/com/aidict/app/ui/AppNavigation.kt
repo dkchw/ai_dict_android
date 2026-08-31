@@ -1,6 +1,8 @@
 package com.aidict.app.ui
 
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
+import androidx.compose.foundation.background
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.*
 import kotlinx.coroutines.launch
@@ -173,10 +175,16 @@ fun AppNavigation(
         }
     Scaffold(containerColor = androidx.compose.ui.graphics.Color.Transparent,
         topBar = {
-            TopAppBar(
-colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
-
-                navigationIcon = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .background(androidx.compose.ui.graphics.Color.Transparent)
+                    .padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     if (currentScreen == Screen.MAIN) {
                         IconButton(onClick = { 
                             appViewModel.clearHistoryUnseen()
@@ -192,13 +200,12 @@ colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.
                         }
                     } else {
                         IconButton(onClick = { currentScreen = Screen.MAIN }) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
                     }
-                },
-                title = { 
-                    Column(modifier = Modifier.fillMaxWidth().padding(start = 8.dp), horizontalAlignment = Alignment.Start) {
-                        Text("AI Dict", style = MaterialTheme.typography.titleLarge)
+                    
+                    Column(modifier = Modifier.padding(start = 4.dp), horizontalAlignment = Alignment.Start) {
+                        Text("AI Dict", style = MaterialTheme.typography.titleMedium)
                         var expanded by remember { mutableStateOf(false) }
                         Box {
                             Row(
@@ -206,8 +213,8 @@ colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.
                                 modifier = Modifier.clickable { expanded = true }.padding(vertical = 2.dp),
                                 horizontalArrangement = Arrangement.Start
                             ) {
-                                Text(appState.activeProfile?.name ?: "Default", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-                                Icon(Icons.Default.ArrowDropDown, contentDescription = "Select", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                                Text(appState.activeProfile?.name ?: "Default", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                                Icon(Icons.Default.ArrowDropDown, contentDescription = "Select", modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
                             }
                             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                                 appState.profiles.forEach { profile ->
@@ -224,14 +231,14 @@ colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.
                             }
                         }
                     }
-                },
-                actions = {
-
+                }
+                
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     if (currentScreen == Screen.MAIN) {
                         androidx.compose.material3.Text(
                             text = modes[currentMode].title,
-                            style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
-                            modifier = androidx.compose.ui.Modifier.padding(end = 8.dp).align(androidx.compose.ui.Alignment.CenterVertically),
+                            style = androidx.compose.material3.MaterialTheme.typography.titleSmall,
+                            modifier = androidx.compose.ui.Modifier.padding(end = 8.dp),
                             color = androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
                         )
                         IconButton(onClick = { currentScreen = Screen.NOTES }) {
@@ -241,27 +248,43 @@ colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.
                             Icon(Icons.Default.Settings, contentDescription = "Settings")
                         }
                     } else {
-
-                        Spacer(modifier = Modifier.width(48.dp)) // Balance the title centering
+                        Spacer(modifier = Modifier.width(48.dp))
                     }
                 }
-            )
+            }
         },
         bottomBar = {
             if (currentScreen == Screen.MAIN) {
-                NavigationBar(containerColor = androidx.compose.ui.graphics.Color.Transparent) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(48.dp).background(androidx.compose.ui.graphics.Color.Transparent),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     modes.forEachIndexed { index, tab ->
-                        NavigationBarItem(
-                            selected = currentMode == index,
-                            onClick = { 
-                                if (currentMode != index) {
-                                    coroutineScope.launch { pagerState.animateScrollToPage(index) }
-                                    searchViewModel.clearCurrentSearch()
+                        val isSelected = currentMode == index
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .clickable {
+                                    if (currentMode != index) {
+                                        coroutineScope.launch { pagerState.animateScrollToPage(index) }
+                                        searchViewModel.clearCurrentSearch()
+                                    }
                                 }
-                            },
-                            icon = { Icon(tab.icon, contentDescription = tab.title) },
-                            label = { Text(tab.title) }
-                        )
+                                .padding(horizontal = 16.dp, vertical = 4.dp)
+                        ) {
+                            Icon(
+                                tab.icon, 
+                                contentDescription = tab.title, 
+                                tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Text(
+                                tab.title, 
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }
@@ -306,7 +329,6 @@ colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.
                 Screen.MAIN -> {
                     val pid = appState.activeProfile?.id ?: 1
                     
-                    // We can use nested scroll or a simple pull refresh state
                     val pullRefreshState = androidx.compose.material3.pulltorefresh.rememberPullToRefreshState()
                     var maxProgress by remember { mutableStateOf(0f) }
                     
@@ -319,7 +341,7 @@ colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.
                     
                     if (pullRefreshState.isRefreshing) {
                         LaunchedEffect(Unit) {
-                            if (maxProgress > 1.8f) {
+                            if (maxProgress > 1.3f) {
                                 currentScreen = Screen.SETTINGS
                             } else {
                                 appViewModel.clearHistoryUnseen()
@@ -348,6 +370,25 @@ colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.
                             state = pullRefreshState,
                             modifier = Modifier.align(Alignment.TopCenter)
                         )
+                        
+                        if (pullRefreshState.progress > 0f) {
+                            val isHardPull = pullRefreshState.progress > 1.3f
+                            Box(modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(top = 90.dp)
+                                .background(
+                                    color = if (isHardPull) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant, 
+                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                                )
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                            ) {
+                                Text(
+                                    text = if (isHardPull) "Release for Settings" else "Pull further for Settings",
+                                    color = if (isHardPull) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            }
+                        }
                     }
                 }
             }
