@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
+import com.aidict.app.data.entities.AppSetting
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -34,6 +36,20 @@ class HistoryViewModel(private val database: AppDatabase) : ViewModel() {
         
     val sessions = activeProfileId.flatMapLatest { pid -> database.appDao().getSessions(pid.toLong()) }
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    
+    val activeSessionId = database.appDao().getSettingsFlow().map { settings ->
+        settings.find { it.key == "ACTIVE_SESSION_ID" }?.value
+    }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Lazily, null)
+
+    fun setActiveSession(id: String?) {
+        viewModelScope.launch {
+            if (id == null) {
+                database.appDao().insertSetting(AppSetting("ACTIVE_SESSION_ID", ""))
+            } else {
+                database.appDao().insertSetting(AppSetting("ACTIVE_SESSION_ID", id))
+            }
+        }
+    }
 
     val historyState: StateFlow<List<Word>> = combine(
         allHistory, 
@@ -67,7 +83,9 @@ class HistoryViewModel(private val database: AppDatabase) : ViewModel() {
     
     fun createSession(name: String) {
         viewModelScope.launch {
-            database.appDao().insertSession(Session(name = name, profileId = activeProfileId.value.toLong()))
+            val s = Session(name = name, profileId = activeProfileId.value.toLong())
+            database.appDao().insertSession(s)
+            setActiveSession(s.id)
         }
     }
     

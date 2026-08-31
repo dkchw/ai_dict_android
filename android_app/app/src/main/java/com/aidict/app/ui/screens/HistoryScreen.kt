@@ -41,6 +41,7 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
 ) {
     val history by viewModel.historyState.collectAsState()
     val sessions by viewModel.sessions.collectAsState()
+    val activeSessionId by viewModel.activeSessionId.collectAsState()
     val colorFilter by viewModel.colorFilter.collectAsState()
     val starsFilter by viewModel.starsFilter.collectAsState()
     var query by remember { mutableStateOf("") }
@@ -137,14 +138,15 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
             LazyColumn(modifier = Modifier.weight(1f)) {
                 sessions.forEach { session ->
                     val wordsInSession = grouped[session.id] ?: emptyList()
-                    if (wordsInSession.isNotEmpty() || sessions.size > 1) {
-                        item {
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 8.dp)) {
-                                Text(
-                                    text = session.name,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    modifier = Modifier.weight(1f)
-                                )
+                    val isSessionActive = activeSessionId == session.id
+                    item {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).background(if (isSessionActive) MaterialTheme.colorScheme.primaryContainer else androidx.compose.ui.graphics.Color.Transparent, shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)).clickable { viewModel.setActiveSession(session.id) }.padding(8.dp)) {
+                            Text(
+                                text = session.name + if (isSessionActive) " (Active)" else "",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = if (isSessionActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f)
+                            )
                                 IconButton(onClick = { 
                                     sessionNameInput = session.name
                                     showRenameSession = session
@@ -191,7 +193,6 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                                 }
                             }
                         }
-                    }
                 }
                 
                 val unknownSessions = grouped.keys.filter { sid -> sessions.none { it.id == sid } }
