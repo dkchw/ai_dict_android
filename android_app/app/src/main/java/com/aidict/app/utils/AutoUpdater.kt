@@ -85,34 +85,45 @@ class AutoUpdater(private val context: Context) {
                 if (intent.action == DownloadManager.ACTION_DOWNLOAD_COMPLETE) {
                     val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
                     if (id == downloadId) {
-                        installApk("ai_dict_$version.apk")
-                        context.unregisterReceiver(this)
+                        installApk("ai_dict_$version.apk", downloadId)
+                        ctxt.applicationContext.unregisterReceiver(this)
                     }
                 }
             }
         }
         
+        val appContext = context.applicationContext
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.registerReceiver(onComplete, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), Context.RECEIVER_EXPORTED)
+            appContext.registerReceiver(onComplete, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), Context.RECEIVER_EXPORTED)
         } else {
-            context.registerReceiver(onComplete, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
+            appContext.registerReceiver(onComplete, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
         }
     }
 
-    private fun installApk(filename: String) {
+    private fun installApk(filename: String, downloadId: Long) {
         try {
-            val file = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), filename)
-            if (file.exists()) {
+            val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            var apkUri = downloadManager.getUriForDownloadedFile(downloadId)
+            
+            if (apkUri == null) {
+                val file = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), filename)
+                if (file.exists()) {
+                    apkUri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+                }
+            }
+            
+            if (apkUri != null) {
                 val intent = Intent(Intent.ACTION_VIEW)
-                val apkUri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
                 intent.setDataAndType(apkUri, "application/vnd.android.package-archive")
                 intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(intent)
+            } else {
+                Toast.makeText(context, "Downloaded file not found.", Toast.LENGTH_SHORT).show()
             }
         } catch (e: Exception) {
             e.printStackTrace()
-            Toast.makeText(context, "Failed to install update.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Failed to install update: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 }
