@@ -277,12 +277,7 @@ fun AppNavigation(
                                 tab.icon, 
                                 contentDescription = tab.title, 
                                 tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Text(
-                                tab.title, 
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                modifier = Modifier.size(28.dp) // slightly larger since there's no text
                             )
                         }
                     }
