@@ -85,7 +85,8 @@ class SettingsViewModel(
 
     fun createProfile(name: String) {
         viewModelScope.launch {
-            database.appDao().insertProfile(Profile(name = name, rank = 0, isDefault = false))
+            val maxRank = profiles.value.maxOfOrNull { it.rank } ?: -1
+            database.appDao().insertProfile(Profile(name = name, rank = maxRank + 1, isDefault = false))
         }
     }
 
@@ -116,27 +117,43 @@ class SettingsViewModel(
         }
     }
 
-    fun moveProfileUp(profile: Profile) {
+    private suspend fun normalizeRanks(allProfiles: List<com.aidict.app.data.entities.Profile>): List<com.aidict.app.data.entities.Profile> {
+        var needsUpdate = false
+        val updated = allProfiles.mapIndexed { index, p -> 
+            if (p.rank != index) needsUpdate = true
+            p.copy(rank = index) 
+        }
+        if (needsUpdate) {
+            updated.forEach { database.appDao().insertProfile(it) }
+        }
+        return updated
+    }
+
+    fun moveProfileUp(profile: com.aidict.app.data.entities.Profile) {
         viewModelScope.launch {
-            val allProfiles = profiles.value.sortedBy { it.rank }.toMutableList()
+            val allProfiles = normalizeRanks(profiles.value.sortedBy { it.rank })
             val index = allProfiles.indexOfFirst { it.id == profile.id }
             if (index > 0) {
                 val above = allProfiles[index - 1]
-                val currentRank = profile.rank
-                database.appDao().insertProfile(profile.copy(rank = above.rank))
+                val pToUpdate = allProfiles[index]
+                
+                val currentRank = pToUpdate.rank
+                database.appDao().insertProfile(pToUpdate.copy(rank = above.rank))
                 database.appDao().insertProfile(above.copy(rank = currentRank))
             }
         }
     }
 
-    fun moveProfileDown(profile: Profile) {
+    fun moveProfileDown(profile: com.aidict.app.data.entities.Profile) {
         viewModelScope.launch {
-            val allProfiles = profiles.value.sortedBy { it.rank }.toMutableList()
+            val allProfiles = normalizeRanks(profiles.value.sortedBy { it.rank })
             val index = allProfiles.indexOfFirst { it.id == profile.id }
             if (index < allProfiles.size - 1) {
                 val below = allProfiles[index + 1]
-                val currentRank = profile.rank
-                database.appDao().insertProfile(profile.copy(rank = below.rank))
+                val pToUpdate = allProfiles[index]
+                
+                val currentRank = pToUpdate.rank
+                database.appDao().insertProfile(pToUpdate.copy(rank = below.rank))
                 database.appDao().insertProfile(below.copy(rank = currentRank))
             }
         }
