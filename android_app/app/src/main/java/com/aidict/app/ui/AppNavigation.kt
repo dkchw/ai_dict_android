@@ -383,7 +383,7 @@ fun AppNavigation(
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
                             ) {
                                 Text(
-                                    text = if (isHardPull) "Release for Settings" else "Pull further for Settings",
+                                    text = if (isHardPull) "Release for Settings" else "Release for History",
                                     color = if (isHardPull) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                                     style = MaterialTheme.typography.labelMedium
                                 )
