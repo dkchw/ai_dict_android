@@ -1,10 +1,14 @@
 package com.aidict.app.ui.screens
 
+import androidx.compose.foundation.clickable
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -284,16 +288,37 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
             )
 
             com.aidict.app.ui.components.SearchableDropdown(
-
                 label = "Display Quote on Empty Screens",
-
                 currentValue = quote,
-
                 options = quotes,
-
                 onSelected = { viewModel.saveSetting("QUOTE_MODE", it) }
-
             )
+
+            if (quote == "Shuffle") {
+                val enabledQuotes by viewModel.shuffleEnabledQuotes.collectAsState()
+                val currentEnabled = enabledQuotes ?: allQuotesList
+                
+                Card(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Quotes included in Shuffle:", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
+                        allQuotesList.forEach { q ->
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable {
+                                val newSet = currentEnabled.toMutableSet()
+                                if (newSet.contains(q)) newSet.remove(q) else newSet.add(q)
+                                if (newSet.isEmpty()) newSet.add(q) // Ensure at least one
+                                viewModel.saveSetting("SHUFFLE_ENABLED_QUOTES", Json.encodeToString(newSet.toList()))
+                            }.padding(vertical = 4.dp)) {
+                                androidx.compose.material3.Checkbox(
+                                    checked = currentEnabled.contains(q),
+                                    onCheckedChange = null
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(q, style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    }
+                }
+            }
 
         }
 

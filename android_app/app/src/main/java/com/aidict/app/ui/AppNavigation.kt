@@ -138,10 +138,13 @@ fun AppNavigation(
         val fontFamily = when(quoteStyleStr) { "Serif" -> androidx.compose.ui.text.font.FontFamily.Serif; "Sans Serif" -> androidx.compose.ui.text.font.FontFamily.SansSerif; "Monospace" -> androidx.compose.ui.text.font.FontFamily.Monospace; "Cursive" -> androidx.compose.ui.text.font.FontFamily.Cursive; else -> androidx.compose.ui.text.font.FontFamily.Default }
 
         val quotesList by settingsViewModel.allQuotes.collectAsState()
+        val shuffleEnabledQuotes by settingsViewModel.shuffleEnabledQuotes.collectAsState()
+        
+        val activeShuffleList = shuffleEnabledQuotes?.filter { it in quotesList }?.takeIf { it.isNotEmpty() } ?: quotesList
 
-        var shuffledQuote by remember { mutableStateOf(quotesList.random()) }
+        var shuffledQuote by remember { mutableStateOf(activeShuffleList.randomOrNull() ?: "") }
 
-        LaunchedEffect(currentMode) { if (quoteMode == "Shuffle") shuffledQuote = quotesList.random() }
+        LaunchedEffect(currentMode, activeShuffleList) { if (quoteMode == "Shuffle") shuffledQuote = activeShuffleList.randomOrNull() ?: "" }
 
         val displayQuote = when (quoteMode) { "None" -> null; "Shuffle" -> shuffledQuote; else -> quoteMode }
 
