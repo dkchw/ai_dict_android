@@ -61,6 +61,9 @@ fun TranslateScreen(
             Spacer(modifier = Modifier.height(8.dp))
         }
         LazyColumn(modifier = Modifier.weight(1f)) {
+            if (state.chatMessages.isEmpty()) {
+                item { Spacer(modifier = Modifier.fillParentMaxSize()) }
+            }
             items(state.chatMessages) { msg ->
                 var isEditing by remember { mutableStateOf(false) }
                 var editingContent by remember { mutableStateOf("") }

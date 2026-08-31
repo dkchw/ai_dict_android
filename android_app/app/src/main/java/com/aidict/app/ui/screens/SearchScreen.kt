@@ -139,6 +139,9 @@ fun SearchScreen(
 
         // Chat History & Streaming
         LazyColumn(modifier = Modifier.weight(1f)) {
+            if (state.chatMessages.isEmpty()) {
+                item { Spacer(modifier = Modifier.fillParentMaxSize()) }
+            }
             items(state.chatMessages) { msg ->
                 var isEditing by remember { mutableStateOf(false) }
                 var editingContent by remember { mutableStateOf("") }

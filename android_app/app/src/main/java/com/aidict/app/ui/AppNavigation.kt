@@ -330,25 +330,12 @@ fun AppNavigation(
                     val pid = appState.activeProfile?.id ?: 1
                     
                     val pullRefreshState = androidx.compose.material3.pulltorefresh.rememberPullToRefreshState()
-                    var maxProgress by remember { mutableStateOf(0f) }
-                    
-                    if (pullRefreshState.progress > maxProgress) {
-                        maxProgress = pullRefreshState.progress
-                    }
-                    if (pullRefreshState.progress == 0f && !pullRefreshState.isRefreshing) {
-                        maxProgress = 0f
-                    }
                     
                     if (pullRefreshState.isRefreshing) {
                         LaunchedEffect(Unit) {
-                            if (maxProgress > 1.3f) {
-                                currentScreen = Screen.SETTINGS
-                            } else {
-                                appViewModel.clearHistoryUnseen()
-                                currentScreen = Screen.HISTORY
-                            }
+                            appViewModel.clearHistoryUnseen()
+                            currentScreen = Screen.HISTORY
                             pullRefreshState.endRefresh()
-                            maxProgress = 0f
                         }
                     }
                     
@@ -370,25 +357,6 @@ fun AppNavigation(
                             state = pullRefreshState,
                             modifier = Modifier.align(Alignment.TopCenter)
                         )
-                        
-                        if (pullRefreshState.progress > 0f) {
-                            val isHardPull = pullRefreshState.progress > 1.3f
-                            Box(modifier = Modifier
-                                .align(Alignment.TopCenter)
-                                .padding(top = 90.dp)
-                                .background(
-                                    color = if (isHardPull) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant, 
-                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
-                                )
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                            ) {
-                                Text(
-                                    text = if (isHardPull) "Release for Settings" else "Release for History",
-                                    color = if (isHardPull) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    style = MaterialTheme.typography.labelMedium
-                                )
-                            }
-                        }
                     }
                 }
             }
