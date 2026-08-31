@@ -83,6 +83,18 @@ class HistoryViewModel(private val database: AppDatabase) : ViewModel() {
         }
     }
     
+    fun renameWord(word: com.aidict.app.data.entities.Word, newTerm: String) {
+        viewModelScope.launch {
+            database.appDao().insertWord(word.copy(term = newTerm))
+        }
+    }
+    
+    fun deleteWord(word: com.aidict.app.data.entities.Word) {
+        viewModelScope.launch {
+            database.appDao().deleteWord(word)
+        }
+    }
+    
     val splitFraction = kotlinx.coroutines.flow.MutableStateFlow(0.5f)
     init {
         viewModelScope.launch {

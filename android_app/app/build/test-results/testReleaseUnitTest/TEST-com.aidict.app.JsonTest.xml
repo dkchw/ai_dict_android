@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.aidict.app.JsonTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-08-30T18:01:25" hostname="dkc-nixos" time="0.136">
-  <properties/>
-  <testcase name="testJson" classname="com.aidict.app.JsonTest" time="0.136"/>
-  <system-out><![CDATA[Content is: This is a test
-]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

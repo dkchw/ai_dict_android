@@ -33,10 +33,67 @@ class SearchViewModel(
     private val llmRepository: LlmRepository,
     private val database: AppDatabase
 ) : ViewModel() {
-    var searchInput by mutableStateOf("")
-    var translateInput by mutableStateOf("")
-    var explainInput by mutableStateOf("")
-    var compareInput by mutableStateOf("")
+    private var dictJob: kotlinx.coroutines.Job? = null
+    private var translateJob: kotlinx.coroutines.Job? = null
+    private var explainJob: kotlinx.coroutines.Job? = null
+    private var compareJob: kotlinx.coroutines.Job? = null
+
+    private var _searchInput = mutableStateOf("")
+    var searchInput: String
+        get() = _searchInput.value
+        set(value) {
+            _searchInput.value = value
+            dictJob?.cancel()
+            dictJob = viewModelScope.launch {
+                kotlinx.coroutines.delay(300)
+                database.appDao().insertSetting(com.aidict.app.data.entities.AppSetting("DICT_DRAFT", value))
+            }
+        }
+
+    private var _translateInput = mutableStateOf("")
+    var translateInput: String
+        get() = _translateInput.value
+        set(value) {
+            _translateInput.value = value
+            translateJob?.cancel()
+            translateJob = viewModelScope.launch {
+                kotlinx.coroutines.delay(300)
+                database.appDao().insertSetting(com.aidict.app.data.entities.AppSetting("TRANSLATE_DRAFT", value))
+            }
+        }
+
+    private var _explainInput = mutableStateOf("")
+    var explainInput: String
+        get() = _explainInput.value
+        set(value) {
+            _explainInput.value = value
+            explainJob?.cancel()
+            explainJob = viewModelScope.launch {
+                kotlinx.coroutines.delay(300)
+                database.appDao().insertSetting(com.aidict.app.data.entities.AppSetting("EXPLAIN_DRAFT", value))
+            }
+        }
+
+    private var _compareInput = mutableStateOf("")
+    var compareInput: String
+        get() = _compareInput.value
+        set(value) {
+            _compareInput.value = value
+            compareJob?.cancel()
+            compareJob = viewModelScope.launch {
+                kotlinx.coroutines.delay(300)
+                database.appDao().insertSetting(com.aidict.app.data.entities.AppSetting("COMPARE_DRAFT", value))
+            }
+        }
+
+    init {
+        viewModelScope.launch {
+            _searchInput.value = database.appDao().getSetting("DICT_DRAFT")?.value ?: ""
+            _translateInput.value = database.appDao().getSetting("TRANSLATE_DRAFT")?.value ?: ""
+            _explainInput.value = database.appDao().getSetting("EXPLAIN_DRAFT")?.value ?: ""
+            _compareInput.value = database.appDao().getSetting("COMPARE_DRAFT")?.value ?: ""
+        }
+    }
 
 
     private val _uiState = MutableStateFlow(SearchState())

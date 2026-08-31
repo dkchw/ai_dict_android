@@ -3,6 +3,9 @@ package com.aidict.app.ui
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.*
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.foundation.ExperimentalFoundationApi
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.*
@@ -43,7 +46,7 @@ data class TabItem(val title: String, val icon: ImageVector)
 
 enum class Screen { MAIN, HISTORY, SETTINGS, NOTES }
 
-@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun AppNavigation(
     windowSizeClass: WindowSizeClass,
@@ -61,6 +64,18 @@ fun AppNavigation(
     
     var currentScreen by remember { mutableStateOf(Screen.MAIN) }
     var currentMode by remember { mutableStateOf(0) }
+    val pagerState = androidx.compose.foundation.pager.rememberPagerState(initialPage = 0, pageCount = { 4 })
+
+    LaunchedEffect(currentMode) {
+        if (pagerState.currentPage != currentMode) {
+            pagerState.animateScrollToPage(currentMode)
+        }
+    }
+    LaunchedEffect(pagerState.currentPage) {
+        if (currentMode != pagerState.currentPage) {
+            currentMode = pagerState.currentPage
+        }
+    }
     androidx.activity.compose.BackHandler(enabled = currentScreen != Screen.MAIN || currentMode != 0 || searchViewModel.uiState.value.word != null) {
 
         if (currentScreen != Screen.MAIN) {
@@ -284,11 +299,34 @@ colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.
                 }
                 Screen.MAIN -> {
                     val pid = appState.activeProfile?.id ?: 1
-                    when (currentMode) {
-                        0 -> SearchScreen(searchViewModel, pid)
-                        1 -> CompareScreen(searchViewModel, pid)
-                        2 -> TranslateScreen(searchViewModel, pid)
-                        3 -> ExplainScreen(searchViewModel, pid)
+                    
+                    // We can use nested scroll or a simple pull refresh state
+                    val pullRefreshState = androidx.compose.material3.pulltorefresh.rememberPullToRefreshState()
+                    if (pullRefreshState.isRefreshing) {
+                        LaunchedEffect(Unit) {
+                            appViewModel.clearHistoryUnseen()
+                            currentScreen = Screen.HISTORY
+                            pullRefreshState.endRefresh()
+                        }
+                    }
+                    
+                    Box(modifier = Modifier.fillMaxSize().nestedScroll(pullRefreshState.nestedScrollConnection)) {
+                        androidx.compose.foundation.pager.HorizontalPager(
+                            state = pagerState,
+                            modifier = Modifier.fillMaxSize()
+                        ) { page ->
+                            when (page) {
+                                0 -> SearchScreen(searchViewModel, pid)
+                                1 -> CompareScreen(searchViewModel, pid)
+                                2 -> TranslateScreen(searchViewModel, pid)
+                                3 -> ExplainScreen(searchViewModel, pid)
+                            }
+                        }
+                        
+                        androidx.compose.material3.pulltorefresh.PullToRefreshContainer(
+                            state = pullRefreshState,
+                            modifier = Modifier.align(Alignment.TopCenter)
+                        )
                     }
                 }
             }

@@ -59,6 +59,8 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
     
     var showCreateSession by remember { mutableStateOf(false) }
     var showRenameSession by remember { mutableStateOf<Session?>(null) }
+    var showRenameWord by remember { mutableStateOf<com.aidict.app.data.entities.Word?>(null) }
+    var wordNameInput by remember { mutableStateOf("") }
     var sessionNameInput by remember { mutableStateOf("") }
 
     val isTablet = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Expanded
@@ -120,8 +122,8 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
             }
             
             Button(onClick = { 
-                sessionNameInput = ""
-                showCreateSession = true 
+                val timeName = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
+                viewModel.createSession(timeName)
             }, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Default.Add, contentDescription = "Create Session")
                 Spacer(Modifier.width(8.dp))
@@ -155,40 +157,36 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                             }
                         }
                         items(wordsInSession, key = { it.id }) { word ->
-                            val dismissState = rememberSwipeToDismissBoxState()
-                            SwipeToDismissBox(
-                                state = dismissState,
-                                backgroundContent = {
-                                    Box(
-                                        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.error).padding(16.dp),
-                                        contentAlignment = Alignment.CenterEnd
-                                    ) {
-                                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White)
-                                    }
-                                }
+                            Card(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { selectedWord = word },
+                                elevation = CardDefaults.cardElevation(if (selectedWord?.id == word.id) 8.dp else 2.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (selectedWord?.id == word.id) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                                )
                             ) {
-                                Card(
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { selectedWord = word },
-                                    elevation = CardDefaults.cardElevation(if (selectedWord?.id == word.id) 8.dp else 2.dp),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = if (selectedWord?.id == word.id) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
-                                    )
-                                ) {
-                                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(text = word.term, style = MaterialTheme.typography.bodyLarge)
-                                            if (!word.language.isNullOrBlank()) {
-                                                Text(text = word.language, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
-                                            }
+                                Row(modifier = Modifier.padding(start = 12.dp, top = 4.dp, bottom = 4.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(text = word.term, style = MaterialTheme.typography.bodyLarge)
+                                        if (!word.language.isNullOrBlank()) {
+                                            Text(text = word.language, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
                                         }
-                                        if (word.color != null) {
-                                            val c = colors.find { it.first == word.color }?.second ?: Color.Gray
-                                            Box(modifier = Modifier.size(12.dp).background(c, CircleShape).padding(end = 8.dp))
-                                        }
-                                        if (word.stars > 0) {
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Row { (1..word.stars).forEach { _ -> Icon(Icons.Default.Star, contentDescription = "Star", tint = Color(0xFFFFC107), modifier = Modifier.size(16.dp)) } }
-                                        }
+                                    }
+                                    if (word.color != null) {
+                                        val c = colors.find { it.first == word.color }?.second ?: Color.Gray
+                                        Box(modifier = Modifier.size(12.dp).background(c, CircleShape).padding(end = 8.dp))
+                                    }
+                                    if (word.stars > 0) {
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Row { (1..word.stars).forEach { _ -> Icon(Icons.Default.Star, contentDescription = "Star", tint = Color(0xFFFFC107), modifier = Modifier.size(16.dp)) } }
+                                    }
+                                    IconButton(onClick = {
+                                        wordNameInput = word.term
+                                        showRenameWord = word
+                                    }) {
+                                        Icon(Icons.Default.Edit, contentDescription = "Rename", modifier = Modifier.size(20.dp))
+                                    }
+                                    IconButton(onClick = { viewModel.deleteWord(word) }) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
                                     }
                                 }
                             }
@@ -204,7 +202,18 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { selectedWord = word },
                             elevation = CardDefaults.cardElevation(if (selectedWord?.id == word.id) 8.dp else 2.dp)
                         ) {
-                            Text(text = word.term, modifier = Modifier.padding(12.dp))
+                            Row(modifier = Modifier.padding(start = 12.dp, top = 4.dp, bottom = 4.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(text = word.term, modifier = Modifier.weight(1f).padding(8.dp))
+                                IconButton(onClick = {
+                                    wordNameInput = word.term
+                                    showRenameWord = word
+                                }) {
+                                    Icon(Icons.Default.Edit, contentDescription = "Rename", modifier = Modifier.size(20.dp))
+                                }
+                                IconButton(onClick = { viewModel.deleteWord(word) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+                                }
+                            }
                         }
                     }
                 }
@@ -354,4 +363,34 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
             }
         )
     }
+
+    if (showRenameWord != null) {
+        AlertDialog(
+            onDismissRequest = { showRenameWord = null },
+            title = { Text("Rename History Item") },
+            text = {
+                OutlinedTextField(
+                    value = wordNameInput,
+                    onValueChange = { wordNameInput = it },
+                    label = { Text("New Name") }
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (wordNameInput.isNotBlank()) {
+                        viewModel.renameWord(showRenameWord!!, wordNameInput)
+                        if (selectedWord?.id == showRenameWord?.id) {
+                            selectedWord = selectedWord?.copy(term = wordNameInput)
+                        }
+                    }
+                    wordNameInput = ""
+                    showRenameWord = null
+                }) { Text("Rename") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRenameWord = null }) { Text("Cancel") }
+            }
+        )
+    }
+
 }

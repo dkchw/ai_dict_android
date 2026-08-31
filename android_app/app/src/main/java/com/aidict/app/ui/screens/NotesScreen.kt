@@ -56,6 +56,36 @@ fun NotesScreen(viewModel: NotesViewModel) {
             }
         }
         
+        // Quick Add Note
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Column(modifier = Modifier.padding(8.dp)) {
+                OutlinedTextField(
+                    value = viewModel.noteDraftTitle.value,
+                    onValueChange = { viewModel.updateDraftTitle(it) },
+                    placeholder = { Text("Title (Optional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = viewModel.noteDraftContent.value,
+                    onValueChange = { viewModel.updateDraftContent(it) },
+                    placeholder = { Text("Note content...") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2
+                )
+                Button(
+                    onClick = { viewModel.saveDraftAsNote() },
+                    modifier = Modifier.align(Alignment.End).padding(top = 8.dp),
+                    enabled = viewModel.noteDraftTitle.value.isNotBlank() || viewModel.noteDraftContent.value.isNotBlank()
+                ) {
+                    Text("Save Quick Note")
+                }
+            }
+        }
+        
         LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
             items(notes) { note ->
                 Card(
