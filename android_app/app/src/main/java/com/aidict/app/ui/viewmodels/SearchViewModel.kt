@@ -128,8 +128,7 @@ class SearchViewModel(
         val _uiState = _dictState
         viewModelScope.launch {
             try {
-                val activeSessionId = database.appDao().getSetting("ACTIVE_SESSION_ID")?.value
-                val sessionId = if (!activeSessionId.isNullOrBlank()) activeSessionId else java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+                val sessionId = getOrCreateActiveSessionId(profileId)
                 val initialWord = com.aidict.app.data.entities.Word(profileId = profileId, term = term, sessionId = sessionId, mode = "dict")
                 val wordId = database.appDao().insertWord(initialWord).toInt()
                 val savedWord = initialWord.copy(id = wordId)
@@ -361,8 +360,7 @@ class SearchViewModel(
         val _uiState = _translateState
         viewModelScope.launch {
             try {
-                val activeSessionId = database.appDao().getSetting("ACTIVE_SESSION_ID")?.value
-                val sessionId = if (!activeSessionId.isNullOrBlank()) activeSessionId else java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+                val sessionId = getOrCreateActiveSessionId(profileId)
                 val initialWord = com.aidict.app.data.entities.Word(profileId = profileId, term = text, language = "$source -> $target", sessionId = sessionId, mode = "translate")
                 val wordId = database.appDao().insertWord(initialWord).toInt()
                 val savedWord = initialWord.copy(id = wordId)
@@ -396,8 +394,7 @@ class SearchViewModel(
         val _uiState = _explainState
         viewModelScope.launch {
             try {
-                val activeSessionId = database.appDao().getSetting("ACTIVE_SESSION_ID")?.value
-                val sessionId = if (!activeSessionId.isNullOrBlank()) activeSessionId else java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+                val sessionId = getOrCreateActiveSessionId(profileId)
                 val initialWord = com.aidict.app.data.entities.Word(profileId = profileId, term = text, language = "$sourceLang -> $targetLang", sessionId = sessionId, mode = "explain")
                 val wordId = database.appDao().insertWord(initialWord).toInt()
                 val savedWord = initialWord.copy(id = wordId)
@@ -431,8 +428,7 @@ class SearchViewModel(
         val _uiState = _compareState
         viewModelScope.launch {
             try {
-                val activeSessionId = database.appDao().getSetting("ACTIVE_SESSION_ID")?.value
-                val sessionId = if (!activeSessionId.isNullOrBlank()) activeSessionId else java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+                val sessionId = getOrCreateActiveSessionId(profileId)
                 val initialWord = com.aidict.app.data.entities.Word(profileId = profileId, term = words, language = "$sourceLang -> $targetLang", sessionId = sessionId, mode = "compare")
                 val wordId = database.appDao().insertWord(initialWord).toInt()
                 val savedWord = initialWord.copy(id = wordId)
@@ -466,5 +462,27 @@ class SearchViewModel(
 
 
 
+
+
+    private suspend fun getOrCreateActiveSessionId(profileId: Int): String {
+        val activeSessionId = database.appDao().getSetting("ACTIVE_SESSION_ID")?.value
+        if (!activeSessionId.isNullOrBlank()) {
+            val exists = database.appDao().getSessionsSync(profileId.toLong()).any { it.id == activeSessionId }
+            if (exists) return activeSessionId
+        }
+        val timeName = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+        
+        // Check if there's already a session with today's date for this profile
+        val existingToday = database.appDao().getSessionsSync(profileId.toLong()).find { it.name == timeName }
+        if (existingToday != null) {
+            database.appDao().insertSetting(com.aidict.app.data.entities.AppSetting("ACTIVE_SESSION_ID", existingToday.id))
+            return existingToday.id
+        }
+        
+        val s = com.aidict.app.data.entities.Session(name = timeName, profileId = profileId.toLong())
+        database.appDao().insertSession(s)
+        database.appDao().insertSetting(com.aidict.app.data.entities.AppSetting("ACTIVE_SESSION_ID", s.id))
+        return s.id
+    }
 
 }

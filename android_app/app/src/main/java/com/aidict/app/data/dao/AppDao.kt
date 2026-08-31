@@ -56,6 +56,9 @@ interface AppDao {
     @Query("SELECT * FROM session WHERE profileId = :profileId ORDER BY createdAt DESC")
     fun getSessions(profileId: Long): Flow<List<com.aidict.app.data.entities.Session>>
 
+    @Query("SELECT * FROM session WHERE profileId = :profileId ORDER BY createdAt DESC")
+    suspend fun getSessionsSync(profileId: Long): List<com.aidict.app.data.entities.Session>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSession(session: com.aidict.app.data.entities.Session)
 
