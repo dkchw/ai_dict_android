@@ -44,6 +44,7 @@ class SettingsViewModel(
 
     val translatePrompt = getSettingFlow("TRANSLATE_PROMPT", DefaultPrompts.TRANSLATE_PROMPT)
     val comparePrompt = getSettingFlow("COMPARE_PROMPT", DefaultPrompts.COMPARE_PROMPT)
+    val externalLinkTemplate = getSettingFlow("EXTERNAL_LINK", "https://dictionary.cambridge.org/dictionary/english/{word}")
 
     val profiles = database.appDao().getProfiles()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())

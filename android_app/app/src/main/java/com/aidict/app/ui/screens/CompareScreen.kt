@@ -22,6 +22,9 @@ import androidx.compose.foundation.background
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
 import com.aidict.app.ui.components.MarkdownText
 import androidx.compose.ui.unit.dp
 
@@ -137,6 +140,14 @@ fun CompareScreen(
             onSend = { if (state.word != null) viewModel.sendFollowUpMessage(viewModel.compareInput, "compare") else viewModel.streamCompare(viewModel.compareInput, sourceLang, targetLang, profileId); viewModel.compareInput = "" },
             isLoading = state.isLoading,
             isFollowUp = state.word != null,
+            onExternalLink = {
+                val term = if (state.word != null) state.word!!.term else viewModel.compareInput
+                if (term.isNotBlank()) {
+                    val url = viewModel.getExternalLinkTemplate().replace("{word}", term.trim())
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    context.startActivity(intent)
+                }
+            },
             sourceLang = if (state.word == null) sourceLang else null,
             targetLang = if (state.word == null) targetLang else null,
             onSourceLangChange = if (state.word == null) { { sourceLang = it; viewModel.saveProfileSetting(profileId, "COMPARE_SOURCE", it) } } else null,

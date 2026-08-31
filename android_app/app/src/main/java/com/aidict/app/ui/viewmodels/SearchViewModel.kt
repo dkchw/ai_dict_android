@@ -221,6 +221,12 @@ class SearchViewModel(
         }
     }
 
+    fun getExternalLinkTemplate(): String {
+        return kotlinx.coroutines.runBlocking(kotlinx.coroutines.Dispatchers.IO) {
+            database.appDao().getSetting("EXTERNAL_LINK")?.value ?: "https://dictionary.cambridge.org/dictionary/english/{word}"
+        }
+    }
+
     suspend fun getProfileSetting(profileId: Int, key: String): String? {
         return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             database.appDao().getSetting("PROFILE_${profileId}_$key")?.value

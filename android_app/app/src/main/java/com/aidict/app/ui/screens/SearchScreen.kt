@@ -27,6 +27,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
 import com.aidict.app.ui.components.MarkdownText
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext

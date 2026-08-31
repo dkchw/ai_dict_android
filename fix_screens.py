@@ -1,43 +1,32 @@
-import os
+import re
 
-screens = {
-    "SearchScreen.kt": "dict",
-    "CompareScreen.kt": "compare",
-    "TranslateScreen.kt": "translate",
-    "ExplainScreen.kt": "explain"
-}
-
-for filename, mode in screens.items():
-    filepath = f"android_app/app/src/main/java/com/aidict/app/ui/screens/{filename}"
-    with open(filepath, "r") as f:
+def update_screen(filename, input_prop):
+    with open(filename, 'r') as f:
         text = f.read()
-
-    # 1. Fix state collection
-    text = text.replace("viewModel.uiState.collectAsState()", f"viewModel.{mode}State.collectAsState()")
-
-    # 2. Fix toggleStar
-    text = text.replace("viewModel.toggleStar()", f'viewModel.toggleStar("{mode}")')
-
-    # 3. Fix sendFollowUpMessage
-    text = text.replace("viewModel.sendFollowUpMessage(viewModel.searchInput)", f'viewModel.sendFollowUpMessage(viewModel.searchInput, "{mode}")')
-    text = text.replace("viewModel.sendFollowUpMessage(viewModel.compareInput)", f'viewModel.sendFollowUpMessage(viewModel.compareInput, "{mode}")')
-    text = text.replace("viewModel.sendFollowUpMessage(viewModel.translateInput)", f'viewModel.sendFollowUpMessage(viewModel.translateInput, "{mode}")')
-    text = text.replace("viewModel.sendFollowUpMessage(viewModel.explainInput)", f'viewModel.sendFollowUpMessage(viewModel.explainInput, "{mode}")')
     
-    # 4. Fix stopStream
-    text = text.replace("viewModel.stopStream()", f'viewModel.stopStream("{mode}")')
-
-    # 5. Fix resumeChat
-    text = text.replace("viewModel.resumeChat(editingContent)", f'viewModel.resumeChat(editingContent, "{mode}")')
+    # ensure intent and uri are imported
+    if 'import android.content.Intent' not in text:
+        text = text.replace('import androidx.compose.ui.Modifier', 'import androidx.compose.ui.Modifier\nimport android.content.Intent\nimport android.net.Uri\nimport androidx.compose.ui.platform.LocalContext')
+        
+    # generate onExternalLink implementation
+    ext_link_impl = f"""
+            onExternalLink = {{
+                val term = if (state.word != null) state.word!!.term else viewModel.{input_prop}
+                if (term.isNotBlank()) {{
+                    val url = viewModel.getExternalLinkTemplate().replace("{{word}}", term.trim())
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    context.startActivity(intent)
+                }}
+            }},"""
+            
+    # Inject into ChatInputBar
+    text = text.replace('isFollowUp = state.word != null,', f'isFollowUp = state.word != null,{ext_link_impl}')
     
-    # 6. Fix retryMessage
-    text = text.replace("viewModel.retryMessage(msg, false)", f'viewModel.retryMessage(msg, false, "{mode}")')
-    text = text.replace("viewModel.retryMessage(msg, true)", f'viewModel.retryMessage(msg, true, "{mode}")')
-    
-    # 7. Fix deleteMessage
-    text = text.replace("viewModel.deleteMessage(msg)", f'viewModel.deleteMessage(msg, "{mode}")')
-
-    with open(filepath, "w") as f:
+    with open(filename, 'w') as f:
         f.write(text)
 
-print("Updated screens")
+update_screen('android_app/app/src/main/java/com/aidict/app/ui/screens/SearchScreen.kt', 'searchInput')
+update_screen('android_app/app/src/main/java/com/aidict/app/ui/screens/CompareScreen.kt', 'compareInput')
+update_screen('android_app/app/src/main/java/com/aidict/app/ui/screens/ExplainScreen.kt', 'explainInput')
+update_screen('android_app/app/src/main/java/com/aidict/app/ui/screens/TranslateScreen.kt', 'translateInput')
+

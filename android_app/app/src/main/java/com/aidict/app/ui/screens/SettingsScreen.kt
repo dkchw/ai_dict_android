@@ -45,7 +45,8 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
     val fallbackModels by viewModel.fallbackModels.collectAsState()
     val chatModel by viewModel.chatModel.collectAsState()
     
-    val dictPrompt by viewModel.dictPrompt.collectAsState()
+    val externalLinkTemplate by viewModel.externalLinkTemplate.collectAsState()
+            val dictPrompt by viewModel.dictPrompt.collectAsState()
     val explainPrompt by viewModel.explainPrompt.collectAsState()
     val translatePrompt by viewModel.translatePrompt.collectAsState()
     val comparePrompt by viewModel.comparePrompt.collectAsState()
@@ -391,6 +392,19 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
         
         item { SearchableModelDropdown("Fallback Model", fallbackModels, availableModels) { viewModel.saveSetting("FALLBACK_MODELS", it) } }
         item { SearchableModelDropdown("Chat Model", chatModel, availableModels) { viewModel.saveSetting("CHAT_MODEL", it) } }
+
+        
+        item { Spacer(Modifier.height(16.dp)) }
+        item { Text("External Link", style = MaterialTheme.typography.titleLarge) }
+        item {
+            OutlinedTextField(
+                value = externalLinkTemplate, 
+                onValueChange = { viewModel.saveSetting("EXTERNAL_LINK", it) }, 
+                label = { Text("External Link Template (use {word})") }, 
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), 
+                singleLine = true
+            )
+        }
 
         item { Spacer(Modifier.height(16.dp)) }
         item { Text("Prompts", style = MaterialTheme.typography.titleLarge) }

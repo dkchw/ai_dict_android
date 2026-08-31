@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -139,6 +140,7 @@ fun ChatInputBar(
     onSourceLangChange: ((String) -> Unit)? = null,
     onTargetLangChange: ((String) -> Unit)? = null,
     onClear: (() -> Unit)? = null,
+    onExternalLink: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -180,6 +182,16 @@ fun ChatInputBar(
                             .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)
                     ) {
                         Icon(Icons.Default.Add, contentDescription = "New Search", tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                    }
+                }
+                                if (onExternalLink != null) {
+                    IconButton(
+                        onClick = onExternalLink, 
+                        modifier = Modifier
+                            .padding(bottom = 8.dp, end = 8.dp)
+                            .background(MaterialTheme.colorScheme.tertiaryContainer, CircleShape)
+                    ) {
+                        Icon(Icons.Default.Language, contentDescription = "External Link", tint = MaterialTheme.colorScheme.onTertiaryContainer)
                     }
                 }
                 OutlinedTextField(

@@ -24,6 +24,9 @@ import androidx.compose.material3.*
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
 import com.aidict.app.ui.components.MarkdownText
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.Arrangement
@@ -149,6 +152,14 @@ fun TranslateScreen(
             },
             isLoading = state.isLoading,
             isFollowUp = state.word != null,
+            onExternalLink = {
+                val term = if (state.word != null) state.word!!.term else viewModel.translateInput
+                if (term.isNotBlank()) {
+                    val url = viewModel.getExternalLinkTemplate().replace("{word}", term.trim())
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    context.startActivity(intent)
+                }
+            },
             onClear = { viewModel.clearCurrentSearch() },
             placeholder = if (state.word != null) "Enter your question..." else "Text to translate...",
             sourceLang = sourceLang,
