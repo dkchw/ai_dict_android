@@ -12,6 +12,8 @@ import com.aidict.app.ui.viewmodels.SettingsViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -410,7 +412,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                         val newLinks = externalLinks.toMutableList()
                         newLinks[index] = link.copy(url = it)
                         viewModel.saveExternalLinks(newLinks)
-                    }, label = { Text("URL (use {word})") }, modifier = Modifier.fillMaxWidth())
+                    }, label = { Text("URL (use {{str}})") }, modifier = Modifier.fillMaxWidth())
                     
                     OutlinedTextField(value = link.iconUrl, onValueChange = { 
                         val newLinks = externalLinks.toMutableList()
@@ -418,13 +420,38 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                         viewModel.saveExternalLinks(newLinks)
                     }, label = { Text("Icon URL (optional)") }, modifier = Modifier.fillMaxWidth())
                     
-                    Button(onClick = { 
-                        val newLinks = externalLinks.toMutableList()
-                        newLinks.removeAt(index)
-                        viewModel.saveExternalLinks(newLinks)
-                    }, modifier = Modifier.align(Alignment.End).padding(top = 8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
-                        Text("Remove")
+                    Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Row {
+                            IconButton(onClick = { 
+                                if (index > 0) {
+                                    val newLinks = externalLinks.toMutableList()
+                                    val temp = newLinks[index]
+                                    newLinks[index] = newLinks[index - 1]
+                                    newLinks[index - 1] = temp
+                                    viewModel.saveExternalLinks(newLinks)
+                                }
+                            }, enabled = index > 0) {
+                                Icon(Icons.Default.ArrowUpward, contentDescription = "Move Up")
+                            }
+                            IconButton(onClick = { 
+                                if (index < externalLinks.size - 1) {
+                                    val newLinks = externalLinks.toMutableList()
+                                    val temp = newLinks[index]
+                                    newLinks[index] = newLinks[index + 1]
+                                    newLinks[index + 1] = temp
+                                    viewModel.saveExternalLinks(newLinks)
+                                }
+                            }, enabled = index < externalLinks.size - 1) {
+                                Icon(Icons.Default.ArrowDownward, contentDescription = "Move Down")
+                            }
+                        }
+                        Button(onClick = { 
+                            val newLinks = externalLinks.toMutableList()
+                            newLinks.removeAt(index)
+                            viewModel.saveExternalLinks(newLinks)
+                        }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
+                            Text("Remove")
+                        }
                     }
                 }
             }

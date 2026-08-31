@@ -225,9 +225,9 @@ class SearchViewModel(
     }
 
     private val defaultLinks = listOf(
-        ExternalLink("Cambridge", "https://dictionary.cambridge.org/dictionary/english/{word}", "https://dictionary.cambridge.org/favicon.ico"),
-        ExternalLink("Google", "https://www.google.com/search?q={word}", "https://www.google.com/favicon.ico"),
-        ExternalLink("Wikipedia", "https://en.wikipedia.org/wiki/{word}", "https://en.wikipedia.org/favicon.ico")
+        ExternalLink("Cambridge", "https://dictionary.cambridge.org/dictionary/english/{{str}}", "https://dictionary.cambridge.org/favicon.ico"),
+        ExternalLink("Google", "https://www.google.com/search?q={{str}}", "https://www.google.com/favicon.ico"),
+        ExternalLink("Wikipedia", "https://en.wikipedia.org/wiki/{{str}}", "https://en.wikipedia.org/favicon.ico")
     )
     val externalLinks: StateFlow<List<ExternalLink>> = database.appDao().getSettingsFlow()
         .map { settings ->
