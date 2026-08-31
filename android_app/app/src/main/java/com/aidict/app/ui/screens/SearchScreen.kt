@@ -42,6 +42,7 @@ fun SearchScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.dictState.collectAsState()
+    val externalLinks by viewModel.externalLinks.collectAsState()
     
     val context = LocalContext.current
 

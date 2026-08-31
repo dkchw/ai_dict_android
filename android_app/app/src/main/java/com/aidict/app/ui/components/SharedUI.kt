@@ -17,6 +17,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.*
+import coil.compose.AsyncImage
+import com.aidict.app.models.ExternalLink
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
@@ -140,7 +144,8 @@ fun ChatInputBar(
     onSourceLangChange: ((String) -> Unit)? = null,
     onTargetLangChange: ((String) -> Unit)? = null,
     onClear: (() -> Unit)? = null,
-    onExternalLink: (() -> Unit)? = null,
+    externalLinks: List<ExternalLink> = emptyList(),
+    onExternalLinkClick: ((ExternalLink) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -184,14 +189,42 @@ fun ChatInputBar(
                         Icon(Icons.Default.Add, contentDescription = "New Search", tint = MaterialTheme.colorScheme.onSecondaryContainer)
                     }
                 }
-                                if (onExternalLink != null) {
+                                if (onExternalLinkClick != null && externalLinks.isNotEmpty()) {
+                    val firstLink = externalLinks.first()
                     IconButton(
-                        onClick = onExternalLink, 
+                        onClick = { onExternalLinkClick(firstLink) },
                         modifier = Modifier
-                            .padding(bottom = 8.dp, end = 8.dp)
+                            .padding(bottom = 8.dp, end = if (externalLinks.size > 1) 0.dp else 8.dp)
                             .background(MaterialTheme.colorScheme.tertiaryContainer, CircleShape)
                     ) {
-                        Icon(Icons.Default.Language, contentDescription = "External Link", tint = MaterialTheme.colorScheme.onTertiaryContainer)
+                        if (firstLink.iconUrl.isNotBlank()) {
+                            AsyncImage(model = firstLink.iconUrl, contentDescription = firstLink.name, modifier = Modifier.size(24.dp))
+                        } else {
+                            Icon(Icons.Default.Language, contentDescription = firstLink.name, tint = MaterialTheme.colorScheme.onTertiaryContainer)
+                        }
+                    }
+                    if (externalLinks.size > 1) {
+                        var expanded by remember { mutableStateOf(false) }
+                        Box(modifier = Modifier.padding(bottom = 8.dp, end = 8.dp)) {
+                            IconButton(onClick = { expanded = true }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "More Links")
+                            }
+                            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                                externalLinks.drop(1).forEach { link ->
+                                    DropdownMenuItem(
+                                        text = { Text(link.name) },
+                                        onClick = { onExternalLinkClick(link); expanded = false },
+                                        leadingIcon = {
+                                            if (link.iconUrl.isNotBlank()) {
+                                                AsyncImage(model = link.iconUrl, contentDescription = link.name, modifier = Modifier.size(20.dp))
+                                            } else {
+                                                Icon(Icons.Default.Language, contentDescription = link.name)
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
                 OutlinedTextField(

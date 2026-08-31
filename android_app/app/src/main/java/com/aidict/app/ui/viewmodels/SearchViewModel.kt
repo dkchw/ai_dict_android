@@ -5,6 +5,12 @@ import androidx.compose.runtime.setValue
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.decodeFromString
+import com.aidict.app.models.ExternalLink
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
 import com.aidict.app.data.AppDatabase
 import com.aidict.app.data.LlmRepository
 import com.aidict.app.data.entities.ChatMessage
@@ -12,9 +18,6 @@ import com.aidict.app.data.entities.Word
 import com.aidict.app.utils.MarkdownParser
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -221,11 +224,18 @@ class SearchViewModel(
         }
     }
 
-    fun getExternalLinkTemplate(): String {
-        return kotlinx.coroutines.runBlocking(kotlinx.coroutines.Dispatchers.IO) {
-            database.appDao().getSetting("EXTERNAL_LINK")?.value ?: "https://dictionary.cambridge.org/dictionary/english/{word}"
-        }
-    }
+    private val defaultLinks = listOf(
+        ExternalLink("Cambridge", "https://dictionary.cambridge.org/dictionary/english/{word}", "https://dictionary.cambridge.org/favicon.ico"),
+        ExternalLink("Google", "https://www.google.com/search?q={word}", "https://www.google.com/favicon.ico"),
+        ExternalLink("Wikipedia", "https://en.wikipedia.org/wiki/{word}", "https://en.wikipedia.org/favicon.ico")
+    )
+    val externalLinks: StateFlow<List<ExternalLink>> = database.appDao().getSettingsFlow()
+        .map { settings ->
+            val jsonStr = settings.find { it.key == "EXTERNAL_LINKS" }?.value
+            if (jsonStr != null) {
+                try { Json.decodeFromString<List<ExternalLink>>(jsonStr) } catch (e: Exception) { defaultLinks }
+            } else defaultLinks
+        }.stateIn(viewModelScope, SharingStarted.Lazily, defaultLinks)
 
     suspend fun getProfileSetting(profileId: Int, key: String): String? {
         return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {

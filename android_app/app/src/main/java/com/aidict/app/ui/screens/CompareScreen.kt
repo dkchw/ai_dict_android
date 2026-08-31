@@ -34,6 +34,7 @@ fun CompareScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.compareState.collectAsState()
+    val externalLinks by viewModel.externalLinks.collectAsState()
 
     var sourceLang by remember { mutableStateOf("Auto Detect") }
     var targetLang by remember { mutableStateOf("English") }
@@ -140,10 +141,11 @@ fun CompareScreen(
             onSend = { if (state.word != null) viewModel.sendFollowUpMessage(viewModel.compareInput, "compare") else viewModel.streamCompare(viewModel.compareInput, sourceLang, targetLang, profileId); viewModel.compareInput = "" },
             isLoading = state.isLoading,
             isFollowUp = state.word != null,
-            onExternalLink = {
+            externalLinks = externalLinks,
+            onExternalLinkClick = { link ->
                 val term = if (state.word != null) state.word!!.term else viewModel.compareInput
                 if (term.isNotBlank()) {
-                    val url = viewModel.getExternalLinkTemplate().replace("{word}", term.trim())
+                    val url = link.url.replace("{word}", term.trim())
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                     context.startActivity(intent)
                 }

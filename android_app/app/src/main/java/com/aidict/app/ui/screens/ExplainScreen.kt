@@ -34,6 +34,7 @@ fun ExplainScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.explainState.collectAsState()
+    val externalLinks by viewModel.externalLinks.collectAsState()
 
     var sourceLang by remember { mutableStateOf("Auto Detect") }
     var targetLang by remember { mutableStateOf("English") }
@@ -66,10 +67,11 @@ fun ExplainScreen(
             onSend = { if (state.word != null) viewModel.sendFollowUpMessage(viewModel.explainInput, "explain") else viewModel.streamExplain(viewModel.explainInput, sourceLang, targetLang, profileId); viewModel.explainInput = "" },
             isLoading = state.isLoading,
             isFollowUp = state.word != null,
-            onExternalLink = {
+            externalLinks = externalLinks,
+            onExternalLinkClick = { link ->
                 val term = if (state.word != null) state.word!!.term else viewModel.explainInput
                 if (term.isNotBlank()) {
-                    val url = viewModel.getExternalLinkTemplate().replace("{word}", term.trim())
+                    val url = link.url.replace("{word}", term.trim())
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                     context.startActivity(intent)
                 }
