@@ -233,13 +233,14 @@ fun SearchScreen(
             inputTerm = viewModel.searchInput,
             onValueChange = { viewModel.searchInput = it },
             onSend = {
+                val query = viewModel.searchInput
                 if (autoNewSearch && isFollowUp) {
                     viewModel.clearCurrentSearch()
-                    viewModel.searchWord(viewModel.searchInput, sourceLang, targetLang, profileId)
+                    viewModel.searchWord(query, sourceLang, targetLang, profileId)
                 } else if (isFollowUp) {
-                    viewModel.sendFollowUpMessage(viewModel.searchInput, "dict")
+                    viewModel.sendFollowUpMessage(query, "dict")
                 } else {
-                    viewModel.searchWord(viewModel.searchInput, sourceLang, targetLang, profileId)
+                    viewModel.searchWord(query, sourceLang, targetLang, profileId)
                 }
                 viewModel.searchInput = ""
             },

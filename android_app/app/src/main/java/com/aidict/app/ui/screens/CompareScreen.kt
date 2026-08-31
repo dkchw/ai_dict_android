@@ -144,7 +144,18 @@ fun CompareScreen(
             availableLanguages = viewModel.orderedLanguages.collectAsState().value,
             inputTerm = viewModel.compareInput,
             onValueChange = { viewModel.compareInput = it },
-            onSend = { if (autoNewSearch && state.word != null) { viewModel.clearCurrentSearch(); viewModel.streamCompare(viewModel.compareInput, sourceLang, targetLang, profileId) } else if (state.word != null) viewModel.sendFollowUpMessage(viewModel.compareInput, "compare") else viewModel.streamCompare(viewModel.compareInput, sourceLang, targetLang, profileId); viewModel.compareInput = "" },
+            onSend = { 
+                val query = viewModel.compareInput
+                if (autoNewSearch && state.word != null) { 
+                    viewModel.clearCurrentSearch()
+                    viewModel.streamCompare(query, sourceLang, targetLang, profileId) 
+                } else if (state.word != null) {
+                    viewModel.sendFollowUpMessage(query, "compare") 
+                } else {
+                    viewModel.streamCompare(query, sourceLang, targetLang, profileId)
+                }
+                viewModel.compareInput = "" 
+            },
             isLoading = state.isLoading,
             autoNewSearch = autoNewSearch,
             onToggleAutoNewSearch = onToggleAutoNewSearch,
