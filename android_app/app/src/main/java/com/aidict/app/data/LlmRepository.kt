@@ -49,7 +49,7 @@ class LlmRepository(private val database: AppDatabase) {
         awaitClose {}
     }
 
-    fun streamExplain(text: String): Flow<String> = callbackFlow {
+    fun streamExplain(text: String, sourceLang: String, targetLang: String): Flow<String> = callbackFlow {
         val model = runBlocking(kotlinx.coroutines.Dispatchers.IO) { database.appDao().getSetting("EXPLAIN_MODEL")?.value ?: "inclusionai/ling-3.0-flash" }
         val promptTemplate = runBlocking(kotlinx.coroutines.Dispatchers.IO) { database.appDao().getSetting("EXPLAIN_PROMPT")?.value ?: com.aidict.app.utils.DefaultPrompts.EXPLAIN_PROMPT }
         
@@ -61,7 +61,7 @@ class LlmRepository(private val database: AppDatabase) {
             models = modelsList,
             messages = listOf(
                 ChatMessageDto(role = "system", content = promptTemplate),
-                ChatMessageDto(role = "user", content = "Please explain this sentence/paragraph:\n$text")
+                ChatMessageDto(role = "user", content = "Source language: $sourceLang\nTarget language: $targetLang\nPlease explain this sentence/paragraph:\n$text")
             ),
             stream = false
         )
@@ -89,7 +89,7 @@ class LlmRepository(private val database: AppDatabase) {
         awaitClose {}
     }
 
-    fun streamCompare(words: String): Flow<String> = callbackFlow {
+    fun streamCompare(words: String, sourceLang: String, targetLang: String): Flow<String> = callbackFlow {
         val model = runBlocking(kotlinx.coroutines.Dispatchers.IO) { database.appDao().getSetting("COMPARE_MODEL")?.value ?: "inclusionai/ling-3.0-flash" }
         val promptTemplate = runBlocking(kotlinx.coroutines.Dispatchers.IO) { database.appDao().getSetting("COMPARE_PROMPT")?.value ?: com.aidict.app.utils.DefaultPrompts.COMPARE_PROMPT }
         
@@ -101,7 +101,7 @@ class LlmRepository(private val database: AppDatabase) {
             models = modelsList,
             messages = listOf(
                 ChatMessageDto(role = "system", content = promptTemplate),
-                ChatMessageDto(role = "user", content = "Please compare the following words:\n$words")
+                ChatMessageDto(role = "user", content = "Source language: $sourceLang\nTarget language: $targetLang\nPlease compare the following words:\n$words")
             ),
             stream = false
         )

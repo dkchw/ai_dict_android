@@ -24,7 +24,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.aidict.app.ui.components.MarkdownText
 import androidx.compose.ui.unit.dp
-import com.aidict.app.ui.viewmodels.ExplainViewModel
 
 @Composable
 fun ExplainScreen(
@@ -32,6 +31,13 @@ fun ExplainScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.explainState.collectAsState()
+
+    var sourceLang by remember { mutableStateOf("Auto Detect") }
+    var targetLang by remember { mutableStateOf("English") }
+    LaunchedEffect(profileId) {
+        sourceLang = viewModel.getProfileSetting(profileId, "EXPLAIN_SOURCE") ?: "Auto Detect"
+        targetLang = viewModel.getProfileSetting(profileId, "EXPLAIN_TARGET") ?: "English"
+    }
     
     val context = LocalContext.current
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -51,11 +57,16 @@ fun ExplainScreen(
         }
 
         com.aidict.app.ui.components.ChatInputBar(
+            availableLanguages = viewModel.orderedLanguages.collectAsState().value,
             inputTerm = viewModel.explainInput,
             onValueChange = { viewModel.explainInput = it },
-            onSend = { if (state.word != null) viewModel.sendFollowUpMessage(viewModel.explainInput, "explain") else viewModel.streamExplain(viewModel.explainInput, profileId); viewModel.explainInput = "" },
+            onSend = { if (state.word != null) viewModel.sendFollowUpMessage(viewModel.explainInput, "explain") else viewModel.streamExplain(viewModel.explainInput, sourceLang, targetLang, profileId); viewModel.explainInput = "" },
             isLoading = state.isLoading,
             isFollowUp = state.word != null,
+            sourceLang = if (state.word == null) sourceLang else null,
+            targetLang = if (state.word == null) targetLang else null,
+            onSourceLangChange = if (state.word == null) { { sourceLang = it; viewModel.saveProfileSetting(profileId, "EXPLAIN_SOURCE", it) } } else null,
+            onTargetLangChange = if (state.word == null) { { targetLang = it; viewModel.saveProfileSetting(profileId, "EXPLAIN_TARGET", it) } } else null,
             onClear = { viewModel.clearCurrentSearch() },
             placeholder = if (state.word != null) "Enter your question..." else "Paste sentence/paragraph to explain..."
         )

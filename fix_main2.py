@@ -1,4 +1,6 @@
-package com.aidict.app
+import re
+
+text = """package com.aidict.app
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -20,7 +22,6 @@ import com.aidict.app.ui.AppNavigation
 import com.aidict.app.ui.viewmodels.HistoryViewModel
 import com.aidict.app.ui.viewmodels.SearchViewModel
 import com.aidict.app.ui.viewmodels.SettingsViewModel
-import com.aidict.app.ui.viewmodels.AppViewModel
 import com.aidict.app.ui.viewmodels.NotesViewModel
 
 class MainActivity : ComponentActivity() {
@@ -35,7 +36,6 @@ class MainActivity : ComponentActivity() {
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 return when {
                     modelClass.isAssignableFrom(SearchViewModel::class.java) -> SearchViewModel(repository, database) as T
-                    modelClass.isAssignableFrom(AppViewModel::class.java) -> AppViewModel(database) as T
                     modelClass.isAssignableFrom(HistoryViewModel::class.java) -> HistoryViewModel(database) as T
                     modelClass.isAssignableFrom(SettingsViewModel::class.java) -> SettingsViewModel(database, repository) as T
                     modelClass.isAssignableFrom(NotesViewModel::class.java) -> NotesViewModel(database) as T
@@ -47,7 +47,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             val windowSizeClass = calculateWindowSizeClass(this)
             
-            val appViewModel: AppViewModel = viewModel(factory = factory)
             val searchViewModel: SearchViewModel = viewModel(factory = factory)
             val historyViewModel: HistoryViewModel = viewModel(factory = factory)
             val settingsViewModel: SettingsViewModel = viewModel(factory = factory)
@@ -79,7 +78,6 @@ class MainActivity : ComponentActivity() {
             MaterialTheme(colorScheme = modifiedColorScheme) {
                 Surface(color = MaterialTheme.colorScheme.background) {
                     AppNavigation(
-                        appViewModel = appViewModel,
                         windowSizeClass = windowSizeClass,
                         searchViewModel = searchViewModel,
                         historyViewModel = historyViewModel,
@@ -92,3 +90,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+"""
+
+with open('android_app/app/src/main/java/com/aidict/app/MainActivity.kt', 'w') as f:
+    f.write(text)
+

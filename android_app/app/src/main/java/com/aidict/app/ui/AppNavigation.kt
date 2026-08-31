@@ -21,12 +21,9 @@ import com.aidict.app.ui.screens.SearchScreen
 import com.aidict.app.ui.screens.SettingsScreen
 import com.aidict.app.ui.screens.TranslateScreen
 import com.aidict.app.ui.screens.NotesScreen
-import com.aidict.app.ui.viewmodels.CompareViewModel
-import com.aidict.app.ui.viewmodels.ExplainViewModel
 import com.aidict.app.ui.viewmodels.HistoryViewModel
 import com.aidict.app.ui.viewmodels.SearchViewModel
 import com.aidict.app.ui.viewmodels.SettingsViewModel
-import com.aidict.app.ui.viewmodels.TranslateViewModel
 import com.aidict.app.ui.viewmodels.NotesViewModel
 
 import androidx.compose.material.icons.Icons
@@ -52,9 +49,6 @@ fun AppNavigation(
     windowSizeClass: WindowSizeClass,
     appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
     searchViewModel: SearchViewModel,
-    explainViewModel: ExplainViewModel,
-    translateViewModel: TranslateViewModel,
-    compareViewModel: CompareViewModel,
     historyViewModel: HistoryViewModel,
     settingsViewModel: SettingsViewModel,
     notesViewModel: NotesViewModel,

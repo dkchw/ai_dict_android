@@ -343,30 +343,30 @@ class SearchViewModel(
         }
     }
 
-    fun streamExplain(text: String, profileId: Int) {
+    fun streamExplain(text: String, sourceLang: String, targetLang: String, profileId: Int) {
         val _uiState = _explainState
         viewModelScope.launch {
             _uiState.value = SearchState(isLoading = true, currentStream = "")
             try {
-                llmRepository.streamExplain(text).collect { _uiState.value = _uiState.value.copy(currentStream = it) }
+                llmRepository.streamExplain(text, sourceLang, targetLang).collect { _uiState.value = _uiState.value.copy(currentStream = it) }
                 val wordId = database.appDao().insertWord(com.aidict.app.data.entities.Word(profileId = profileId, term = text, sessionId = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date()), mode = "explain")).toInt()
                 val msgId = database.appDao().insertChatMessage(com.aidict.app.data.entities.ChatMessage(wordId = wordId, role = "assistant", content = _uiState.value.currentStream)).toInt()
-                _uiState.value = SearchState(isLoading = false, word = com.aidict.app.data.entities.Word(id = wordId, profileId = profileId, term = text, mode = "explain", sessionId = ""), chatMessages = listOf(com.aidict.app.data.entities.ChatMessage(id = msgId, wordId = wordId, role = "assistant", content = _uiState.value.currentStream)), currentStream = "")
+                _uiState.value = SearchState(isLoading = false, word = com.aidict.app.data.entities.Word(id = wordId, profileId = profileId, term = text, language = "$sourceLang -> $targetLang", mode = "explain", sessionId = ""), chatMessages = listOf(com.aidict.app.data.entities.ChatMessage(id = msgId, wordId = wordId, role = "assistant", content = _uiState.value.currentStream)), currentStream = "")
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.localizedMessage)
             }
         }
     }
 
-    fun streamCompare(words: String, profileId: Int) {
+    fun streamCompare(words: String, sourceLang: String, targetLang: String, profileId: Int) {
         val _uiState = _compareState
         viewModelScope.launch {
             _uiState.value = SearchState(isLoading = true, currentStream = "")
             try {
-                llmRepository.streamCompare(words).collect { _uiState.value = _uiState.value.copy(currentStream = it) }
+                llmRepository.streamCompare(words, sourceLang, targetLang).collect { _uiState.value = _uiState.value.copy(currentStream = it) }
                 val wordId = database.appDao().insertWord(com.aidict.app.data.entities.Word(profileId = profileId, term = words, sessionId = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date()), mode = "compare")).toInt()
                 val msgId = database.appDao().insertChatMessage(com.aidict.app.data.entities.ChatMessage(wordId = wordId, role = "assistant", content = _uiState.value.currentStream)).toInt()
-                _uiState.value = SearchState(isLoading = false, word = com.aidict.app.data.entities.Word(id = wordId, profileId = profileId, term = words, mode = "compare", sessionId = ""), chatMessages = listOf(com.aidict.app.data.entities.ChatMessage(id = msgId, wordId = wordId, role = "assistant", content = _uiState.value.currentStream)), currentStream = "")
+                _uiState.value = SearchState(isLoading = false, word = com.aidict.app.data.entities.Word(id = wordId, profileId = profileId, term = words, language = "$sourceLang -> $targetLang", mode = "compare", sessionId = ""), chatMessages = listOf(com.aidict.app.data.entities.ChatMessage(id = msgId, wordId = wordId, role = "assistant", content = _uiState.value.currentStream)), currentStream = "")
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false, error = e.localizedMessage)
             }

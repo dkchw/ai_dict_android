@@ -29,7 +29,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.ui.unit.dp
-import com.aidict.app.ui.viewmodels.TranslateViewModel
 
 @Composable
 fun TranslateScreen(

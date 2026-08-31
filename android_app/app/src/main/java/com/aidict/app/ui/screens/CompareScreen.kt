@@ -24,7 +24,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.aidict.app.ui.components.MarkdownText
 import androidx.compose.ui.unit.dp
-import com.aidict.app.ui.viewmodels.CompareViewModel
 
 @Composable
 fun CompareScreen(
@@ -32,6 +31,13 @@ fun CompareScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.compareState.collectAsState()
+
+    var sourceLang by remember { mutableStateOf("Auto Detect") }
+    var targetLang by remember { mutableStateOf("English") }
+    LaunchedEffect(profileId) {
+        sourceLang = viewModel.getProfileSetting(profileId, "COMPARE_SOURCE") ?: "Auto Detect"
+        targetLang = viewModel.getProfileSetting(profileId, "COMPARE_TARGET") ?: "English"
+    }
     
     val context = LocalContext.current
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -125,11 +131,16 @@ fun CompareScreen(
         }
 
         com.aidict.app.ui.components.ChatInputBar(
+            availableLanguages = viewModel.orderedLanguages.collectAsState().value,
             inputTerm = viewModel.compareInput,
             onValueChange = { viewModel.compareInput = it },
-            onSend = { if (state.word != null) viewModel.sendFollowUpMessage(viewModel.compareInput, "compare") else viewModel.streamCompare(viewModel.compareInput, profileId); viewModel.compareInput = "" },
+            onSend = { if (state.word != null) viewModel.sendFollowUpMessage(viewModel.compareInput, "compare") else viewModel.streamCompare(viewModel.compareInput, sourceLang, targetLang, profileId); viewModel.compareInput = "" },
             isLoading = state.isLoading,
             isFollowUp = state.word != null,
+            sourceLang = if (state.word == null) sourceLang else null,
+            targetLang = if (state.word == null) targetLang else null,
+            onSourceLangChange = if (state.word == null) { { sourceLang = it; viewModel.saveProfileSetting(profileId, "COMPARE_SOURCE", it) } } else null,
+            onTargetLangChange = if (state.word == null) { { targetLang = it; viewModel.saveProfileSetting(profileId, "COMPARE_TARGET", it) } } else null,
             onClear = { viewModel.clearCurrentSearch() },
             placeholder = if (state.word != null) "Enter your question..." else "Words to compare (comma separated)..."
         )
