@@ -3,57 +3,35 @@ import re
 with open('android_app/app/src/main/java/com/aidict/app/ui/screens/SettingsScreen.kt', 'r') as f:
     text = f.read()
 
-# Add to imports if necessary
-if 'import kotlinx.serialization.json.Json' not in text:
-    text = text.replace('import androidx.compose.runtime.*', 'import androidx.compose.runtime.*\nimport kotlinx.serialization.json.Json\nimport kotlinx.serialization.encodeToString')
+settings_start = """        item { Text("Display & Scaling", style = MaterialTheme.typography.titleLarge) }"""
 
-# Find the place where the SearchableDropdown for quotes is
-old_quote_dropdown = """            com.aidict.app.ui.components.SearchableDropdown(
-
-                label = "Display Quote on Empty Screens",
-
-                currentValue = quote,
-
-                options = quotes,
-
-                onSelected = { viewModel.saveSetting("QUOTE_MODE", it) }
-
-            )"""
-
-new_quote_dropdown = """            com.aidict.app.ui.components.SearchableDropdown(
-                label = "Display Quote on Empty Screens",
-                currentValue = quote,
-                options = quotes,
-                onSelected = { viewModel.saveSetting("QUOTE_MODE", it) }
-            )
-
-            if (quote == "Shuffle") {
-                val enabledQuotes by viewModel.shuffleEnabledQuotes.collectAsState()
-                val currentEnabled = enabledQuotes ?: allQuotesList
-                
-                Card(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Quotes included in Shuffle:", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(bottom = 8.dp))
-                        allQuotesList.forEach { q ->
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable {
-                                val newSet = currentEnabled.toMutableSet()
-                                if (newSet.contains(q)) newSet.remove(q) else newSet.add(q)
-                                if (newSet.isEmpty()) newSet.add(q) // Ensure at least one
-                                viewModel.saveSetting("SHUFFLE_ENABLED_QUOTES", Json.encodeToString(newSet.toList()))
-                            }.padding(vertical = 4.dp)) {
-                                androidx.compose.material3.Checkbox(
-                                    checked = currentEnabled.contains(q),
-                                    onCheckedChange = null
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text(q, style = MaterialTheme.typography.bodyMedium)
-                            }
-                        }
-                    }
+settings_new = """        item { Text("App Behavior", style = MaterialTheme.typography.titleLarge) }
+        item {
+            val autoNewSearchStr by viewModel.autoNewSearch.collectAsState()
+            val autoNewSearch = autoNewSearchStr.toBooleanStrictOrNull() ?: false
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Auto New Search", style = MaterialTheme.typography.titleMedium)
+                    Text("Automatically clear chat and start a new search when submitting", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-            }"""
+                Switch(checked = autoNewSearch, onCheckedChange = { viewModel.saveSetting("AUTO_NEW_SEARCH", it.toString()) })
+            }
+        }
+        item {
+            val enterToSendStr by viewModel.enterToSend.collectAsState()
+            val enterToSend = enterToSendStr.toBooleanStrictOrNull() ?: false
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Enter to Send", style = MaterialTheme.typography.titleMedium)
+                    Text("Pressing enter on the keyboard sends the message instead of new line", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(checked = enterToSend, onCheckedChange = { viewModel.saveSetting("ENTER_TO_SEND", it.toString()) })
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+        item { Text("Display & Scaling", style = MaterialTheme.typography.titleLarge) }"""
 
-text = text.replace(old_quote_dropdown, new_quote_dropdown)
+text = text.replace(settings_start, settings_new)
 
 with open('android_app/app/src/main/java/com/aidict/app/ui/screens/SettingsScreen.kt', 'w') as f:
     f.write(text)

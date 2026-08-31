@@ -34,6 +34,9 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun CompareScreen(
     viewModel: com.aidict.app.ui.viewmodels.SearchViewModel, profileId: Int,
+    autoNewSearch: Boolean = false,
+    onToggleAutoNewSearch: () -> Unit = {},
+    enterToSend: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.compareState.collectAsState()
@@ -141,8 +144,11 @@ fun CompareScreen(
             availableLanguages = viewModel.orderedLanguages.collectAsState().value,
             inputTerm = viewModel.compareInput,
             onValueChange = { viewModel.compareInput = it },
-            onSend = { if (state.word != null) viewModel.sendFollowUpMessage(viewModel.compareInput, "compare") else viewModel.streamCompare(viewModel.compareInput, sourceLang, targetLang, profileId); viewModel.compareInput = "" },
+            onSend = { if (autoNewSearch && state.word != null) { viewModel.clearCurrentSearch(); viewModel.streamCompare(viewModel.compareInput, sourceLang, targetLang, profileId) } else if (state.word != null) viewModel.sendFollowUpMessage(viewModel.compareInput, "compare") else viewModel.streamCompare(viewModel.compareInput, sourceLang, targetLang, profileId); viewModel.compareInput = "" },
             isLoading = state.isLoading,
+            autoNewSearch = autoNewSearch,
+            onToggleAutoNewSearch = onToggleAutoNewSearch,
+            enterToSend = enterToSend,
             isFollowUp = state.word != null,
             sourceLang = if (state.word == null) sourceLang else null,
             targetLang = if (state.word == null) targetLang else null,

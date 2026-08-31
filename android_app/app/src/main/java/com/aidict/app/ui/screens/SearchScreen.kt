@@ -42,6 +42,9 @@ import com.aidict.app.ui.viewmodels.SearchViewModel
 @Composable
 fun SearchScreen(
     viewModel: SearchViewModel, profileId: Int,
+    autoNewSearch: Boolean = false,
+    onToggleAutoNewSearch: () -> Unit = {},
+    enterToSend: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.dictState.collectAsState()
@@ -230,7 +233,10 @@ fun SearchScreen(
             inputTerm = viewModel.searchInput,
             onValueChange = { viewModel.searchInput = it },
             onSend = {
-                if (isFollowUp) {
+                if (autoNewSearch && isFollowUp) {
+                    viewModel.clearCurrentSearch()
+                    viewModel.searchWord(viewModel.searchInput, sourceLang, targetLang, profileId)
+                } else if (isFollowUp) {
                     viewModel.sendFollowUpMessage(viewModel.searchInput, "dict")
                 } else {
                     viewModel.searchWord(viewModel.searchInput, sourceLang, targetLang, profileId)
@@ -238,6 +244,9 @@ fun SearchScreen(
                 viewModel.searchInput = ""
             },
             isLoading = state.isLoading,
+            autoNewSearch = autoNewSearch,
+            onToggleAutoNewSearch = onToggleAutoNewSearch,
+            enterToSend = enterToSend,
             placeholder = if (isFollowUp) "Enter your question..." else "Search word...",
             isFollowUp = isFollowUp,
             sourceLang = if (!isFollowUp) sourceLang else null,

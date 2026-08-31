@@ -41,6 +41,9 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun TranslateScreen(
     viewModel: com.aidict.app.ui.viewmodels.SearchViewModel, profileId: Int,
+    autoNewSearch: Boolean = false,
+    onToggleAutoNewSearch: () -> Unit = {},
+    enterToSend: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.translateState.collectAsState()
@@ -158,6 +161,9 @@ fun TranslateScreen(
                 viewModel.translateInput = ""
             },
             isLoading = state.isLoading,
+            autoNewSearch = autoNewSearch,
+            onToggleAutoNewSearch = onToggleAutoNewSearch,
+            enterToSend = enterToSend,
             isFollowUp = state.word != null,
             onClear = { viewModel.clearCurrentSearch() },
             placeholder = if (state.word != null) "Enter your question..." else "Text to translate...",

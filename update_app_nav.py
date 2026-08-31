@@ -3,23 +3,35 @@ import re
 with open('android_app/app/src/main/java/com/aidict/app/ui/AppNavigation.kt', 'r') as f:
     text = f.read()
 
-# Replace quotes logic
-old_logic = """        val quotesList by settingsViewModel.allQuotes.collectAsState()
+sig_start = """    val appTheme by settingsViewModel.appTheme.collectAsState()"""
 
-        var shuffledQuote by remember { mutableStateOf(quotesList.random()) }
+sig_new = """    val appTheme by settingsViewModel.appTheme.collectAsState()
+    val autoNewSearchStr by settingsViewModel.autoNewSearch.collectAsState()
+    val autoNewSearch = autoNewSearchStr.toBooleanStrictOrNull() ?: false
+    val enterToSendStr by settingsViewModel.enterToSend.collectAsState()
+    val enterToSend = enterToSendStr.toBooleanStrictOrNull() ?: false
+    
+    val toggleAutoNewSearch = {
+        settingsViewModel.saveSetting("AUTO_NEW_SEARCH", (!autoNewSearch).toString())
+    }"""
 
-        LaunchedEffect(currentMode) { if (quoteMode == "Shuffle") shuffledQuote = quotesList.random() }"""
+text = text.replace(sig_start, sig_new)
 
-new_logic = """        val quotesList by settingsViewModel.allQuotes.collectAsState()
-        val shuffleEnabledQuotes by settingsViewModel.shuffleEnabledQuotes.collectAsState()
-        
-        val activeShuffleList = shuffleEnabledQuotes?.filter { it in quotesList }?.takeIf { it.isNotEmpty() } ?: quotesList
+calls_old = """                            when (page) {
+                                0 -> SearchScreen(searchViewModel, pid)
+                                1 -> CompareScreen(searchViewModel, pid)
+                                2 -> TranslateScreen(searchViewModel, pid)
+                                3 -> ExplainScreen(searchViewModel, pid)
+                            }"""
 
-        var shuffledQuote by remember { mutableStateOf(activeShuffleList.randomOrNull() ?: "") }
+calls_new = """                            when (page) {
+                                0 -> SearchScreen(searchViewModel, pid, autoNewSearch = autoNewSearch, onToggleAutoNewSearch = toggleAutoNewSearch, enterToSend = enterToSend)
+                                1 -> CompareScreen(searchViewModel, pid, autoNewSearch = autoNewSearch, onToggleAutoNewSearch = toggleAutoNewSearch, enterToSend = enterToSend)
+                                2 -> TranslateScreen(searchViewModel, pid, autoNewSearch = autoNewSearch, onToggleAutoNewSearch = toggleAutoNewSearch, enterToSend = enterToSend)
+                                3 -> ExplainScreen(searchViewModel, pid, autoNewSearch = autoNewSearch, onToggleAutoNewSearch = toggleAutoNewSearch, enterToSend = enterToSend)
+                            }"""
 
-        LaunchedEffect(currentMode, activeShuffleList) { if (quoteMode == "Shuffle") shuffledQuote = activeShuffleList.randomOrNull() ?: "" }"""
-
-text = text.replace(old_logic, new_logic)
+text = text.replace(calls_old, calls_new)
 
 with open('android_app/app/src/main/java/com/aidict/app/ui/AppNavigation.kt', 'w') as f:
     f.write(text)

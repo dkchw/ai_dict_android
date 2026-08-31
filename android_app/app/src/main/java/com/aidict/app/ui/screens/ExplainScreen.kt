@@ -36,6 +36,9 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun ExplainScreen(
     viewModel: com.aidict.app.ui.viewmodels.SearchViewModel, profileId: Int,
+    autoNewSearch: Boolean = false,
+    onToggleAutoNewSearch: () -> Unit = {},
+    enterToSend: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.explainState.collectAsState()
@@ -73,6 +76,9 @@ fun ExplainScreen(
             onValueChange = { viewModel.explainInput = it },
             onSend = { if (state.word != null) viewModel.sendFollowUpMessage(viewModel.explainInput, "explain") else viewModel.streamExplain(viewModel.explainInput, sourceLang, targetLang, profileId); viewModel.explainInput = "" },
             isLoading = state.isLoading,
+            autoNewSearch = autoNewSearch,
+            onToggleAutoNewSearch = onToggleAutoNewSearch,
+            enterToSend = enterToSend,
             isFollowUp = state.word != null,
             sourceLang = if (state.word == null) sourceLang else null,
             targetLang = if (state.word == null) targetLang else null,

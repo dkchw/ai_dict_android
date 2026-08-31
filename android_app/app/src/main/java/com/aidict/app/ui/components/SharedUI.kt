@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SwapHoriz
@@ -16,6 +17,10 @@ import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.combinedClickable
+
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.*
@@ -144,6 +149,9 @@ fun ChatInputBar(
     onSourceLangChange: ((String) -> Unit)? = null,
     onTargetLangChange: ((String) -> Unit)? = null,
     onClear: (() -> Unit)? = null,
+    autoNewSearch: Boolean = false,
+    onToggleAutoNewSearch: (() -> Unit)? = null,
+    enterToSend: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -178,13 +186,27 @@ fun ChatInputBar(
                 verticalAlignment = Alignment.Bottom
             ) {
                 if (onClear != null) {
-                    IconButton(
-                        onClick = onClear, 
+                    androidx.compose.foundation.layout.Box(
+                        contentAlignment = Alignment.Center,
                         modifier = Modifier
                             .padding(bottom = 8.dp, start = 8.dp, end = 8.dp)
-                            .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)
+                            .size(40.dp)
+                            .background(if (autoNewSearch) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer, CircleShape)
+                            .clip(CircleShape)
+                            .then(
+                                @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+                                Modifier.combinedClickable(
+                                    onClick = onClear,
+                                    onLongClick = onToggleAutoNewSearch
+                                )
+                            )
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = "New Search", tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                        Icon(
+                            if (autoNewSearch) Icons.Default.Bolt else Icons.Default.Add, 
+                            contentDescription = "New Search", 
+                            tint = if (autoNewSearch) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 }
 
@@ -195,6 +217,12 @@ fun ChatInputBar(
                     modifier = Modifier.weight(1f),
                     minLines = 1,
                     maxLines = 4,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions.Default.copy(
+                        imeAction = if (enterToSend) androidx.compose.ui.text.input.ImeAction.Send else androidx.compose.ui.text.input.ImeAction.Default
+                    ),
+                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                        onSend = { if (inputTerm.isNotBlank() && !isLoading) onSend() }
+                    ),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Color.Transparent,
                         unfocusedBorderColor = Color.Transparent,

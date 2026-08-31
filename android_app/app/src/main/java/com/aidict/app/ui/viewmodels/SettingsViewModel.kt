@@ -36,6 +36,9 @@ class SettingsViewModel(
     val explainModel = getSettingFlow("EXPLAIN_MODEL", "inclusionai/ling-3.0-flash")
     val translateModel = getSettingFlow("TRANSLATE_MODEL", "inclusionai/ling-3.0-flash")
     
+    val autoNewSearch = getSettingFlow("AUTO_NEW_SEARCH", "false")
+    val enterToSend = getSettingFlow("ENTER_TO_SEND", "false")
+    
     val fallbackModels = getSettingFlow("FALLBACK_MODELS", "~deepseek/deepseek-v4-flash-latest")
     val chatModel = getSettingFlow("CHAT_MODEL", "~deepseek/deepseek-v4-flash-latest")
 

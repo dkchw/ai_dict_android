@@ -88,6 +88,15 @@ fun AppNavigation(
     
     val appState by appViewModel.uiState.collectAsState()
 
+    val autoNewSearchStr by settingsViewModel.autoNewSearch.collectAsState()
+    val autoNewSearch = autoNewSearchStr.toBooleanStrictOrNull() ?: false
+    val enterToSendStr by settingsViewModel.enterToSend.collectAsState()
+    val enterToSend = enterToSendStr.toBooleanStrictOrNull() ?: false
+    
+    val toggleAutoNewSearch = {
+        settingsViewModel.saveSetting("AUTO_NEW_SEARCH", (!autoNewSearch).toString())
+    }
+
     val bgDict by settingsViewModel.bgDict.collectAsState()
     val bgCompare by settingsViewModel.bgCompare.collectAsState()
     val bgTranslate by settingsViewModel.bgTranslate.collectAsState()
@@ -341,10 +350,10 @@ fun AppNavigation(
                             beyondBoundsPageCount = 1
                         ) { page ->
                             when (page) {
-                                0 -> SearchScreen(searchViewModel, pid)
-                                1 -> CompareScreen(searchViewModel, pid)
-                                2 -> TranslateScreen(searchViewModel, pid)
-                                3 -> ExplainScreen(searchViewModel, pid)
+                                0 -> SearchScreen(searchViewModel, pid, autoNewSearch = autoNewSearch, onToggleAutoNewSearch = toggleAutoNewSearch, enterToSend = enterToSend)
+                                1 -> CompareScreen(searchViewModel, pid, autoNewSearch = autoNewSearch, onToggleAutoNewSearch = toggleAutoNewSearch, enterToSend = enterToSend)
+                                2 -> TranslateScreen(searchViewModel, pid, autoNewSearch = autoNewSearch, onToggleAutoNewSearch = toggleAutoNewSearch, enterToSend = enterToSend)
+                                3 -> ExplainScreen(searchViewModel, pid, autoNewSearch = autoNewSearch, onToggleAutoNewSearch = toggleAutoNewSearch, enterToSend = enterToSend)
                             }
                         }
                         
