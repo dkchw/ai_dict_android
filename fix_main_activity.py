@@ -3,41 +3,16 @@ import re
 with open('android_app/app/src/main/java/com/aidict/app/MainActivity.kt', 'r') as f:
     text = f.read()
 
-old_material_theme = """            MaterialTheme(colorScheme = modifiedColorScheme) {
-                Surface(color = MaterialTheme.colorScheme.background) {"""
-new_material_theme = """            val uiScaleStr by settingsViewModel.getSettingFlow("UI_SCALE", "1.0").collectAsState()
-            val textScaleStr by settingsViewModel.getSettingFlow("TEXT_SIZE_SCALE", "1.0").collectAsState()
-            val uiScale = uiScaleStr.toFloatOrNull() ?: 1.0f
-            val textScale = textScaleStr.toFloatOrNull() ?: 1.0f
-            
-            val currentDensity = androidx.compose.ui.platform.LocalDensity.current
-            val newDensity = androidx.compose.ui.unit.Density(
-                density = currentDensity.density * uiScale,
-                fontScale = currentDensity.fontScale * textScale
-            )
+text = text.replace('import android.os.Bundle', 'import android.os.Bundle\nimport androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen')
 
-            MaterialTheme(colorScheme = modifiedColorScheme) {
-                androidx.compose.runtime.CompositionLocalProvider(
-                    androidx.compose.ui.platform.LocalDensity provides newDensity
-                ) {
-                    Surface(color = MaterialTheme.colorScheme.background) {"""
-text = text.replace(old_material_theme, new_material_theme)
+old_oncreate = """    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)"""
 
-# Also fix the closing braces for CompositionLocalProvider
-old_closing = """                    )
-                }
-            }
-        }
-    }
-}"""
-new_closing = """                    )
-                    }
-                }
-            }
-        }
-    }
-}"""
-text = text.replace(old_closing, new_closing)
+new_oncreate = """    override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
+        super.onCreate(savedInstanceState)"""
+
+text = text.replace(old_oncreate, new_oncreate)
 
 with open('android_app/app/src/main/java/com/aidict/app/MainActivity.kt', 'w') as f:
     f.write(text)
