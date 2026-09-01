@@ -14,6 +14,10 @@ MINOR=$(echo $OLD_VNAME | cut -d. -f2)
 NEW_MINOR=$((MINOR + 1))
 NEW_VNAME="${MAJOR}.${NEW_MINOR}"
 
+# TEMPORARY OVERRIDE
+NEW_VNAME="4.0"
+# END TEMPORARY OVERRIDE
+
 echo "====================================="
 echo "Bumping version: $OLD_VNAME -> $NEW_VNAME"
 echo "====================================="

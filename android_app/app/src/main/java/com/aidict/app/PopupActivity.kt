@@ -43,6 +43,27 @@ import com.aidict.app.ui.viewmodels.AppViewModel
 import com.aidict.app.ui.viewmodels.NotesViewModel
 
 class PopupActivity : ComponentActivity() {
+    companion object {
+        var isVisible = false
+    }
+
+    override fun onStart() {
+        super.onStart()
+        isVisible = true
+    }
+
+    override fun onStop() {
+        super.onStop()
+        isVisible = false
+    }
+    
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        if (intent.action == "CLOSE_POPUP") {
+            finish()
+        }
+    }
+
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

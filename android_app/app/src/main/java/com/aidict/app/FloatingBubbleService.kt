@@ -110,10 +110,18 @@ class FloatingBubbleService : Service() {
                         val xDiff = Math.abs(event.rawX - initialTouchX)
                         val yDiff = Math.abs(event.rawY - initialTouchY)
                         if (xDiff < 20 && yDiff < 20) {
-                            val intent = Intent(this@FloatingBubbleService, PopupActivity::class.java).apply {
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                            if (PopupActivity.isVisible) {
+                                val intent = Intent(this@FloatingBubbleService, PopupActivity::class.java).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                                    action = "CLOSE_POPUP"
+                                }
+                                startActivity(intent)
+                            } else {
+                                val intent = Intent(this@FloatingBubbleService, PopupActivity::class.java).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                                }
+                                startActivity(intent)
                             }
-                            startActivity(intent)
                         } else {
                             val displayMetrics = resources.displayMetrics
                             val screenHeight = displayMetrics.heightPixels
