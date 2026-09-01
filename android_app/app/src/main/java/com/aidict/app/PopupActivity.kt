@@ -155,8 +155,9 @@ class PopupActivity : ComponentActivity() {
                         val popupHeight = popupHeightStr.toFloatOrNull()?.coerceIn(0.3f, 1.0f) ?: defaultHeight
                         
                         val config = androidx.compose.ui.platform.LocalConfiguration.current
-                        val screenHeight = config.screenHeightDp.dp
-                        val screenWidth = config.screenWidthDp.dp
+                        val orientation = config.orientation
+                        val screenHeight = androidx.compose.runtime.remember(orientation) { config.screenHeightDp.dp }
+                        val screenWidth = androidx.compose.runtime.remember(orientation) { config.screenWidthDp.dp }
 
                         Surface(
                             shape = RoundedCornerShape(16.dp),

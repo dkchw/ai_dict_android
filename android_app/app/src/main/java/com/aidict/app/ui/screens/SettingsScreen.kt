@@ -66,7 +66,7 @@ fun SettingsGroup(title: String, content: @Composable () -> Unit) {
                 Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                 Icon(if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown, contentDescription = "Toggle")
             }
-            androidx.compose.animation.AnimatedVisibility(visible = expanded) {
+            if (expanded) {
                 Column(modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
                     content()
                 }
