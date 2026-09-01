@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
@@ -103,7 +104,21 @@ fun SearchScreen(
                         Icon(Icons.Default.ContentCopy, contentDescription = "Copy")
                     }
 
-                    IconButton(onClick = { viewModel.deleteCurrentWord() }) {
+                    IconButton(onClick = { 
+                        val lastUserMsg = state.chatMessages.findLast { it.role == "user" }
+                        if (lastUserMsg != null) viewModel.retryMessage(lastUserMsg, false, "dict")
+                    }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Restart with Current Model", tint = MaterialTheme.colorScheme.primary)
+                    }
+                    
+                    IconButton(onClick = { 
+                        val lastUserMsg = state.chatMessages.findLast { it.role == "user" }
+                        if (lastUserMsg != null) viewModel.retryMessage(lastUserMsg, true, "dict")
+                    }) {
+                        Icon(Icons.Default.Autorenew, contentDescription = "Restart with Fallback Model", tint = MaterialTheme.colorScheme.error)
+                    }
+                    
+                    IconButton(onClick = { viewModel.deleteCurrentWord("dict") }) {
                         Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
                     }
                 }

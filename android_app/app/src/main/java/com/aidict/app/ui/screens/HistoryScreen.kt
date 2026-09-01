@@ -13,6 +13,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Star
@@ -41,7 +43,8 @@ import com.aidict.app.data.entities.Session
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
-    onNavigateToChat: (Word) -> Unit, 
+    onNavigateToChat: (Word) -> Unit,
+    onRestartChat: (Word, com.aidict.app.data.entities.ChatMessage, Boolean) -> Unit = {_,_,_ -> }, 
     viewModel: HistoryViewModel,
     windowSizeClass: WindowSizeClass,
     modifier: Modifier = Modifier
@@ -372,6 +375,18 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
             Column(modifier = Modifier.fillMaxSize().padding(16.dp).background(MaterialTheme.colorScheme.surface)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     SelectionContainer(modifier = Modifier.weight(1f)) { Text(text = "Details", style = MaterialTheme.typography.titleLarge) }
+                    IconButton(onClick = {
+                        val lastUserMsg = messages.findLast { it.role == "user" }
+                        if (lastUserMsg != null) onRestartChat(selectedWord!!, lastUserMsg, false)
+                    }) {
+                        Icon(androidx.compose.material.icons.Icons.Default.Refresh, contentDescription = "Restart with Current Model", tint = MaterialTheme.colorScheme.primary)
+                    }
+                    IconButton(onClick = {
+                        val lastUserMsg = messages.findLast { it.role == "user" }
+                        if (lastUserMsg != null) onRestartChat(selectedWord!!, lastUserMsg, true)
+                    }) {
+                        Icon(androidx.compose.material.icons.Icons.Default.Autorenew, contentDescription = "Restart with Fallback Model", tint = MaterialTheme.colorScheme.error)
+                    }
                     Button(onClick = { onNavigateToChat(selectedWord!!) }) { Text("Resume Chat") }
                     Spacer(modifier = Modifier.width(8.dp))
                     IconButton(onClick = { selectedWord = null

@@ -166,7 +166,9 @@ class SearchViewModel(
                     _uiState.value = SearchState(isLoading = false, word = finalWord, chatMessages = listOf(finalMsg), currentStream = "")
                 }
             } catch (e: Exception) {
-                if (_uiState.value.word?.term == term) {
+                _uiState.value.word?.let { w ->
+                    val userMsg = com.aidict.app.data.entities.ChatMessage(wordId = w.id, role = "assistant", content = "*Generation Failed:* \n${e.localizedMessage}")
+                    database.appDao().insertChatMessage(userMsg)
                     _uiState.value = _uiState.value.copy(isLoading = false, error = e.localizedMessage)
                 }
             }
@@ -244,7 +246,9 @@ class SearchViewModel(
                     _uiState.value = _uiState.value.copy(isLoading = false, chatMessages = finalMessages, currentStream = "")
                 }
             } catch (e: Exception) {
-                if (_uiState.value.word?.id == currentWordId) {
+                _uiState.value.word?.let { w ->
+                    val userMsg = com.aidict.app.data.entities.ChatMessage(wordId = w.id, role = "assistant", content = "*Generation Failed:* \n${e.localizedMessage}")
+                    database.appDao().insertChatMessage(userMsg)
                     _uiState.value = _uiState.value.copy(isLoading = false, error = e.localizedMessage)
                 }
             }
@@ -361,7 +365,9 @@ class SearchViewModel(
                     )
                 }
             } catch (e: Exception) {
-                if (_uiState.value.word?.id == currentWordId) {
+                _uiState.value.word?.let { w ->
+                    val userMsg = com.aidict.app.data.entities.ChatMessage(wordId = w.id, role = "assistant", content = "*Generation Failed:* \n${e.localizedMessage}")
+                    database.appDao().insertChatMessage(userMsg)
                     _uiState.value = _uiState.value.copy(isLoading = false, error = e.localizedMessage)
                 }
             }
@@ -404,7 +410,9 @@ class SearchViewModel(
                     _uiState.value = SearchState(isLoading = false, word = savedWord, chatMessages = listOf(finalMsg), currentStream = "")
                 }
             } catch (e: Exception) {
-                if (_uiState.value.word?.term == text) {
+                _uiState.value.word?.let { w ->
+                    val userMsg = com.aidict.app.data.entities.ChatMessage(wordId = w.id, role = "assistant", content = "*Generation Failed:* \n${e.localizedMessage}")
+                    database.appDao().insertChatMessage(userMsg)
                     _uiState.value = _uiState.value.copy(isLoading = false, error = e.localizedMessage)
                 }
             }
@@ -447,7 +455,9 @@ class SearchViewModel(
                     _uiState.value = SearchState(isLoading = false, word = savedWord, chatMessages = listOf(finalMsg), currentStream = "")
                 }
             } catch (e: Exception) {
-                if (_uiState.value.word?.term == text) {
+                _uiState.value.word?.let { w ->
+                    val userMsg = com.aidict.app.data.entities.ChatMessage(wordId = w.id, role = "assistant", content = "*Generation Failed:* \n${e.localizedMessage}")
+                    database.appDao().insertChatMessage(userMsg)
                     _uiState.value = _uiState.value.copy(isLoading = false, error = e.localizedMessage)
                 }
             }
@@ -490,7 +500,9 @@ class SearchViewModel(
                     _uiState.value = SearchState(isLoading = false, word = savedWord, chatMessages = listOf(finalMsg), currentStream = "")
                 }
             } catch (e: Exception) {
-                if (_uiState.value.word?.term == words) {
+                _uiState.value.word?.let { w ->
+                    val userMsg = com.aidict.app.data.entities.ChatMessage(wordId = w.id, role = "assistant", content = "*Generation Failed:* \n${e.localizedMessage}")
+                    database.appDao().insertChatMessage(userMsg)
                     _uiState.value = _uiState.value.copy(isLoading = false, error = e.localizedMessage)
                 }
             }

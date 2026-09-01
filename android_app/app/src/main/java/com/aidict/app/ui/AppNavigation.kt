@@ -10,6 +10,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.ExperimentalFoundationApi
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.*
 import androidx.compose.ui.Modifier
@@ -147,6 +148,7 @@ fun AppNavigation(
         settingsViewModel.saveSetting("AUTO_NEW_SEARCH", (!autoNewSearch).toString())
     }
 
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val bgDict by settingsViewModel.bgDict.collectAsState()
     val bgCompare by settingsViewModel.bgCompare.collectAsState()
     val bgTranslate by settingsViewModel.bgTranslate.collectAsState()
@@ -166,7 +168,7 @@ fun AppNavigation(
 
     LaunchedEffect(activeBg) { if (activeBg == null) onColorExtracted(null) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { focusManager.clearFocus() }) {
 
         if (activeBg != null) {
             coil.compose.AsyncImage(
@@ -385,6 +387,19 @@ fun AppNavigation(
                             }
                             coroutineScope.launch { pagerState.scrollToPage(modeInt) }
                             currentScreen = Screen.MAIN
+                        },
+                        onRestartChat = { word, msg, fallback ->
+                            searchViewModel.loadWord(word)
+                            val modeInt = when (word.mode) {
+                                "dict" -> 0
+                                "compare" -> 1
+                                "translate" -> 2
+                                "explain" -> 3
+                                else -> 0
+                            }
+                            coroutineScope.launch { pagerState.scrollToPage(modeInt) }
+                            currentScreen = Screen.MAIN
+                            searchViewModel.retryMessage(msg, fallback, word.mode)
                         },
                         viewModel = historyViewModel,
                         windowSizeClass = windowSizeClass
