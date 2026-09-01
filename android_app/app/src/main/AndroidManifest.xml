@@ -20,6 +20,7 @@
             android:name=".MainActivity"
             android:windowSoftInputMode="adjustResize"
             android:exported="true"
+            android:launchMode="singleTop"
             android:label="AI Dict"
             android:theme="@style/Theme.App.Starting">
             <intent-filter>
@@ -42,16 +43,19 @@
             android:theme="@style/Theme.AIDict.Transparent"
             android:windowSoftInputMode="adjustResize"
             android:exported="true"
-            android:label="Ask AI Dict">
+            android:launchMode="singleTop"
+            android:label="@string/ask_ai_dict">
             <intent-filter>
                 <action android:name="android.intent.action.PROCESS_TEXT" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
+                <data android:mimeType="text/*" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
+                <data android:mimeType="text/*" />
             </intent-filter>
             <intent-filter>
                 <action android:name="colordict.intent.action.SEARCH" />

@@ -5,4 +5,5 @@
     <string name="history_title">History</string>
     <string name="export_data">Export Data</string>
     <string name="import_data">Import Data</string>
+    <string name="ask_ai_dict">Ask AI Dict</string>
 </resources>
