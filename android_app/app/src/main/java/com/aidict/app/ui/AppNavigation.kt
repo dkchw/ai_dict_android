@@ -13,6 +13,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.*
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
@@ -288,7 +293,14 @@ fun AppNavigation(
                             modifier = androidx.compose.ui.Modifier.padding(end = 8.dp),
                             color = androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
                         )
-                        IconButton(onClick = { showManualDialog = true }) {
+                        val currentWord = searchViewModel.dictState.collectAsState().value.word?.term 
+                            ?: searchViewModel.translateState.collectAsState().value.word?.term 
+                            ?: searchViewModel.explainState.collectAsState().value.word?.term 
+                            ?: searchViewModel.compareState.collectAsState().value.word?.term
+                            ?: searchViewModel.searchInput
+
+                        ExternalDictButton(settingsViewModel, currentWord)
+                                                IconButton(onClick = { showManualDialog = true }) {
                             Icon(Icons.Default.HelpOutline, contentDescription = "Help")
                         }
                         IconButton(onClick = { currentScreen = Screen.NOTES }) {
@@ -455,4 +467,65 @@ fun AppNavigation(
         }
     }
 }
+}
+
+
+@Composable
+fun ExternalDictButton(viewModel: com.aidict.app.ui.viewmodels.SettingsViewModel, currentWord: String?) {
+    val externalDictsStr by viewModel.getSettingFlow("EXTERNAL_DICTS", "Cambridge|https://dictionary.cambridge.org/dictionary/english/%s").collectAsState()
+    val dicts = remember(externalDictsStr) {
+        if (externalDictsStr.isBlank()) emptyList()
+        else externalDictsStr.split(",").mapNotNull { 
+            val parts = it.split("|")
+            if (parts.size >= 2) parts[0] to parts[1] else null
+        }
+    }
+    
+    if (dicts.isNotEmpty()) {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        var expanded by remember { mutableStateOf(false) }
+        
+        Box {
+            androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, modifier = Modifier.padding(end = 4.dp)) {
+                IconButton(onClick = {
+                    if (currentWord.isNullOrBlank()) {
+                        android.widget.Toast.makeText(context, "Search a word first", android.widget.Toast.LENGTH_SHORT).show()
+                        return@IconButton
+                    }
+                    val url = dicts.first().second.replace("%s", currentWord.trim())
+                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                    context.startActivity(intent)
+                }) {
+                    Icon(androidx.compose.material.icons.Icons.Default.Search, contentDescription = "External Dict")
+                }
+                
+                if (dicts.size > 1) {
+                    IconButton(onClick = { expanded = true }, modifier = Modifier.size(24.dp)) {
+                        Icon(androidx.compose.material.icons.Icons.Default.ArrowDropDown, contentDescription = "More")
+                    }
+                }
+            }
+            
+            androidx.compose.material3.DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                dicts.forEach { (name, urlTemplate) ->
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text(name) },
+                        onClick = {
+                            expanded = false
+                            if (currentWord.isNullOrBlank()) {
+                                android.widget.Toast.makeText(context, "Search a word first", android.widget.Toast.LENGTH_SHORT).show()
+                            } else {
+                                val url = urlTemplate.replace("%s", currentWord.trim())
+                                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                                context.startActivity(intent)
+                            }
+                        }
+                    )
+                }
+            }
+        }
+    }
 }

@@ -127,11 +127,28 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
     LazyColumn(modifier = modifier.fillMaxSize().padding(16.dp)) {
         item {
             val context = androidx.compose.ui.platform.LocalContext.current
-            Button(
-                onClick = { com.aidict.app.utils.AutoUpdater(context).checkForUpdates() },
-                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
-            ) { Text("Check for Updates") }
+            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = { com.aidict.app.utils.AutoUpdater(context).checkForUpdates() },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
+                ) { Text("Check Updates") }
+                
+                Button(
+                    onClick = {
+                        if (!android.provider.Settings.canDrawOverlays(context)) {
+                            val intent = android.content.Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:${context.packageName}"))
+                            context.startActivity(intent)
+                        } else {
+                            val intent = android.content.Intent(context, com.aidict.app.FloatingBubbleService::class.java)
+                            context.startService(intent)
+                            android.widget.Toast.makeText(context, "Floating Bubble Started", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                ) { Text("Floating Bubble") }
+            }
         }
         item {
             SettingsGroup("App Behavior") {
@@ -607,6 +624,74 @@ fun SearchableModelDropdown(label: String, currentValue: String, availableModels
                         }
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun ExternalDictManager(viewModel: com.aidict.app.ui.viewmodels.SettingsViewModel) {
+    val externalDictsStr by viewModel.getSettingFlow("EXTERNAL_DICTS", "Cambridge|https://dictionary.cambridge.org/dictionary/english/%s").collectAsState()
+    
+    // Parse list
+    val dicts = remember(externalDictsStr) {
+        if (externalDictsStr.isBlank()) emptyList()
+        else externalDictsStr.split(",").mapNotNull { 
+            val parts = it.split("|")
+            if (parts.size >= 2) parts[0] to parts[1] else null
+        }
+    }
+
+    var newName by remember { mutableStateOf("") }
+    var newUrl by remember { mutableStateOf("") }
+
+    SettingsGroup("External Dictionaries") {
+        Column(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
+            Text("Add a custom dictionary link (use %s for the search word).", style = MaterialTheme.typography.bodySmall)
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            dicts.forEachIndexed { index, (name, url) ->
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(name, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                        Text(url, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+                    }
+                    IconButton(onClick = {
+                        val newList = dicts.toMutableList().apply { removeAt(index) }
+                        viewModel.saveSetting("EXTERNAL_DICTS", newList.joinToString(",") { "${it.first}|${it.second}" })
+                    }) {
+                        Icon(androidx.compose.material.icons.Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                    }
+                }
+                androidx.compose.material3.Divider()
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = newName,
+                onValueChange = { newName = it },
+                label = { Text("Dictionary Name") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = newUrl,
+                onValueChange = { newUrl = it },
+                label = { Text("URL (e.g. https://.../%s)") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Button(
+                onClick = {
+                    if (newName.isNotBlank() && newUrl.contains("%s")) {
+                        val newList = dicts + (newName to newUrl)
+                        viewModel.saveSetting("EXTERNAL_DICTS", newList.joinToString(",") { "${it.first}|${it.second}" })
+                        newName = ""
+                        newUrl = ""
+                    }
+                },
+                modifier = Modifier.align(Alignment.End).padding(top = 8.dp),
+                enabled = newName.isNotBlank() && newUrl.contains("%s")
+            ) {
+                Text("Add Link")
             }
         }
     }
