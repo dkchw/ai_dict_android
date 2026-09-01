@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
@@ -149,7 +150,17 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                 ) { Text("Floating Bubble") }
             }
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            val versionName = packageInfo.versionName
+            Text(
+                "Version: $versionName", 
+                style = MaterialTheme.typography.bodySmall, 
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), 
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
         }
+        item { ExternalDictManager(viewModel) }
         item {
             SettingsGroup("App Behavior") {
                 val autoNewSearchStr by viewModel.autoNewSearch.collectAsState()
