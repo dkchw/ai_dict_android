@@ -390,15 +390,7 @@ fun AppNavigation(
                         },
                         onRestartChat = { word, msg, fallback ->
                             searchViewModel.loadWord(word)
-                            val modeInt = when (word.mode) {
-                                "dict" -> 0
-                                "compare" -> 1
-                                "translate" -> 2
-                                "explain" -> 3
-                                else -> 0
-                            }
-                            coroutineScope.launch { pagerState.scrollToPage(modeInt) }
-                            currentScreen = Screen.MAIN
+                            // Don't switch screens, let it generate in the background
                             searchViewModel.retryMessage(msg, fallback, word.mode)
                         },
                         viewModel = historyViewModel,

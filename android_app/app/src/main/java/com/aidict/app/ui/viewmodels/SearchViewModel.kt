@@ -327,6 +327,8 @@ class SearchViewModel(
             // Delete the assistant message to restart generation from that point
             database.appDao().deleteChatMessage(assistantMsg)
             val historyBefore = database.appDao().getChatMessagesSync(assistantMsg.wordId)
+            val loadingMsg = assistantMsg.copy(content = "Generating...")
+            database.appDao().insertChatMessage(loadingMsg)
             
             if (_uiState.value.word?.id == currentWordId) {
                 _uiState.value = _uiState.value.copy(
@@ -353,7 +355,7 @@ class SearchViewModel(
                 }
 
                 val finalMarkdown = currentText
-                val newAssistantMsg = com.aidict.app.data.entities.ChatMessage(wordId = assistantMsg.wordId, role = "assistant", content = finalMarkdown)
+                val newAssistantMsg = loadingMsg.copy(content = finalMarkdown)
                 database.appDao().insertChatMessage(newAssistantMsg)
 
                 val finalMessages = database.appDao().getChatMessagesSync(assistantMsg.wordId)
@@ -365,9 +367,9 @@ class SearchViewModel(
                     )
                 }
             } catch (e: Exception) {
-                _uiState.value.word?.let { w ->
-                    val userMsg = com.aidict.app.data.entities.ChatMessage(wordId = w.id, role = "assistant", content = "*Generation Failed:* \n${e.localizedMessage}")
-                    database.appDao().insertChatMessage(userMsg)
+                val errorMsg = loadingMsg.copy(content = "*Generation Failed:* \n${e.localizedMessage}")
+                database.appDao().insertChatMessage(errorMsg)
+                if (_uiState.value.word?.id == currentWordId) {
                     _uiState.value = _uiState.value.copy(isLoading = false, error = e.localizedMessage)
                 }
             }
