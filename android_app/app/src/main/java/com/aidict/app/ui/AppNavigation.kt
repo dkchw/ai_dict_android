@@ -396,26 +396,28 @@ fun AppNavigation(
                     
         val context = androidx.compose.ui.platform.LocalContext.current
 
-        var leftOverscroll by remember { mutableFloatStateOf(0f) }
+        
         val leftThreshold = 250f
         val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
         
-        val leftOverscrollConnection = remember(pagerState.currentPage) {
+        val coroutineScope = rememberCoroutineScope()
+        val leftOverscrollAnim = remember { androidx.compose.animation.core.Animatable(0f) }
+        val leftOverscroll = leftOverscrollAnim.value
+        
+        val leftOverscrollConnection = remember(pagerState) {
             object : NestedScrollConnection {
                 var toggled = false
                 
                 override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                    if (pagerState.currentPage == 0) {
-                        if (leftOverscroll > 0f && available.x < 0f) {
-                            // Shrinking the overscroll
-                            val consumedX = minOf(-available.x, leftOverscroll)
-                            leftOverscroll -= consumedX
+                    if (pagerState.currentPage == 0 && kotlin.math.abs(pagerState.currentPageOffsetFraction) <= 0.05f) {
+                        if (leftOverscrollAnim.value > 0f && available.x < 0f) {
+                            val consumedX = minOf(-available.x, leftOverscrollAnim.value)
+                            coroutineScope.launch { leftOverscrollAnim.snapTo(leftOverscrollAnim.value - consumedX) }
                             return Offset(-consumedX, 0f)
                         } else if (available.x > 0f) {
-                            // Growing the overscroll
-                            leftOverscroll += available.x * 0.5f // friction
+                            coroutineScope.launch { leftOverscrollAnim.snapTo(leftOverscrollAnim.value + available.x * 0.5f) }
                             
-                            if (leftOverscroll > leftThreshold && !toggled) {
+                            if (leftOverscrollAnim.value > leftThreshold && !toggled) {
                                 toggled = true
                                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                                 if (com.aidict.app.FloatingBubbleService.isRunning) {
@@ -439,14 +441,18 @@ fun AppNavigation(
                 }
 
                 override suspend fun onPreFling(available: Velocity): Velocity {
-                    leftOverscroll = 0f
-                    toggled = false
+                    if (leftOverscrollAnim.value > 0f) {
+                        coroutineScope.launch { leftOverscrollAnim.animateTo(0f) }
+                        toggled = false
+                    }
                     return Velocity.Zero
                 }
                 
                 override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                    leftOverscroll = 0f
-                    toggled = false
+                    if (leftOverscrollAnim.value > 0f) {
+                        coroutineScope.launch { leftOverscrollAnim.animateTo(0f) }
+                        toggled = false
+                    }
                     return Velocity.Zero
                 }
             }
