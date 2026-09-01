@@ -43,6 +43,8 @@
             android:theme="@style/Theme.AIDict.Transparent"
             android:windowSoftInputMode="adjustResize"
             android:exported="true"
+            android:taskAffinity=".PopupTask"
+            android:excludeFromRecents="true"
             android:launchMode="singleTop"
             android:label="@string/ask_ai_dict">
             <intent-filter>
