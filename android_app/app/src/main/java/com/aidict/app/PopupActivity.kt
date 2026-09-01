@@ -78,7 +78,15 @@ class PopupActivity : ComponentActivity() {
             
             LaunchedEffect(Unit) {
                 if (textExtra.isNotBlank() && searchViewModel.searchInput.isBlank()) {
+                    searchViewModel.clearCurrentSearch()
                     searchViewModel.searchInput = textExtra
+                    
+                    kotlinx.coroutines.delay(100) // Brief delay to ensure UI and AppViewModel are ready
+                    val profileId = appViewModel.uiState.value.activeProfile?.id ?: 1
+                    val sourceLang = searchViewModel.getProfileSetting(profileId, "DICT_SOURCE") ?: "Auto Detect"
+                    val targetLang = searchViewModel.getProfileSetting(profileId, "DICT_TARGET") ?: "English"
+                    
+                    searchViewModel.searchWord(textExtra, sourceLang, targetLang, profileId)
                 }
             }
             
