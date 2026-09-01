@@ -472,12 +472,12 @@ fun AppNavigation(
 
 @Composable
 fun ExternalDictButton(viewModel: com.aidict.app.ui.viewmodels.SettingsViewModel, currentWord: String?) {
-    val externalDictsStr by viewModel.getSettingFlow("EXTERNAL_DICTS", "Cambridge|https://dictionary.cambridge.org/dictionary/english/%s").collectAsState()
+    val externalDictsStr by viewModel.getSettingFlow("EXTERNAL_DICTS", "Cambridge|https://dictionary.cambridge.org/dictionary/english/{{str}}").collectAsState()
     val dicts = remember(externalDictsStr) {
         if (externalDictsStr.isBlank()) emptyList()
         else externalDictsStr.split(",").mapNotNull { 
             val parts = it.split("|")
-            if (parts.size >= 2) parts[0] to parts[1] else null
+            if (parts.size >= 2) Triple(parts[0], parts[1], parts.getOrNull(2) ?: "") else null
         }
     }
     
@@ -492,11 +492,21 @@ fun ExternalDictButton(viewModel: com.aidict.app.ui.viewmodels.SettingsViewModel
                         android.widget.Toast.makeText(context, "Search a word first", android.widget.Toast.LENGTH_SHORT).show()
                         return@IconButton
                     }
-                    val url = dicts.first().second.replace("%s", currentWord.trim())
+                    val urlTemplate = dicts.first().second
+                    val url = urlTemplate.replace("{{str}}", currentWord.trim()).replace("%s", currentWord.trim())
                     val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
                     context.startActivity(intent)
                 }) {
-                    Icon(androidx.compose.material.icons.Icons.Default.Search, contentDescription = "External Dict")
+                    val firstIcon = dicts.first().third
+                    if (firstIcon.isNotBlank()) {
+                        coil.compose.AsyncImage(
+                            model = firstIcon,
+                            contentDescription = "External Dict",
+                            modifier = Modifier.size(24.dp)
+                        )
+                    } else {
+                        Icon(androidx.compose.material.icons.Icons.Default.Search, contentDescription = "External Dict")
+                    }
                 }
                 
                 if (dicts.size > 1) {
@@ -510,15 +520,18 @@ fun ExternalDictButton(viewModel: com.aidict.app.ui.viewmodels.SettingsViewModel
                 expanded = expanded,
                 onDismissRequest = { expanded = false }
             ) {
-                dicts.forEach { (name, urlTemplate) ->
+                dicts.forEach { (name, urlTemplate, iconUrl) ->
                     androidx.compose.material3.DropdownMenuItem(
                         text = { Text(name) },
+                        leadingIcon = if (iconUrl.isNotBlank()) {
+                            { coil.compose.AsyncImage(model = iconUrl, contentDescription = name, modifier = Modifier.size(24.dp)) }
+                        } else null,
                         onClick = {
                             expanded = false
                             if (currentWord.isNullOrBlank()) {
                                 android.widget.Toast.makeText(context, "Search a word first", android.widget.Toast.LENGTH_SHORT).show()
                             } else {
-                                val url = urlTemplate.replace("%s", currentWord.trim())
+                                val url = urlTemplate.replace("{{str}}", currentWord.trim()).replace("%s", currentWord.trim())
                                 val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
                                 context.startActivity(intent)
                             }

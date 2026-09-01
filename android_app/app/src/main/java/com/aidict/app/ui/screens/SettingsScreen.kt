@@ -702,32 +702,39 @@ fun ExternalDictManager(viewModel: com.aidict.app.ui.viewmodels.SettingsViewMode
             val popupWidthStr by viewModel.getSettingFlow("POPUP_WIDTH", "0.95").collectAsState()
             val popupHeightStr by viewModel.getSettingFlow("POPUP_HEIGHT", "0.90").collectAsState()
             
-            var bubbleSize by remember(bubbleSizeStr) { mutableStateOf(bubbleSizeStr.toFloatOrNull() ?: 160f) }
-            var popupWidth by remember(popupWidthStr) { mutableStateOf(popupWidthStr.toFloatOrNull() ?: 0.95f) }
-            var popupHeight by remember(popupHeightStr) { mutableStateOf(popupHeightStr.toFloatOrNull() ?: 0.90f) }
+            var bubbleSize by remember { mutableStateOf<Float?>(null) }
+            var popupWidth by remember { mutableStateOf<Float?>(null) }
+            var popupHeight by remember { mutableStateOf<Float?>(null) }
+            
+            val currentBubbleSize = bubbleSize ?: (bubbleSizeStr.toFloatOrNull() ?: 160f)
+            val currentPopupWidth = popupWidth ?: (popupWidthStr.toFloatOrNull() ?: 0.95f)
+            val currentPopupHeight = popupHeight ?: (popupHeightStr.toFloatOrNull() ?: 0.90f)
 
-            Text("Bubble Size: ${bubbleSize.toInt()}px", style = MaterialTheme.typography.bodyMedium)
+            Text("Bubble Size: ${currentBubbleSize.toInt()}px", style = MaterialTheme.typography.bodyMedium)
             androidx.compose.material3.Slider(
-                value = bubbleSize,
+                value = currentBubbleSize,
                 onValueChange = { bubbleSize = it },
-                onValueChangeFinished = { viewModel.saveSetting("BUBBLE_SIZE", bubbleSize.toInt().toString()) },
-                valueRange = 80f..300f
+                onValueChangeFinished = { viewModel.saveSetting("BUBBLE_SIZE", currentBubbleSize.toInt().toString()) },
+                valueRange = 80f..320f,
+                steps = 23
             )
 
-            Text("Popup Width: ${(popupWidth * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium)
+            Text("Popup Width: ${(currentPopupWidth * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium)
             androidx.compose.material3.Slider(
-                value = popupWidth,
+                value = currentPopupWidth,
                 onValueChange = { popupWidth = it },
-                onValueChangeFinished = { viewModel.saveSetting("POPUP_WIDTH", popupWidth.toString()) },
-                valueRange = 0.3f..1.0f
+                onValueChangeFinished = { viewModel.saveSetting("POPUP_WIDTH", currentPopupWidth.toString()) },
+                valueRange = 0.3f..1.0f,
+                steps = 13
             )
 
-            Text("Popup Height: ${(popupHeight * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium)
+            Text("Popup Height: ${(currentPopupHeight * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium)
             androidx.compose.material3.Slider(
-                value = popupHeight,
+                value = currentPopupHeight,
                 onValueChange = { popupHeight = it },
-                onValueChangeFinished = { viewModel.saveSetting("POPUP_HEIGHT", popupHeight.toString()) },
-                valueRange = 0.3f..1.0f
+                onValueChangeFinished = { viewModel.saveSetting("POPUP_HEIGHT", currentPopupHeight.toString()) },
+                valueRange = 0.3f..1.0f,
+                steps = 13
             )
         }
     }

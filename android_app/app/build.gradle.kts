@@ -13,8 +13,8 @@ android {
         applicationId = "com.aidict.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 54
-        versionName = "3.16"
+        versionCode = 55
+        versionName = "3.17"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
