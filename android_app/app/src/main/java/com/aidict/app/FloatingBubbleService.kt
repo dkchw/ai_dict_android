@@ -15,6 +15,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.FrameLayout
 import android.widget.Toast
+import kotlinx.coroutines.launch
 
 class FloatingBubbleService : Service() {
     private lateinit var windowManager: WindowManager
@@ -32,6 +33,8 @@ class FloatingBubbleService : Service() {
             layoutParams = android.view.ViewGroup.LayoutParams(160, 160)
             setPadding(16, 16, 16, 16)
         }
+        
+
 
         val layoutFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -153,6 +156,17 @@ class FloatingBubbleService : Service() {
         })
 
         windowManager.addView(bubbleView, params)
+
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            val db = com.aidict.app.data.AppDatabase.getDatabase(this@FloatingBubbleService)
+            val sizeStr = db.appDao().getSetting("BUBBLE_SIZE")?.value ?: "160"
+            val size = sizeStr.toIntOrNull() ?: 160
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                params.width = size
+                params.height = size
+                windowManager.updateViewLayout(bubbleView, params)
+            }
+        }
     }
 
     override fun onDestroy() {

@@ -633,7 +633,6 @@ fun SearchableModelDropdown(label: String, currentValue: String, availableModels
 fun ExternalDictManager(viewModel: com.aidict.app.ui.viewmodels.SettingsViewModel) {
     val externalDictsStr by viewModel.getSettingFlow("EXTERNAL_DICTS", "Cambridge|https://dictionary.cambridge.org/dictionary/english/%s").collectAsState()
     
-    // Parse list
     val dicts = remember(externalDictsStr) {
         if (externalDictsStr.isBlank()) emptyList()
         else externalDictsStr.split(",").mapNotNull { 
@@ -642,14 +641,88 @@ fun ExternalDictManager(viewModel: com.aidict.app.ui.viewmodels.SettingsViewMode
         }
     }
 
-    var newName by remember { mutableStateOf("") }
-    var newUrl by remember { mutableStateOf("") }
+    var showDialog by remember { mutableStateOf(false) }
 
+    if (showDialog) {
+        var newName by remember { mutableStateOf("") }
+        var newUrl by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Add External Dictionary") },
+            text = {
+                Column {
+                    Text("Use %s for the search word placeholder.", style = MaterialTheme.typography.bodySmall)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = newName,
+                        onValueChange = { newName = it },
+                        label = { Text("Dictionary Name") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = newUrl,
+                        onValueChange = { newUrl = it },
+                        label = { Text("URL (e.g. https://.../%s)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newName.isNotBlank() && newUrl.contains("%s")) {
+                            val newList = dicts + (newName to newUrl)
+                            viewModel.saveSetting("EXTERNAL_DICTS", newList.joinToString(",") { "${it.first}|${it.second}" })
+                            showDialog = false
+                        }
+                    },
+                    enabled = newName.isNotBlank() && newUrl.contains("%s")
+                ) { Text("Add") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    SettingsGroup("Floating UI & Bubble Sizing") {
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
+            val bubbleSizeStr by viewModel.getSettingFlow("BUBBLE_SIZE", "160").collectAsState()
+            val popupWidthStr by viewModel.getSettingFlow("POPUP_WIDTH", "0.95").collectAsState()
+            val popupHeightStr by viewModel.getSettingFlow("POPUP_HEIGHT", "0.90").collectAsState()
+            
+            var bubbleSize by remember(bubbleSizeStr) { mutableStateOf(bubbleSizeStr.toFloatOrNull() ?: 160f) }
+            var popupWidth by remember(popupWidthStr) { mutableStateOf(popupWidthStr.toFloatOrNull() ?: 0.95f) }
+            var popupHeight by remember(popupHeightStr) { mutableStateOf(popupHeightStr.toFloatOrNull() ?: 0.90f) }
+
+            Text("Bubble Size: ${bubbleSize.toInt()}px", style = MaterialTheme.typography.bodyMedium)
+            androidx.compose.material3.Slider(
+                value = bubbleSize,
+                onValueChange = { bubbleSize = it },
+                onValueChangeFinished = { viewModel.saveSetting("BUBBLE_SIZE", bubbleSize.toInt().toString()) },
+                valueRange = 80f..300f
+            )
+
+            Text("Popup Width: ${(popupWidth * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium)
+            androidx.compose.material3.Slider(
+                value = popupWidth,
+                onValueChange = { popupWidth = it },
+                onValueChangeFinished = { viewModel.saveSetting("POPUP_WIDTH", popupWidth.toString()) },
+                valueRange = 0.3f..1.0f
+            )
+
+            Text("Popup Height: ${(popupHeight * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium)
+            androidx.compose.material3.Slider(
+                value = popupHeight,
+                onValueChange = { popupHeight = it },
+                onValueChangeFinished = { viewModel.saveSetting("POPUP_HEIGHT", popupHeight.toString()) },
+                valueRange = 0.3f..1.0f
+            )
+        }
+    }
+    Spacer(Modifier.height(16.dp))
     SettingsGroup("External Dictionaries") {
         Column(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
-            Text("Add a custom dictionary link (use %s for the search word).", style = MaterialTheme.typography.bodySmall)
-            Spacer(modifier = Modifier.height(8.dp))
-            
             dicts.forEachIndexed { index, (name, url) ->
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                     Column(modifier = Modifier.weight(1f)) {
@@ -663,33 +736,12 @@ fun ExternalDictManager(viewModel: com.aidict.app.ui.viewmodels.SettingsViewMode
                         Icon(androidx.compose.material.icons.Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
                     }
                 }
-                androidx.compose.material3.Divider()
+                androidx.compose.material3.HorizontalDivider()
             }
             
-            Spacer(modifier = Modifier.height(8.dp))
-            OutlinedTextField(
-                value = newName,
-                onValueChange = { newName = it },
-                label = { Text("Dictionary Name") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            OutlinedTextField(
-                value = newUrl,
-                onValueChange = { newUrl = it },
-                label = { Text("URL (e.g. https://.../%s)") },
-                modifier = Modifier.fillMaxWidth()
-            )
             Button(
-                onClick = {
-                    if (newName.isNotBlank() && newUrl.contains("%s")) {
-                        val newList = dicts + (newName to newUrl)
-                        viewModel.saveSetting("EXTERNAL_DICTS", newList.joinToString(",") { "${it.first}|${it.second}" })
-                        newName = ""
-                        newUrl = ""
-                    }
-                },
-                modifier = Modifier.align(Alignment.End).padding(top = 8.dp),
-                enabled = newName.isNotBlank() && newUrl.contains("%s")
+                onClick = { showDialog = true },
+                modifier = Modifier.align(Alignment.End).padding(top = 8.dp)
             ) {
                 Text("Add Link")
             }
