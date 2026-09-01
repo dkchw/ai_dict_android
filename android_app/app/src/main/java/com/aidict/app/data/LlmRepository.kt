@@ -20,7 +20,11 @@ import kotlinx.coroutines.runBlocking
 import com.aidict.app.data.AppDatabase
 
 class LlmRepository(private val database: AppDatabase) {
-    private val client = OkHttpClient.Builder().build()
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
+        .writeTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
     private val json = Json { ignoreUnknownKeys = true }
 
     private fun getApiKey(): String {

@@ -105,14 +105,14 @@ fun SearchScreen(
                     }
 
                     IconButton(onClick = { 
-                        val lastUserMsg = state.chatMessages.findLast { it.role == "user" }
+                        val lastUserMsg = state.chatMessages.findLast { it.role == "assistant" }
                         if (lastUserMsg != null) viewModel.retryMessage(lastUserMsg, false, "dict")
                     }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Restart with Current Model", tint = MaterialTheme.colorScheme.primary)
                     }
                     
                     IconButton(onClick = { 
-                        val lastUserMsg = state.chatMessages.findLast { it.role == "user" }
+                        val lastUserMsg = state.chatMessages.findLast { it.role == "assistant" }
                         if (lastUserMsg != null) viewModel.retryMessage(lastUserMsg, true, "dict")
                     }) {
                         Icon(Icons.Default.Autorenew, contentDescription = "Restart with Fallback Model", tint = MaterialTheme.colorScheme.error)

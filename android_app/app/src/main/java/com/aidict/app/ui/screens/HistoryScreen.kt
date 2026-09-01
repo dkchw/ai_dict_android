@@ -376,13 +376,13 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     SelectionContainer(modifier = Modifier.weight(1f)) { Text(text = "Details", style = MaterialTheme.typography.titleLarge) }
                     IconButton(onClick = {
-                        val lastUserMsg = messages.findLast { it.role == "user" }
+                        val lastUserMsg = messages.findLast { it.role == "assistant" }
                         if (lastUserMsg != null) onRestartChat(selectedWord!!, lastUserMsg, false)
                     }) {
                         Icon(androidx.compose.material.icons.Icons.Default.Refresh, contentDescription = "Restart with Current Model", tint = MaterialTheme.colorScheme.primary)
                     }
                     IconButton(onClick = {
-                        val lastUserMsg = messages.findLast { it.role == "user" }
+                        val lastUserMsg = messages.findLast { it.role == "assistant" }
                         if (lastUserMsg != null) onRestartChat(selectedWord!!, lastUserMsg, true)
                     }) {
                         Icon(androidx.compose.material.icons.Icons.Default.Autorenew, contentDescription = "Restart with Fallback Model", tint = MaterialTheme.colorScheme.error)
