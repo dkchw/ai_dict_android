@@ -126,7 +126,7 @@ class SearchViewModel(
     val orderedLanguages = database.appDao().getSettingsFlow().map { s -> com.aidict.app.utils.LanguageManager.getOrderedLanguages(s.find { it.key == "STARRED_LANGUAGES" }?.value, s.find { it.key == "CUSTOM_LANGUAGES" }?.value) }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Lazily, com.aidict.app.utils.LanguageManager.getOrderedLanguages(null, null))
     fun searchWord(term: String, sourceLang: String, targetLang: String, profileId: Int) {
         val _uiState = _dictState
-        viewModelScope.launch {
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             try {
                 val sessionId = getOrCreateActiveSessionId(profileId)
                 val existingWord = database.appDao().findWordExact(profileId, "dict", term, null)
@@ -219,7 +219,7 @@ class SearchViewModel(
         val _uiState = getUiState(mode)
         val word = _uiState.value.word ?: return
         val currentWordId = word.id
-        viewModelScope.launch {
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             val userMsg = ChatMessage(wordId = word.id, role = "user", content = content)
             val userMsgId = database.appDao().insertChatMessage(userMsg).toInt()
             
@@ -319,7 +319,7 @@ class SearchViewModel(
         val _uiState = getUiState(mode)
         val word = _uiState.value.word ?: return
         val currentWordId = word.id
-        viewModelScope.launch {
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             // Delete the assistant message to restart generation from that point
             database.appDao().deleteChatMessage(assistantMsg)
             val historyBefore = database.appDao().getChatMessagesSync(assistantMsg.wordId)
@@ -369,7 +369,7 @@ class SearchViewModel(
     }
     fun streamTranslation(text: String, source: String, target: String, profileId: Int) {
         val _uiState = _translateState
-        viewModelScope.launch {
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             try {
                 val sessionId = getOrCreateActiveSessionId(profileId)
                 val langKey = "$source -> $target"
@@ -412,7 +412,7 @@ class SearchViewModel(
     }
     fun streamExplain(text: String, sourceLang: String, targetLang: String, profileId: Int) {
         val _uiState = _explainState
-        viewModelScope.launch {
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             try {
                 val sessionId = getOrCreateActiveSessionId(profileId)
                 val langKey = "$sourceLang -> $targetLang"
@@ -455,7 +455,7 @@ class SearchViewModel(
     }
     fun streamCompare(words: String, sourceLang: String, targetLang: String, profileId: Int) {
         val _uiState = _compareState
-        viewModelScope.launch {
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             try {
                 val sessionId = getOrCreateActiveSessionId(profileId)
                 val langKey = "$sourceLang -> $targetLang"
