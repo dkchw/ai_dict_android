@@ -27,6 +27,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -264,7 +265,7 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                                         Checkbox(checked = selectedWordIds.contains(word.id), onCheckedChange = { selectedWordIds = if (it) selectedWordIds + word.id else selectedWordIds - word.id })
                                     }
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(text = word.term, style = MaterialTheme.typography.bodyLarge)
+                                        SelectionContainer { Text(text = word.term, style = MaterialTheme.typography.bodyLarge) }
                                         if (!word.language.isNullOrBlank()) {
                                             Text(text = word.language, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
                                         }
@@ -332,7 +333,7 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                                         Checkbox(checked = selectedWordIds.contains(word.id), onCheckedChange = { selectedWordIds = if (it) selectedWordIds + word.id else selectedWordIds - word.id })
                                     }
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(text = word.term, style = MaterialTheme.typography.bodyLarge)
+                                        SelectionContainer { Text(text = word.term, style = MaterialTheme.typography.bodyLarge) }
                                         if (!word.language.isNullOrBlank()) {
                                             Text(text = word.language, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
                                         }
@@ -370,7 +371,7 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
         if (selectedWord != null) {
             Column(modifier = Modifier.fillMaxSize().padding(16.dp).background(MaterialTheme.colorScheme.surface)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "Details", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                    SelectionContainer(modifier = Modifier.weight(1f)) { Text(text = "Details", style = MaterialTheme.typography.titleLarge) }
                     Button(onClick = { onNavigateToChat(selectedWord!!) }) { Text("Resume Chat") }
                     Spacer(modifier = Modifier.width(8.dp))
                     IconButton(onClick = { selectedWord = null

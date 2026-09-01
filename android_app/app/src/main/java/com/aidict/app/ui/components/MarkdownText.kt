@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.selection.SelectionContainer
 import com.halilibo.richtext.commonmark.Markdown
 import com.halilibo.richtext.ui.BlockQuoteGutter
 import com.halilibo.richtext.ui.CodeBlockStyle
@@ -60,10 +61,11 @@ fun MarkdownText(text: String, color: Color, modifier: Modifier = Modifier) {
         )
     )
 
-    RichText(
-        modifier = modifier,
-        style = tokyoNightStyle
-    ) {
-        Markdown(content = text)
+    SelectionContainer(modifier = modifier) {
+        RichText(
+            style = tokyoNightStyle
+        ) {
+            Markdown(content = text)
+        }
     }
 }
