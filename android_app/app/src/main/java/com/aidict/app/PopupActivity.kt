@@ -121,10 +121,11 @@ class PopupActivity : ComponentActivity() {
             val uiScale = uiScaleStr.toFloatOrNull() ?: 1.0f
             val textScale = textScaleStr.toFloatOrNull() ?: 1.0f
             
-            val currentDensity = androidx.compose.ui.platform.LocalDensity.current
+            val systemDensity = androidx.compose.ui.platform.LocalDensity.current
+            val initialDensity = androidx.compose.runtime.remember { systemDensity }
             val newDensity = androidx.compose.ui.unit.Density(
-                density = currentDensity.density * uiScale,
-                fontScale = currentDensity.fontScale * textScale
+                density = initialDensity.density * uiScale,
+                fontScale = initialDensity.fontScale * textScale
             )
 
             MaterialTheme(colorScheme = modifiedColorScheme) {
