@@ -48,7 +48,7 @@ import android.widget.Toast
 
 @Composable
 fun SettingsGroup(title: String, content: @Composable () -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
+    var expanded by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         shape = RoundedCornerShape(12.dp),
@@ -186,23 +186,51 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
         item {
             SettingsGroup("Display & Scaling") {
                 val uiScaleStr by viewModel.getSettingFlow("UI_SCALE", "1.0").collectAsState()
-                var uiScale by remember(uiScaleStr) { mutableStateOf(uiScaleStr.toFloatOrNull() ?: 1.0f) }
-                Text(text = "UI Scale: ${java.lang.String.format("%.2f", uiScale)}", modifier = Modifier.padding(top = 8.dp))
+                var localUiScale by remember { mutableStateOf(1.0f) }
+                var isDraggingUiScale by remember { mutableStateOf(false) }
+                
+                LaunchedEffect(uiScaleStr) {
+                    if (!isDraggingUiScale) localUiScale = uiScaleStr.toFloatOrNull() ?: 1.0f
+                }
+                
+                Text(text = "UI Scale: ${java.lang.String.format("%.2f", localUiScale)}", modifier = Modifier.padding(top = 8.dp))
                 Slider(
-                    value = uiScale,
-                    onValueChange = { uiScale = it },
-                    onValueChangeFinished = { viewModel.saveSetting("UI_SCALE", uiScale.toString()) },
+                    value = localUiScale,
+                    onValueChange = { 
+                        isDraggingUiScale = true
+                        localUiScale = it 
+                    },
+                    onValueChangeFinished = { 
+                        isDraggingUiScale = false
+                        val rounded = Math.round(localUiScale * 100) / 100f
+                        viewModel.saveSetting("UI_SCALE", rounded.toString()) 
+                    },
                     valueRange = 0.5f..2.0f
                 )
+                
                 val textScaleStr by viewModel.getSettingFlow("TEXT_SIZE_SCALE", "1.0").collectAsState()
-                var textScale by remember(textScaleStr) { mutableStateOf(textScaleStr.toFloatOrNull() ?: 1.0f) }
-                Text(text = "Text Size: ${java.lang.String.format("%.2f", textScale)}", modifier = Modifier.padding(top = 8.dp))
+                var localTextScale by remember { mutableStateOf(1.0f) }
+                var isDraggingTextScale by remember { mutableStateOf(false) }
+                
+                LaunchedEffect(textScaleStr) {
+                    if (!isDraggingTextScale) localTextScale = textScaleStr.toFloatOrNull() ?: 1.0f
+                }
+                
+                Text(text = "Text Size: ${java.lang.String.format("%.2f", localTextScale)}", modifier = Modifier.padding(top = 8.dp))
                 Slider(
-                    value = textScale,
-                    onValueChange = { textScale = it },
-                    onValueChangeFinished = { viewModel.saveSetting("TEXT_SIZE_SCALE", textScale.toString()) },
+                    value = localTextScale,
+                    onValueChange = { 
+                        isDraggingTextScale = true
+                        localTextScale = it 
+                    },
+                    onValueChangeFinished = { 
+                        isDraggingTextScale = false
+                        val rounded = Math.round(localTextScale * 100) / 100f
+                        viewModel.saveSetting("TEXT_SIZE_SCALE", rounded.toString()) 
+                    },
                     valueRange = 0.5f..2.0f
                 )
+
             }
         }
         
