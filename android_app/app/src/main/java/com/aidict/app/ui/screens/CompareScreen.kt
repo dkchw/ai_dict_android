@@ -175,7 +175,7 @@ fun CompareScreen(
             onSourceLangChange = if (state.word == null) { { sourceLang = it; viewModel.saveProfileSetting(profileId, "COMPARE_SOURCE", it) } } else null,
             onTargetLangChange = if (state.word == null) { { targetLang = it; viewModel.saveProfileSetting(profileId, "COMPARE_TARGET", it) } } else null,
             onClear = { viewModel.clearCurrentSearch() },
-            placeholder = if (state.word != null) "Enter your question..." else "Words to compare (comma separated)..."
+            placeholder = if (state.word != null && !autoNewSearch) "Enter your question..." else "Words to compare (comma separated)..."
         )
     }
 }

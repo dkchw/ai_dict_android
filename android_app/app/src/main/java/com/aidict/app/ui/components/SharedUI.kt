@@ -239,7 +239,7 @@ fun ChatInputBar(
                         .background(MaterialTheme.colorScheme.primary, CircleShape)
                 ) {
                     Icon(
-                        if (isFollowUp) Icons.AutoMirrored.Filled.Send else Icons.Default.Search, 
+                        if (isFollowUp && !autoNewSearch) Icons.AutoMirrored.Filled.Send else Icons.Default.Search, 
                         contentDescription = "Send",
                         tint = MaterialTheme.colorScheme.onPrimary
                     )

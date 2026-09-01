@@ -254,7 +254,7 @@ fun SearchScreen(
             autoNewSearch = autoNewSearch,
             onToggleAutoNewSearch = onToggleAutoNewSearch,
             enterToSend = enterToSend,
-            placeholder = if (isFollowUp) "Enter your question..." else "Search word...",
+            placeholder = if (isFollowUp && !autoNewSearch) "Enter your question..." else "Search word...",
             isFollowUp = isFollowUp,
             sourceLang = if (!isFollowUp) sourceLang else null,
             targetLang = if (!isFollowUp) targetLang else null,

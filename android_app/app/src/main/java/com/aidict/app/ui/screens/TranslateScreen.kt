@@ -180,7 +180,7 @@ fun TranslateScreen(
             enterToSend = enterToSend,
             isFollowUp = state.word != null,
             onClear = { viewModel.clearCurrentSearch() },
-            placeholder = if (state.word != null) "Enter your question..." else "Text to translate...",
+            placeholder = if (state.word != null && !autoNewSearch) "Enter your question..." else "Text to translate...",
             sourceLang = sourceLang,
             targetLang = targetLang,
             onSourceLangChange = { sourceLang = it; viewModel.saveProfileSetting(profileId, "TRANSLATE_SOURCE", it) },
