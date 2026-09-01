@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.Alignment
 import com.aidict.app.ui.screens.CompareScreen
@@ -498,7 +499,7 @@ fun AppNavigation(
                     Box(modifier = Modifier.fillMaxSize().nestedScroll(pullRefreshState.nestedScrollConnection).nestedScroll(bottomOverscrollConnection).nestedScroll(leftOverscrollConnection)) {
                         androidx.compose.foundation.pager.HorizontalPager(
                             state = pagerState,
-                            modifier = Modifier.fillMaxSize().offset(x = (leftOverscroll * 0.3f).dp),
+                            modifier = Modifier.fillMaxSize().graphicsLayer { translationX = leftOverscroll * 0.3f },
                             beyondBoundsPageCount = 1
                         ) { page ->
                             when (page) {

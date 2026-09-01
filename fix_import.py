@@ -1,10 +1,13 @@
-with open('android_app/app/src/main/java/com/aidict/app/ui/screens/SettingsScreen.kt', 'r') as f:
-    lines = f.readlines()
+import re
 
-if 'import androidx.compose.foundation.clickable\n' in lines:
-    lines.remove('import androidx.compose.foundation.clickable\n')
+with open('android_app/app/src/main/java/com/aidict/app/ui/AppNavigation.kt', 'r') as f:
+    text = f.read()
 
-lines.insert(1, '\nimport androidx.compose.foundation.clickable\n')
+import_target = "import androidx.compose.ui.geometry.Offset"
+import_replacement = "import androidx.compose.ui.geometry.Offset\nimport androidx.compose.ui.graphics.graphicsLayer"
+text = text.replace(import_target, import_replacement)
 
-with open('android_app/app/src/main/java/com/aidict/app/ui/screens/SettingsScreen.kt', 'w') as f:
-    f.writelines(lines)
+with open('android_app/app/src/main/java/com/aidict/app/ui/AppNavigation.kt', 'w') as f:
+    f.write(text)
+
+print("Fixed graphicsLayer import")
