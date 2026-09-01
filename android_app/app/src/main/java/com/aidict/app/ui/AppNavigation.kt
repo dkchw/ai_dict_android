@@ -409,6 +409,7 @@ fun AppNavigation(
                 var toggled = false
                 
                 override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                    if (source != androidx.compose.ui.input.nestedscroll.NestedScrollSource.Drag) return Offset.Zero
                     if (pagerState.currentPage == 0 && kotlin.math.abs(pagerState.currentPageOffsetFraction) <= 0.05f) {
                         if (leftOverscrollAnim.value > 0f && available.x < 0f) {
                             val consumedX = minOf(-available.x, leftOverscrollAnim.value)
