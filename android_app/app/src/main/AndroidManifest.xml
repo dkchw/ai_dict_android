@@ -35,6 +35,19 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/provider_paths" />
         </provider>
+    
+        <activity
+            android:name=".PopupActivity"
+            android:theme="@style/Theme.AIDict.Transparent"
+            android:windowSoftInputMode="adjustResize"
+            android:exported="true"
+            android:label="Ask AI Dict">
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>

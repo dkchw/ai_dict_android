@@ -1,13 +1,9 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <style name="Theme.AIDict" parent="android:Theme.Material.Light.NoActionBar" />
-    
-    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">#FFFFFF</item>
-        <item name="windowSplashScreenAnimatedIcon">@mipmap/app_icon</item>
-        <item name="postSplashScreenTheme">@style/Theme.AIDict</item>
-    </style>
+import re
 
+with open('android_app/app/src/main/res/values/themes.xml', 'r') as f:
+    text = f.read()
+
+transparent_theme = """
     <style name="Theme.AIDict.Transparent" parent="Theme.AIDict">
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>
@@ -16,4 +12,10 @@
         <item name="android:windowIsFloating">false</item>
         <item name="android:backgroundDimEnabled">true</item>
     </style>
-</resources>
+"""
+
+if 'Theme.AIDict.Transparent' not in text:
+    text = text.replace('</resources>', transparent_theme + '</resources>')
+
+with open('android_app/app/src/main/res/values/themes.xml', 'w') as f:
+    f.write(text)
