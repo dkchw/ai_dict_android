@@ -157,14 +157,13 @@ class PopupActivity : ComponentActivity() {
                         val config = androidx.compose.ui.platform.LocalConfiguration.current
                         val orientation = config.orientation
                         val screenHeight = androidx.compose.runtime.remember(orientation) { config.screenHeightDp.dp }
-                        val screenWidth = androidx.compose.runtime.remember(orientation) { config.screenWidthDp.dp }
 
                         Surface(
                             shape = RoundedCornerShape(16.dp),
                             color = MaterialTheme.colorScheme.background,
                             modifier = Modifier
-                                .width(screenWidth * popupWidth)
-                                .heightIn(max = screenHeight * popupHeight)
+                                .fillMaxWidth(popupWidth)
+                                .heightIn(max = (screenHeight * popupHeight) / uiScale)
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null
