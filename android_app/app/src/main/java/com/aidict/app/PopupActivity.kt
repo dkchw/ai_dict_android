@@ -10,7 +10,10 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxWidth
+
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -138,7 +141,7 @@ class PopupActivity : ComponentActivity() {
                             ) {
                                 finish()
                             },
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.BottomCenter
                     ) {
                         val isTablet = windowSizeClass.widthSizeClass == androidx.compose.material3.windowsizeclass.WindowWidthSizeClass.Expanded || windowSizeClass.widthSizeClass == androidx.compose.material3.windowsizeclass.WindowWidthSizeClass.Medium
                         val defaultWidth = if (isTablet) 0.6f else 0.95f
@@ -149,13 +152,17 @@ class PopupActivity : ComponentActivity() {
                         
                         val popupWidth = popupWidthStr.toFloatOrNull()?.coerceIn(0.3f, 1.0f) ?: defaultWidth
                         val popupHeight = popupHeightStr.toFloatOrNull()?.coerceIn(0.3f, 1.0f) ?: defaultHeight
+                        
+                        val config = androidx.compose.ui.platform.LocalConfiguration.current
+                        val screenHeight = config.screenHeightDp.dp
+                        val screenWidth = config.screenWidthDp.dp
 
                         Surface(
                             shape = RoundedCornerShape(16.dp),
                             color = MaterialTheme.colorScheme.background,
                             modifier = Modifier
-                                .fillMaxWidth(popupWidth)
-                                .fillMaxHeight(popupHeight)
+                                .width(screenWidth * popupWidth)
+                                .heightIn(max = screenHeight * popupHeight)
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null
