@@ -1,9 +1,9 @@
 import re
 
-with open('android_app/app/src/main/java/com/aidict/app/MainActivity.kt', 'r') as f:
+with open('android_app/app/src/main/java/com/aidict/app/PopupActivity.kt', 'r') as f:
     text = f.read()
 
-# Remove UI_SCALE from MainActivity
+# Remove UI_SCALE logic
 target = """            val uiScaleStr by settingsViewModel.getSettingFlow("UI_SCALE", "1.0").collectAsState()
             val textScaleStr by settingsViewModel.getSettingFlow("TEXT_SIZE_SCALE", "1.0").collectAsState()
             val uiScale = uiScaleStr.toFloatOrNull() ?: 1.0f
@@ -26,10 +26,14 @@ replacement = """            val textScaleStr by settingsViewModel.getSettingFlo
                 fontScale = initialDensity.fontScale * textScale
             )"""
 
-if target in text:
-    text = text.replace(target, replacement)
-    with open('android_app/app/src/main/java/com/aidict/app/MainActivity.kt', 'w') as f:
-        f.write(text)
-    print("Fixed MainActivity")
-else:
-    print("MainActivity target not found")
+text = text.replace(target, replacement)
+
+# Remove uiScale from height constraint
+target_2 = """                                .heightIn(max = (screenHeight * popupHeight) / uiScale)"""
+replacement_2 = """                                .heightIn(max = screenHeight * popupHeight)"""
+
+text = text.replace(target_2, replacement_2)
+
+with open('android_app/app/src/main/java/com/aidict/app/PopupActivity.kt', 'w') as f:
+    f.write(text)
+print("Fixed PopupActivity")

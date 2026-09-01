@@ -78,15 +78,13 @@ class MainActivity : ComponentActivity() {
                 )
             } else colorScheme
 
-            val uiScaleStr by settingsViewModel.getSettingFlow("UI_SCALE", "1.0").collectAsState()
             val textScaleStr by settingsViewModel.getSettingFlow("TEXT_SIZE_SCALE", "1.0").collectAsState()
-            val uiScale = uiScaleStr.toFloatOrNull() ?: 1.0f
             val textScale = textScaleStr.toFloatOrNull() ?: 1.0f
             
             val systemDensity = androidx.compose.ui.platform.LocalDensity.current
             val initialDensity = androidx.compose.runtime.remember { systemDensity }
             val newDensity = androidx.compose.ui.unit.Density(
-                density = initialDensity.density * uiScale,
+                density = initialDensity.density,
                 fontScale = initialDensity.fontScale * textScale
             )
 
