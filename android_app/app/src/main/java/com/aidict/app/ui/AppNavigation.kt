@@ -39,6 +39,8 @@ import com.aidict.app.ui.viewmodels.SettingsViewModel
 import com.aidict.app.ui.viewmodels.NotesViewModel
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Translate
@@ -392,48 +394,63 @@ fun AppNavigation(
                     
                     
         val context = androidx.compose.ui.platform.LocalContext.current
+
+        var leftOverscroll by remember { mutableFloatStateOf(0f) }
+        val leftThreshold = 250f
+        val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+        
         val leftOverscrollConnection = remember(pagerState.currentPage) {
             object : NestedScrollConnection {
-                var accumulatedOverscroll = 0f
                 var toggled = false
                 
-                override fun onPostScroll(
-                    consumed: Offset,
-                    available: Offset,
-                    source: NestedScrollSource
-                ): Offset {
-                    if (pagerState.currentPage == 0 && available.x > 0) {
-                        accumulatedOverscroll += available.x
-                        if (accumulatedOverscroll > 150f && !toggled) {
-                            toggled = true
-                            if (com.aidict.app.FloatingBubbleService.isRunning) {
-                                val intent = android.content.Intent(context, com.aidict.app.FloatingBubbleService::class.java)
-                                context.stopService(intent)
-                                android.widget.Toast.makeText(context, "Bubble Disabled", android.widget.Toast.LENGTH_SHORT).show()
-                            } else {
-                                if (android.provider.Settings.canDrawOverlays(context)) {
+                override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                    if (pagerState.currentPage == 0) {
+                        if (leftOverscroll > 0f && available.x < 0f) {
+                            // Shrinking the overscroll
+                            val consumedX = minOf(-available.x, leftOverscroll)
+                            leftOverscroll -= consumedX
+                            return Offset(-consumedX, 0f)
+                        } else if (available.x > 0f) {
+                            // Growing the overscroll
+                            leftOverscroll += available.x * 0.5f // friction
+                            
+                            if (leftOverscroll > leftThreshold && !toggled) {
+                                toggled = true
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                if (com.aidict.app.FloatingBubbleService.isRunning) {
                                     val intent = android.content.Intent(context, com.aidict.app.FloatingBubbleService::class.java)
-                                    context.startService(intent)
-                                    android.widget.Toast.makeText(context, "Bubble Enabled", android.widget.Toast.LENGTH_SHORT).show()
+                                    context.stopService(intent)
+                                    android.widget.Toast.makeText(context, "Bubble Disabled", android.widget.Toast.LENGTH_SHORT).show()
                                 } else {
-                                    android.widget.Toast.makeText(context, "Overlay permission required", android.widget.Toast.LENGTH_SHORT).show()
+                                    if (android.provider.Settings.canDrawOverlays(context)) {
+                                        val intent = android.content.Intent(context, com.aidict.app.FloatingBubbleService::class.java)
+                                        context.startService(intent)
+                                        android.widget.Toast.makeText(context, "Bubble Enabled", android.widget.Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        android.widget.Toast.makeText(context, "Overlay permission required", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
                                 }
                             }
+                            return Offset(available.x, 0f)
                         }
-                    } else if (available.x <= 0) {
-                        accumulatedOverscroll = 0f
-                        toggled = false
                     }
                     return Offset.Zero
                 }
+
+                override suspend fun onPreFling(available: Velocity): Velocity {
+                    leftOverscroll = 0f
+                    toggled = false
+                    return Velocity.Zero
+                }
                 
                 override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                    accumulatedOverscroll = 0f
+                    leftOverscroll = 0f
                     toggled = false
                     return Velocity.Zero
                 }
             }
         }
+
 
                     val pullRefreshState = androidx.compose.material3.pulltorefresh.rememberPullToRefreshState()
                     
@@ -481,7 +498,7 @@ fun AppNavigation(
                     Box(modifier = Modifier.fillMaxSize().nestedScroll(pullRefreshState.nestedScrollConnection).nestedScroll(bottomOverscrollConnection).nestedScroll(leftOverscrollConnection)) {
                         androidx.compose.foundation.pager.HorizontalPager(
                             state = pagerState,
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize().offset(x = (leftOverscroll * 0.3f).dp),
                             beyondBoundsPageCount = 1
                         ) { page ->
                             when (page) {
@@ -496,6 +513,32 @@ fun AppNavigation(
                             state = pullRefreshState,
                             modifier = Modifier.align(Alignment.TopCenter)
                         )
+                        
+                        // Left Edge Bubble Toggle Indicator
+                        if (leftOverscroll > 0f) {
+                            val progress = (leftOverscroll / leftThreshold).coerceIn(0f, 1f)
+                            val iconOffset = (leftOverscroll - 50f).coerceAtMost(100f)
+                            if (iconOffset > 0f) {
+                                androidx.compose.foundation.layout.Box(
+                                    modifier = Modifier
+                                        .align(Alignment.CenterStart)
+                                        .offset(x = (iconOffset - 24f).dp)
+                                        .size(48.dp)
+                                        .background(
+                                            if (progress >= 1f) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                            shape = androidx.compose.foundation.shape.CircleShape
+                                        )
+                                        .padding(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (com.aidict.app.FloatingBubbleService.isRunning) Icons.Default.Close else Icons.Default.Add,
+                                        contentDescription = "Toggle Bubble",
+                                        tint = if (progress >= 1f) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.fillMaxSize().alpha(progress)
+                                    )
+                                }
+                            }
+                        }
                         
                         if (bottomOverscroll > 0f) {
                             val progress = (bottomOverscroll / threshold).coerceIn(0f, 1f)
