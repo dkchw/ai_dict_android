@@ -44,7 +44,12 @@ class PopupActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        val textExtra = intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString() ?: ""
+        val textExtra = intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString()
+            ?: intent.getStringExtra(Intent.EXTRA_TEXT)
+            ?: intent.getStringExtra("EXTRA_QUERY")
+            ?: intent.getStringExtra(android.app.SearchManager.QUERY)
+            ?: ""
+
         
         val database = AppDatabase.getDatabase(this)
         val repository = LlmRepository(database)
