@@ -18,6 +18,10 @@ import android.widget.Toast
 import kotlinx.coroutines.launch
 
 class FloatingBubbleService : Service() {
+    companion object {
+        var isRunning = false
+    }
+
     private lateinit var windowManager: WindowManager
     private lateinit var bubbleView: ImageView
     private var closeView: FrameLayout? = null
@@ -26,6 +30,7 @@ class FloatingBubbleService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        isRunning = true
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
         bubbleView = ImageView(this).apply {
@@ -179,6 +184,7 @@ class FloatingBubbleService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        isRunning = false
         if (::bubbleView.isInitialized) {
             windowManager.removeView(bubbleView)
         }

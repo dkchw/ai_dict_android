@@ -3,29 +3,17 @@ import re
 with open('android_app/app/src/main/java/com/aidict/app/FloatingBubbleService.kt', 'r') as f:
     text = f.read()
 
-target = """                        if (xDiff < 20 && yDiff < 20) {
-                            val intent = Intent(this@FloatingBubbleService, PopupActivity::class.java).apply {
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                            }
-                            startActivity(intent)
-                        } else {"""
+companion_code = """
+    companion object {
+        var isRunning = false
+    }
+"""
 
-replacement = """                        if (xDiff < 20 && yDiff < 20) {
-                            if (PopupActivity.isVisible) {
-                                val intent = Intent(this@FloatingBubbleService, PopupActivity::class.java).apply {
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                                    action = "CLOSE_POPUP"
-                                }
-                                startActivity(intent)
-                            } else {
-                                val intent = Intent(this@FloatingBubbleService, PopupActivity::class.java).apply {
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                                }
-                                startActivity(intent)
-                            }
-                        } else {"""
+text = text.replace("class FloatingBubbleService : Service() {", "class FloatingBubbleService : Service() {" + companion_code)
 
-text = text.replace(target, replacement)
+text = text.replace("    override fun onCreate() {\n        super.onCreate()", "    override fun onCreate() {\n        super.onCreate()\n        isRunning = true")
+
+text = text.replace("    override fun onDestroy() {\n        super.onDestroy()", "    override fun onDestroy() {\n        super.onDestroy()\n        isRunning = false")
 
 with open('android_app/app/src/main/java/com/aidict/app/FloatingBubbleService.kt', 'w') as f:
     f.write(text)
