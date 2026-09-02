@@ -127,7 +127,8 @@ fun TranslateScreen(
                                     Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
                                 }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.ContentCopy, "Copy", modifier = Modifier.size(16.dp)) }
                                 IconButton(onClick = { isEditing = true; editingContent = msg.content }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Edit, "Edit", modifier = Modifier.size(16.dp)) }
-                                IconButton(onClick = { viewModel.retryMessage(msg, true, "translate") }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Refresh, "Regenerate", modifier = Modifier.size(16.dp)) }
+                                                                IconButton(onClick = { viewModel.retryMessage(msg, false, "translate") }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Refresh, "Regenerate (Current)", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp)) }
+                                IconButton(onClick = { viewModel.retryMessage(msg, true, "translate") }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Autorenew, "Regenerate (Fallback)", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp)) }
                                 IconButton(onClick = { viewModel.deleteMessage(msg, "translate") }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Delete, "Delete", modifier = Modifier.size(16.dp)) }
                             }
                         }
