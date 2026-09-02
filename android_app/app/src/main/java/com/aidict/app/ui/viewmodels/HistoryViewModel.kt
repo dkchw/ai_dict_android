@@ -18,6 +18,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 
 class HistoryViewModel(private val database: AppDatabase) : ViewModel() {
     private val searchQuery = MutableStateFlow("")
+    val searchInOutput = MutableStateFlow(false)
+    fun toggleSearchInOutput() { searchInOutput.value = !searchInOutput.value }
     private val selectedColor = MutableStateFlow<String?>(null)
     private val selectedStars = MutableStateFlow<Int?>(null)
     val currentMode = MutableStateFlow("dict")
@@ -51,14 +53,25 @@ class HistoryViewModel(private val database: AppDatabase) : ViewModel() {
         }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val matchingWordIds = kotlinx.coroutines.flow.combine(searchQuery, searchInOutput) { q, searchOut -> 
+        if (q.isBlank() || !searchOut) null else q
+    }.flatMapLatest { q ->
+        if (q == null) kotlinx.coroutines.flow.flowOf<Set<Int>?>(null)
+        else kotlinx.coroutines.flow.flow<Set<Int>?> { emit(database.appDao().getWordIdsMatchingContent(q).toSet()) }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, null)
+
     val historyState: StateFlow<List<Word>> = combine(
         allHistory, 
         searchQuery, 
         selectedColor, 
-        selectedStars
-    ) { history, query, color, stars ->
+        selectedStars,
+        matchingWordIds
+    ) { history, query, color, stars, matchingIds ->
         history.filter { word ->
-            val matchQuery = if (query.isBlank()) true else word.term.contains(query, ignoreCase = true)
+            val matchQuery = if (query.isBlank()) true else {
+                word.term.contains(query, ignoreCase = true) || (matchingIds?.contains(word.id) == true)
+            }
             val matchColor = if (color == null) true else word.color == color
             val matchStars = if (stars == null) true else word.stars == stars
             matchQuery && matchColor && matchStars

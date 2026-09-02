@@ -38,6 +38,9 @@ interface AppDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSetting(setting: AppSetting)
 
+    @Query("SELECT DISTINCT wordId FROM chat_message WHERE content LIKE '%' || :query || '%'")
+    suspend fun getWordIdsMatchingContent(query: String): List<Int>
+
     @Query("SELECT * FROM word WHERE profileId = :profileId AND mode = :mode ORDER BY createdAt DESC")
     fun getWordsByMode(profileId: Int, mode: String): Flow<List<Word>>
 

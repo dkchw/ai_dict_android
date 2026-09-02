@@ -58,6 +58,7 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
     val activeSessionId by viewModel.activeSessionId.collectAsState()
     val colorFilter by viewModel.colorFilter.collectAsState()
     val starsFilter by viewModel.starsFilter.collectAsState()
+    val searchInOutput by viewModel.searchInOutput.collectAsState()
     var query by remember { mutableStateOf("") }
     
         var selectedWord by remember { mutableStateOf<Word?>(null) }
@@ -126,6 +127,13 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                FilterChip(
+                    selected = searchInOutput,
+                    onClick = { viewModel.toggleSearchInOutput() },
+                    label = { Text("Search Output") },
+                    leadingIcon = { if (searchInOutput) Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                )
+                HorizontalDivider(modifier = Modifier.width(1.dp).height(24.dp))
                 colors.forEach { (name, colorValue) ->
                     FilterChip(
                         selected = colorFilter == name,
