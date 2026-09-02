@@ -11,11 +11,11 @@ queries = """    @Query("UPDATE session SET profileId = :profileId WHERE id IN (
 
     @Query("UPDATE word SET profileId = :profileId WHERE id IN (:wordIds)")
     suspend fun moveWordsByIds(wordIds: List<Int>, profileId: Int)
-}"""
+"""
 
-text = text.rsplit('}', 1)[0] + queries
+text = text.replace('    @Query("DELETE FROM word WHERE id IN (:wordIds)")', queries + '\n    @Query("DELETE FROM word WHERE id IN (:wordIds)")')
 
 with open('android_app/app/src/main/java/com/aidict/app/data/dao/AppDao.kt', 'w') as f:
     f.write(text)
 
-print("Added move queries")
+print("Added move queries to AppDao")

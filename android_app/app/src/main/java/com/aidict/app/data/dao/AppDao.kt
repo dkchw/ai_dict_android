@@ -122,5 +122,12 @@ interface AppDao {
 
     @Query("DELETE FROM word WHERE id IN (:ids)")
     suspend fun deleteWordsByIds(ids: List<Int>)
-}
+    @Query("UPDATE session SET profileId = :profileId WHERE id IN (:sessionIds)")
+    suspend fun moveSessionsByIds(sessionIds: List<String>, profileId: Long)
 
+    @Query("UPDATE word SET profileId = :profileId WHERE sessionId IN (:sessionIds)")
+    suspend fun moveWordsBySessionIds(sessionIds: List<String>, profileId: Int)
+
+    @Query("UPDATE word SET profileId = :profileId WHERE id IN (:wordIds)")
+    suspend fun moveWordsByIds(wordIds: List<Int>, profileId: Int)
+}

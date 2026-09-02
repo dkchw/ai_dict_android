@@ -46,6 +46,7 @@ data class Word(
     val stars: Int = 0,
     val searchCount: Int = 1,
     val viewCount: Int = 0,
+    val generationCount: Int = 1,
     val sessionId: String,
     val mode: String = "dict",
     val createdAt: Long = System.currentTimeMillis()

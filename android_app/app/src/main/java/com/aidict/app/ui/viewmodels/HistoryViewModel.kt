@@ -111,6 +111,25 @@ class HistoryViewModel(private val database: AppDatabase) : ViewModel() {
         }
     }
 
+    fun moveWord(word: com.aidict.app.data.entities.Word, targetProfileId: Int) {
+        viewModelScope.launch {
+            database.appDao().updateWord(word.copy(profileId = targetProfileId))
+        }
+    }
+
+    fun moveSelected(sessionIds: Set<String>, wordIds: Set<Int>, targetProfileId: Int) {
+        viewModelScope.launch {
+            if (sessionIds.isNotEmpty()) {
+                database.appDao().moveSessionsByIds(sessionIds.toList(), targetProfileId.toLong())
+                // All words within these sessions should ALSO be moved!
+                database.appDao().moveWordsBySessionIds(sessionIds.toList(), targetProfileId)
+            }
+            if (wordIds.isNotEmpty()) {
+                database.appDao().moveWordsByIds(wordIds.toList(), targetProfileId)
+            }
+        }
+    }
+
     fun deleteSelectedWords(wordIds: Set<Int>) {
         viewModelScope.launch {
             database.appDao().deleteWordsByIds(wordIds.toList())

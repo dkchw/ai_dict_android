@@ -12,6 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Autorenew
@@ -38,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.activity.compose.BackHandler
 import com.aidict.app.ui.viewmodels.HistoryViewModel
 import com.aidict.app.data.entities.Word
+import com.aidict.app.data.entities.Profile
 import com.aidict.app.data.entities.Session
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,6 +52,7 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
     modifier: Modifier = Modifier
 ) {
     val history by viewModel.historyState.collectAsState()
+    val appState by appViewModel.uiState.collectAsState()
     val sessions by viewModel.sessions.collectAsState()
     val activeSessionId by viewModel.activeSessionId.collectAsState()
     val colorFilter by viewModel.colorFilter.collectAsState()
@@ -82,6 +85,8 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
     var showCreateSession by remember { mutableStateOf(false) }
     var showRenameSession by remember { mutableStateOf<Session?>(null) }
     var showRenameWord by remember { mutableStateOf<com.aidict.app.data.entities.Word?>(null) }
+    var showMoveToProfile by remember { mutableStateOf(false) }
+    var moveTargetWord by remember { mutableStateOf<com.aidict.app.data.entities.Word?>(null) }
     var wordNameInput by remember { mutableStateOf("") }
     var sessionNameInput by remember { mutableStateOf("") }
 
@@ -97,7 +102,6 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
 
     val listContent = @Composable {
         Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-            val appState by appViewModel.uiState.collectAsState()
             Text("Mode: ${viewModel.currentMode.collectAsState().value.uppercase()} | Profile: ${appState.activeProfile?.name ?: "Unknown"}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
@@ -149,6 +153,9 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                         Icon(Icons.Default.Close, contentDescription = "Cancel Selection")
                     }
                     Text("${selectedSessionIds.size} Sessions, ${selectedWordIds.size} Words", modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                    IconButton(onClick = { showMoveToProfile = true }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Move Selected to Profile", tint = MaterialTheme.colorScheme.primary)
+                    }
                     IconButton(onClick = {
                         viewModel.deleteSelectedSessions(selectedSessionIds)
                         viewModel.deleteSelectedWords(selectedWordIds)
@@ -288,6 +295,9 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                                         }) {
                                             Icon(Icons.Default.Edit, contentDescription = "Rename", modifier = Modifier.size(20.dp))
                                         }
+                                        IconButton(onClick = { moveTargetWord = word; showMoveToProfile = true }) {
+                                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Move to Profile", modifier = Modifier.size(20.dp))
+                                        }
                                         IconButton(onClick = { viewModel.deleteWord(word) }) {
                                             Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
                                         }
@@ -356,6 +366,9 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                                         }) {
                                             Icon(Icons.Default.Edit, contentDescription = "Rename", modifier = Modifier.size(20.dp))
                                         }
+                                        IconButton(onClick = { moveTargetWord = word; showMoveToProfile = true }) {
+                                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Move to Profile", modifier = Modifier.size(20.dp))
+                                        }
                                         IconButton(onClick = { viewModel.deleteWord(word) }) {
                                             Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
                                         }
@@ -400,7 +413,7 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "Searches: ${selectedWord!!.searchCount} | Views: ${selectedWord!!.viewCount}",
+                    text = "Searches: ${selectedWord!!.searchCount} | Views: ${selectedWord!!.viewCount} | Gens: ${selectedWord!!.generationCount}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -564,4 +577,42 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
         )
     }
 
+
+    if (showMoveToProfile) {
+        var selectedProfileId by remember { mutableStateOf(appState.activeProfile?.id ?: 1) }
+        AlertDialog(
+            onDismissRequest = { showMoveToProfile = false; moveTargetWord = null },
+            title = { Text("Move to Profile") },
+            text = {
+                Column {
+                    Text("Select a profile to move the selected items to:")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    appState.profiles.filter { it.id != (appState.activeProfile?.id ?: -1) }.forEach { profile ->
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().clickable { selectedProfileId = profile.id }.padding(8.dp)) {
+                            RadioButton(selected = selectedProfileId == profile.id, onClick = { selectedProfileId = profile.id })
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(profile.name)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (moveTargetWord != null) {
+                        viewModel.moveWord(moveTargetWord!!, selectedProfileId)
+                    } else if (isSelectionMode) {
+                        viewModel.moveSelected(selectedSessionIds, selectedWordIds, selectedProfileId)
+                        isSelectionMode = false
+                        selectedSessionIds = emptySet()
+                        selectedWordIds = emptySet()
+                    }
+                    showMoveToProfile = false
+                    moveTargetWord = null
+                }) { Text("Move") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showMoveToProfile = false; moveTargetWord = null }) { Text("Cancel") }
+            }
+        )
+    }
 }

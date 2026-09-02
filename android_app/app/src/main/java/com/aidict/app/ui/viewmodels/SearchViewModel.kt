@@ -222,6 +222,11 @@ class SearchViewModel(
         val word = _uiState.value.word ?: return
         val currentWordId = word.id
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            val updatedWordForGen = word.copy(generationCount = word.generationCount + 1)
+            database.appDao().updateWord(updatedWordForGen)
+            if (_uiState.value.word?.id == currentWordId) {
+                _uiState.value = _uiState.value.copy(word = updatedWordForGen)
+            }
             val userMsg = ChatMessage(wordId = word.id, role = "user", content = content)
             val userMsgId = database.appDao().insertChatMessage(userMsg).toInt()
             
@@ -324,6 +329,11 @@ class SearchViewModel(
         val word = _uiState.value.word ?: return
         val currentWordId = word.id
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            val updatedWordForGen = word.copy(generationCount = word.generationCount + 1)
+            database.appDao().updateWord(updatedWordForGen)
+            if (_uiState.value.word?.id == currentWordId) {
+                _uiState.value = _uiState.value.copy(word = updatedWordForGen)
+            }
             // Delete the assistant message to restart generation from that point
             database.appDao().deleteChatMessage(assistantMsg)
             val historyBefore = database.appDao().getChatMessagesSync(assistantMsg.wordId)
