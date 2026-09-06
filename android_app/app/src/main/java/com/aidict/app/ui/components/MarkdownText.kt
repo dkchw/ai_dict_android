@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.foundation.text.selection.SelectionContainer
 import com.halilibo.richtext.commonmark.Markdown
 import com.halilibo.richtext.ui.BlockQuoteGutter
@@ -22,7 +23,7 @@ import com.halilibo.richtext.ui.material3.RichText
 import com.halilibo.richtext.ui.string.RichTextStringStyle
 
 @Composable
-fun MarkdownText(text: String, color: Color, modifier: Modifier = Modifier) {
+fun MarkdownText(text: String, color: Color, modifier: Modifier = Modifier, searchQuery: String = "") {
     // Tokyo-Night Inspired Markdown Theme
     val tokyoNightStyle = RichTextStyle(
         codeBlockStyle = CodeBlockStyle(
@@ -62,10 +63,29 @@ fun MarkdownText(text: String, color: Color, modifier: Modifier = Modifier) {
     )
 
     SelectionContainer(modifier = modifier) {
-        RichText(
-            style = tokyoNightStyle
-        ) {
-            Markdown(content = text)
+        if (searchQuery.isNotBlank()) {
+            val annotatedString = buildAnnotatedString {
+                append(text)
+                var index = text.indexOf(searchQuery, ignoreCase = true)
+                while (index >= 0) {
+                    addStyle(
+                        style = SpanStyle(background = Color.Yellow, color = Color.Black),
+                        start = index,
+                        end = index + searchQuery.length
+                    )
+                    index = text.indexOf(searchQuery, startIndex = index + searchQuery.length, ignoreCase = true)
+                }
+            }
+            androidx.compose.material3.Text(
+                text = annotatedString,
+                color = color
+            )
+        } else {
+            RichText(
+                style = tokyoNightStyle
+            ) {
+                Markdown(content = text)
+            }
         }
     }
 }

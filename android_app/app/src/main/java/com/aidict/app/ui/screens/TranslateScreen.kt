@@ -16,6 +16,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
@@ -51,6 +53,8 @@ fun TranslateScreen(
     val suggestions by viewModel.suggestions.collectAsState()
     
     val context = LocalContext.current
+    var isChatSearching by remember { mutableStateOf(false) }
+    var chatSearchQuery by remember { mutableStateOf("") }
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     var sourceLang by remember { mutableStateOf("Auto Detect") }
     var targetLang by remember { mutableStateOf("English") }
@@ -66,13 +70,37 @@ fun TranslateScreen(
             Spacer(modifier = Modifier.height(8.dp))
         }
         state.word?.let { word ->
-            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End) {
+            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "${word.term}",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = { isChatSearching = !isChatSearching }) {
+                    Icon(Icons.Default.Search, contentDescription = "Search in Chat")
+                }
                 Text(
                     text = "Searches: ${word.searchCount} | Views: ${word.viewCount}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+        }
+        if (isChatSearching) {
+            OutlinedTextField(
+                value = chatSearchQuery,
+                onValueChange = { chatSearchQuery = it },
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                placeholder = { Text("Find in chat...") },
+                singleLine = true,
+                trailingIcon = {
+                    if (chatSearchQuery.isNotEmpty()) {
+                        IconButton(onClick = { chatSearchQuery = "" }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear Search")
+                        }
+                    }
+                }
+            )
         }
         LazyColumn(modifier = Modifier.weight(1f)) {
             if (state.chatMessages.isEmpty()) {
@@ -98,7 +126,7 @@ fun TranslateScreen(
                                 .padding(12.dp)
                         ) {
                             if (isUser) {
-                                MarkdownText(text = msg.content, color = MaterialTheme.colorScheme.onPrimary)
+                                MarkdownText(text = msg.content, color = MaterialTheme.colorScheme.onPrimary, searchQuery = chatSearchQuery)
                             } else {
                                 if (isEditing) {
                                     Column {
@@ -116,7 +144,7 @@ fun TranslateScreen(
                                         }
                                     }
                                 } else {
-                                    MarkdownText(text = msg.content, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                    MarkdownText(text = msg.content, color = MaterialTheme.colorScheme.onSecondaryContainer, searchQuery = chatSearchQuery)
                                 }
                             }
                         }

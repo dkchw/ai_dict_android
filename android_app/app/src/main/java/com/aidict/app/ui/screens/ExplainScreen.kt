@@ -15,6 +15,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
@@ -28,6 +30,7 @@ import androidx.compose.foundation.background
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.ui.platform.LocalContext
@@ -53,6 +56,8 @@ fun ExplainScreen(
     }
     
     val context = LocalContext.current
+    var isChatSearching by remember { mutableStateOf(false) }
+    var chatSearchQuery by remember { mutableStateOf("") }
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
 
     Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
@@ -84,7 +89,7 @@ fun ExplainScreen(
                                         .padding(12.dp)
                                 ) {
                                     if (isUser) {
-                                        com.aidict.app.ui.components.MarkdownText(text = msg.content, color = MaterialTheme.colorScheme.onPrimary)
+                                        com.aidict.app.ui.components.MarkdownText(text = msg.content, color = MaterialTheme.colorScheme.onPrimary, searchQuery = chatSearchQuery)
                                     } else {
                                         if (isEditing) {
                                             Column {
@@ -102,7 +107,7 @@ fun ExplainScreen(
                                                 }
                                             }
                                         } else {
-                                            com.aidict.app.ui.components.MarkdownText(text = msg.content, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                            com.aidict.app.ui.components.MarkdownText(text = msg.content, color = MaterialTheme.colorScheme.onSecondaryContainer, searchQuery = chatSearchQuery)
                                         }
                                     }
                                 }
@@ -133,7 +138,7 @@ fun ExplainScreen(
                                     .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(12.dp))
                                     .padding(12.dp)
                             ) {
-                                com.aidict.app.ui.components.MarkdownText(text = state.currentStream, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                com.aidict.app.ui.components.MarkdownText(text = state.currentStream, color = MaterialTheme.colorScheme.onSecondaryContainer, searchQuery = chatSearchQuery)
                             }
                         }
                     }

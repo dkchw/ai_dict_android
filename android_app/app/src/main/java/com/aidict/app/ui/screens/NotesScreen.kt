@@ -22,6 +22,8 @@ fun NotesScreen(viewModel: NotesViewModel) {
     val notes by viewModel.notes.collectAsState()
     
     var showDialog by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    var isSearching by remember { mutableStateOf(false) }
     var currentNote by remember { mutableStateOf<Note?>(null) }
     var noteTitle by remember { mutableStateOf("") }
     var noteContent by remember { mutableStateOf("") }
@@ -44,6 +46,9 @@ fun NotesScreen(viewModel: NotesViewModel) {
                     Icon(Icons.Default.Close, contentDescription = "Cancel")
                 }
             } else {
+                IconButton(onClick = { isSearching = !isSearching }) {
+                    Icon(Icons.Default.Search, contentDescription = "Search")
+                }
                 IconButton(onClick = { selectionMode = true }) {
                     Icon(Icons.Default.Checklist, contentDescription = "Select")
                 }
@@ -56,6 +61,23 @@ fun NotesScreen(viewModel: NotesViewModel) {
                     Icon(Icons.Default.Add, contentDescription = "Add Note")
                 }
             }
+        }
+        
+        if (isSearching) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                placeholder = { Text("Search notes...") },
+                singleLine = true,
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear")
+                        }
+                    }
+                }
+            )
         }
         
         // Quick Add Note

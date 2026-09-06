@@ -18,6 +18,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -392,23 +394,31 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
         }
     }
 
+    var isDetailSearching by remember { mutableStateOf(false) }
+    var detailSearchQuery by remember { mutableStateOf("") }
     val detailContent = @Composable {
         val messages by viewModel.selectedChatMessages.collectAsState()
         if (selectedWord != null) {
             Column(modifier = Modifier.fillMaxSize().padding(16.dp).background(MaterialTheme.colorScheme.surface)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     SelectionContainer(modifier = Modifier.weight(1f)) { Text(text = "Details", style = MaterialTheme.typography.titleLarge) }
+                    IconButton(onClick = { isDetailSearching = !isDetailSearching }) {
+                        Icon(Icons.Default.Search, contentDescription = "Search in Chat")
+                    }
                     IconButton(onClick = {
                         val lastUserMsg = messages.findLast { it.role == "assistant" }
                         if (lastUserMsg != null) onRestartChat(selectedWord!!, lastUserMsg, false)
                     }) {
-                        Icon(androidx.compose.material.icons.Icons.Default.Refresh, contentDescription = "Restart with Current Model", tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Default.Refresh, contentDescription = "Restart with Current Model", tint = MaterialTheme.colorScheme.primary)
+                    }
+                    IconButton(onClick = { isDetailSearching = !isDetailSearching }) {
+                        Icon(Icons.Default.Search, contentDescription = "Search in Chat")
                     }
                     IconButton(onClick = {
                         val lastUserMsg = messages.findLast { it.role == "assistant" }
                         if (lastUserMsg != null) onRestartChat(selectedWord!!, lastUserMsg, true)
                     }) {
-                        Icon(androidx.compose.material.icons.Icons.Default.Autorenew, contentDescription = "Restart with Fallback Model", tint = MaterialTheme.colorScheme.error)
+                        Icon(Icons.Default.Autorenew, contentDescription = "Restart with Fallback Model", tint = MaterialTheme.colorScheme.error)
                     }
                     Button(onClick = { onNavigateToChat(selectedWord!!) }) { Text("Resume Chat") }
                     Spacer(modifier = Modifier.width(8.dp))
@@ -428,6 +438,22 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(8.dp))
+                if (isDetailSearching) {
+                    OutlinedTextField(
+                        value = detailSearchQuery,
+                        onValueChange = { detailSearchQuery = it },
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                        placeholder = { Text("Find in chat...") },
+                        singleLine = true,
+                        trailingIcon = {
+                            if (detailSearchQuery.isNotEmpty()) {
+                                IconButton(onClick = { detailSearchQuery = "" }) {
+                                    Icon(Icons.Default.Clear, contentDescription = "Clear Search")
+                                }
+                            }
+                        }
+                    )
+                }
                 LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     items(messages) { msg ->
                         val isUser = msg.role == "user"

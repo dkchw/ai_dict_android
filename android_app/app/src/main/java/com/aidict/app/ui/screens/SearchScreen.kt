@@ -51,6 +51,8 @@ fun SearchScreen(
     val state by viewModel.dictState.collectAsState()
     val suggestions by viewModel.suggestions.collectAsState()
     val context = LocalContext.current
+    var isChatSearching by remember { mutableStateOf(false) }
+    var chatSearchQuery by remember { mutableStateOf("") }
 
     val colors = listOf(
         "Red" to Color(0xFFEF4444),
@@ -105,7 +107,10 @@ fun SearchScreen(
                         Icon(Icons.Default.ContentCopy, contentDescription = "Copy")
                     }
 
-                    IconButton(onClick = { 
+                    IconButton(onClick = { isChatSearching = !isChatSearching }) {
+                        Icon(Icons.Default.Search, contentDescription = "Search in Chat")
+                    }
+                    IconButton(onClick = {
                         val lastUserMsg = state.chatMessages.findLast { it.role == "assistant" }
                         if (lastUserMsg != null) viewModel.retryMessage(lastUserMsg, false, "dict")
                     }) {
@@ -124,6 +129,22 @@ fun SearchScreen(
                     }
                 }
                 
+                if (isChatSearching) {
+                    OutlinedTextField(
+                        value = chatSearchQuery,
+                        onValueChange = { chatSearchQuery = it },
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        placeholder = { Text("Find in chat...") },
+                        singleLine = true,
+                        trailingIcon = {
+                            if (chatSearchQuery.isNotEmpty()) {
+                                IconButton(onClick = { chatSearchQuery = "" }) {
+                                    Icon(Icons.Default.Clear, contentDescription = "Clear Search")
+                                }
+                            }
+                        }
+                    )
+                }
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
                     // Colors
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -187,7 +208,7 @@ fun SearchScreen(
                                 .padding(12.dp)
                         ) {
                             if (isUser) {
-                                MarkdownText(text = msg.content, color = MaterialTheme.colorScheme.onPrimary)
+                                MarkdownText(text = msg.content, color = MaterialTheme.colorScheme.onPrimary, searchQuery = chatSearchQuery)
                             } else {
                                 if (isEditing) {
                                     Column {
@@ -205,7 +226,7 @@ fun SearchScreen(
                                         }
                                     }
                                 } else {
-                                    MarkdownText(text = msg.content, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                    MarkdownText(text = msg.content, color = MaterialTheme.colorScheme.onSecondaryContainer, searchQuery = chatSearchQuery)
                                 }
                             }
                         }

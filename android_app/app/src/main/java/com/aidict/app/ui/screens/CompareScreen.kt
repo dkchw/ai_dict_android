@@ -15,6 +15,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
@@ -28,6 +30,7 @@ import androidx.compose.foundation.background
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import com.aidict.app.ui.components.MarkdownText
 import androidx.compose.ui.unit.dp
@@ -50,6 +53,8 @@ fun CompareScreen(
     }
     
     val context = LocalContext.current
+    var isChatSearching by remember { mutableStateOf(false) }
+    var chatSearchQuery by remember { mutableStateOf("") }
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
 
     Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
@@ -59,13 +64,37 @@ fun CompareScreen(
             Spacer(modifier = Modifier.height(8.dp))
         }
         state.word?.let { word ->
-            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End) {
+            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "${word.term}",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = { isChatSearching = !isChatSearching }) {
+                    Icon(Icons.Default.Search, contentDescription = "Search in Chat")
+                }
                 Text(
                     text = "Searches: ${word.searchCount} | Views: ${word.viewCount}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+        }
+        if (isChatSearching) {
+            OutlinedTextField(
+                value = chatSearchQuery,
+                onValueChange = { chatSearchQuery = it },
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                placeholder = { Text("Find in chat...") },
+                singleLine = true,
+                trailingIcon = {
+                    if (chatSearchQuery.isNotEmpty()) {
+                        IconButton(onClick = { chatSearchQuery = "" }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear Search")
+                        }
+                    }
+                }
+            )
         }
         LazyColumn(modifier = Modifier.weight(1f)) {
             if (state.chatMessages.isEmpty()) {
@@ -91,7 +120,7 @@ fun CompareScreen(
                                 .padding(12.dp)
                         ) {
                             if (isUser) {
-                                MarkdownText(text = msg.content, color = MaterialTheme.colorScheme.onPrimary)
+                                MarkdownText(text = msg.content, color = MaterialTheme.colorScheme.onPrimary, searchQuery = chatSearchQuery)
                             } else {
                                 if (isEditing) {
                                     Column {
@@ -109,7 +138,7 @@ fun CompareScreen(
                                         }
                                     }
                                 } else {
-                                    MarkdownText(text = msg.content, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                    MarkdownText(text = msg.content, color = MaterialTheme.colorScheme.onSecondaryContainer, searchQuery = chatSearchQuery)
                                 }
                             }
                         }
