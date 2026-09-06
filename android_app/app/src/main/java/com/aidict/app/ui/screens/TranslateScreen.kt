@@ -48,6 +48,7 @@ fun TranslateScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.translateState.collectAsState()
+    val suggestions by viewModel.suggestions.collectAsState()
     
     val context = LocalContext.current
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -182,6 +183,12 @@ fun TranslateScreen(
             enterToSend = enterToSend,
             isFollowUp = state.word != null,
             onClear = { viewModel.clearCurrentSearch() },
+            suggestions = suggestions,
+            onSuggestionClick = { word -> 
+                viewModel.loadWord(word)
+                viewModel.translateInput = ""
+                viewModel.clearSuggestions()
+            },
             placeholder = if (state.word != null && !autoNewSearch) "Enter your question..." else "Text to translate...",
             sourceLang = sourceLang,
             targetLang = targetLang,

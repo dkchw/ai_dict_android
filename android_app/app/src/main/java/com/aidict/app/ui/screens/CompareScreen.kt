@@ -41,6 +41,7 @@ fun CompareScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.compareState.collectAsState()
+    val suggestions by viewModel.suggestions.collectAsState()
     var sourceLang by remember { mutableStateOf("Auto Detect") }
     var targetLang by remember { mutableStateOf("English") }
     LaunchedEffect(profileId) {
@@ -177,6 +178,12 @@ fun CompareScreen(
             onSourceLangChange = if (state.word == null) { { sourceLang = it; viewModel.saveProfileSetting(profileId, "COMPARE_SOURCE", it) } } else null,
             onTargetLangChange = if (state.word == null) { { targetLang = it; viewModel.saveProfileSetting(profileId, "COMPARE_TARGET", it) } } else null,
             onClear = { viewModel.clearCurrentSearch() },
+            suggestions = suggestions,
+            onSuggestionClick = { word -> 
+                viewModel.loadWord(word)
+                viewModel.compareInput = ""
+                viewModel.clearSuggestions()
+            },
             placeholder = if (state.word != null && !autoNewSearch) "Enter your question..." else "Words to compare (comma separated)..."
         )
     }

@@ -49,6 +49,7 @@ fun SearchScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.dictState.collectAsState()
+    val suggestions by viewModel.suggestions.collectAsState()
     val context = LocalContext.current
 
     val colors = listOf(
@@ -270,6 +271,12 @@ fun SearchScreen(
             autoNewSearch = autoNewSearch,
             onToggleAutoNewSearch = onToggleAutoNewSearch,
             enterToSend = enterToSend,
+            suggestions = suggestions,
+            onSuggestionClick = { word -> 
+                viewModel.loadWord(word)
+                viewModel.searchInput = ""
+                viewModel.clearSuggestions()
+            },
             placeholder = if (isFollowUp && !autoNewSearch) "Enter your question..." else "Search word...",
             isFollowUp = isFollowUp,
             sourceLang = if (!isFollowUp) sourceLang else null,

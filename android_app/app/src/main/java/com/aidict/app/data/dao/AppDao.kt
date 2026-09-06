@@ -41,6 +41,9 @@ interface AppDao {
     @Query("SELECT DISTINCT wordId FROM chat_message WHERE content LIKE '%' || :query || '%'")
     suspend fun getWordIdsMatchingContent(query: String): List<Int>
 
+    @Query("SELECT * FROM word WHERE profileId = :profileId AND mode = :mode AND term LIKE '%' || :query || '%' ORDER BY createdAt DESC LIMIT 5")
+    suspend fun getWordSuggestions(profileId: Int, mode: String, query: String): List<Word>
+
     @Query("SELECT * FROM word WHERE profileId = :profileId AND mode = :mode ORDER BY createdAt DESC")
     fun getWordsByMode(profileId: Int, mode: String): Flow<List<Word>>
 

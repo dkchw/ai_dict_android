@@ -35,6 +35,19 @@ class SearchViewModel(
     private val llmRepository: LlmRepository,
     private val database: AppDatabase
 ) : ViewModel() {
+    private val _suggestions = MutableStateFlow<List<com.aidict.app.data.entities.Word>>(emptyList())
+    val suggestions: StateFlow<List<com.aidict.app.data.entities.Word>> = _suggestions.asStateFlow()
+
+    private suspend fun updateSuggestions(mode: String, query: String) {
+        if (query.isBlank()) {
+            _suggestions.value = emptyList()
+            return
+        }
+        val profileIdStr = database.appDao().getSetting("ACTIVE_PROFILE_ID")?.value
+        val profileId = profileIdStr?.toIntOrNull() ?: 1
+        _suggestions.value = database.appDao().getWordSuggestions(profileId, mode, query)
+    }
+
     private var dictJob: kotlinx.coroutines.Job? = null
     private var translateJob: kotlinx.coroutines.Job? = null
     private var explainJob: kotlinx.coroutines.Job? = null
@@ -51,6 +64,7 @@ class SearchViewModel(
             dictJob = viewModelScope.launch {
                 kotlinx.coroutines.delay(300)
                 database.appDao().insertSetting(com.aidict.app.data.entities.AppSetting("DICT_DRAFT", value))
+                updateSuggestions("dict", value)
             }
         }
 
@@ -63,6 +77,7 @@ class SearchViewModel(
             translateJob = viewModelScope.launch {
                 kotlinx.coroutines.delay(300)
                 database.appDao().insertSetting(com.aidict.app.data.entities.AppSetting("TRANSLATE_DRAFT", value))
+                updateSuggestions("translate", value)
             }
         }
 
@@ -75,6 +90,7 @@ class SearchViewModel(
             explainJob = viewModelScope.launch {
                 kotlinx.coroutines.delay(300)
                 database.appDao().insertSetting(com.aidict.app.data.entities.AppSetting("EXPLAIN_DRAFT", value))
+                updateSuggestions("explain", value)
             }
         }
 
@@ -87,6 +103,7 @@ class SearchViewModel(
             compareJob = viewModelScope.launch {
                 kotlinx.coroutines.delay(300)
                 database.appDao().insertSetting(com.aidict.app.data.entities.AppSetting("COMPARE_DRAFT", value))
+                updateSuggestions("compare", value)
             }
         }
 
@@ -289,6 +306,9 @@ class SearchViewModel(
                 error = null
             )
         }
+    }
+    fun clearSuggestions() {
+        _suggestions.value = emptyList()
     }
     fun clearCurrentSearch() {
         _dictState.value = SearchState()

@@ -3,6 +3,7 @@ import androidx.compose.animation.core.*
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -17,6 +18,7 @@ import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.combinedClickable
 
@@ -24,6 +26,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.*
+import androidx.compose.foundation.lazy.items
 import coil.compose.AsyncImage
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.ui.graphics.Color
@@ -137,7 +140,6 @@ fun SmallLanguageSelector(
 @Composable
 fun ChatInputBar(
     availableLanguages: List<String> = com.aidict.app.utils.LanguageManager.defaultLanguages,
-
     inputTerm: String,
     onValueChange: (String) -> Unit,
     onSend: () -> Unit,
@@ -152,6 +154,8 @@ fun ChatInputBar(
     autoNewSearch: Boolean = false,
     onToggleAutoNewSearch: (() -> Unit)? = null,
     enterToSend: Boolean = false,
+    suggestions: List<com.aidict.app.data.entities.Word> = emptyList(),
+    onSuggestionClick: ((com.aidict.app.data.entities.Word) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -179,6 +183,25 @@ fun ChatInputBar(
                     }
                     SmallLanguageSelector(availableLanguages = availableLanguages, currentValue = targetLang, onSelected = onTargetLangChange)
                 }
+            }
+
+            if (suggestions.isNotEmpty() && onSuggestionClick != null) {
+                androidx.compose.foundation.lazy.LazyColumn(
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 120.dp).padding(horizontal = 8.dp, vertical = 4.dp),
+                    reverseLayout = true
+                ) {
+                    items(suggestions) { word ->
+                        Text(
+                            text = word.term,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onSuggestionClick(word) }
+                                .padding(vertical = 8.dp, horizontal = 4.dp)
+                        )
+                    }
+                }
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
             }
 
             Row(
