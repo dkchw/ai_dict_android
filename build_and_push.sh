@@ -9,10 +9,14 @@ OLD_VNAME=$(grep -oP 'versionName\s*=\s*"\K[^"]+' $GRADLE_FILE)
 
 # 2. Calculate new versions
 NEW_VCODE=$((OLD_VCODE + 1))
-MAJOR=$(echo $OLD_VNAME | cut -d. -f1)
-MINOR=$(echo $OLD_VNAME | cut -d. -f2)
-NEW_MINOR=$((MINOR + 1))
-NEW_VNAME="${MAJOR}.${NEW_MINOR}"
+if [ -n "$1" ]; then
+    NEW_VNAME="$1"
+else
+    MAJOR=$(echo $OLD_VNAME | cut -d. -f1)
+    MINOR=$(echo $OLD_VNAME | cut -d. -f2)
+    NEW_MINOR=$((MINOR + 1))
+    NEW_VNAME="${MAJOR}.${NEW_MINOR}"
+fi
 
 echo "====================================="
 echo "Bumping version: $OLD_VNAME -> $NEW_VNAME"

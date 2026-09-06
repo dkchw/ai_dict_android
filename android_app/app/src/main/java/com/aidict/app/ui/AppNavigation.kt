@@ -3,6 +3,7 @@ package com.aidict.app.ui
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.foundation.background
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.*
 import kotlinx.coroutines.launch
@@ -612,7 +613,7 @@ fun ExternalDictButton(viewModel: com.aidict.app.ui.viewmodels.SettingsViewModel
                             modifier = Modifier.size(24.dp)
                         )
                     } else {
-                        Icon(androidx.compose.material.icons.Icons.Default.Search, contentDescription = "External Dict")
+                        Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = "External Dict")
                     }
                 }
                 
@@ -630,9 +631,13 @@ fun ExternalDictButton(viewModel: com.aidict.app.ui.viewmodels.SettingsViewModel
                 dicts.forEach { (name, urlTemplate, iconUrl) ->
                     androidx.compose.material3.DropdownMenuItem(
                         text = { Text(name) },
-                        leadingIcon = if (iconUrl.isNotBlank()) {
-                            { coil.compose.AsyncImage(model = iconUrl, contentDescription = name, modifier = Modifier.size(24.dp)) }
-                        } else null,
+                        leadingIcon = {
+                            if (iconUrl.isNotBlank()) {
+                                coil.compose.AsyncImage(model = iconUrl, contentDescription = name, modifier = Modifier.size(24.dp))
+                            } else {
+                                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = name, modifier = Modifier.size(20.dp))
+                            }
+                        },
                         onClick = {
                             expanded = false
                             if (currentWord.isNullOrBlank()) {
