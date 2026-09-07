@@ -142,7 +142,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                             context.startActivity(intent)
                         } else {
                             val intent = android.content.Intent(context, com.aidict.app.FloatingBubbleService::class.java)
-                            context.startService(intent)
+                            androidx.core.content.ContextCompat.startForegroundService(context, intent)
                             android.widget.Toast.makeText(context, "Floating Bubble Started", android.widget.Toast.LENGTH_SHORT).show()
                         }
                     },

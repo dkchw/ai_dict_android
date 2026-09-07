@@ -436,7 +436,7 @@ fun AppNavigation(
                                 } else {
                                     if (android.provider.Settings.canDrawOverlays(context)) {
                                         val intent = android.content.Intent(context, com.aidict.app.FloatingBubbleService::class.java)
-                                        context.startService(intent)
+                                        androidx.core.content.ContextCompat.startForegroundService(context, intent)
                                         android.widget.Toast.makeText(context, "Bubble Enabled", android.widget.Toast.LENGTH_SHORT).show()
                                     } else {
                                         android.widget.Toast.makeText(context, "Overlay permission required", android.widget.Toast.LENGTH_SHORT).show()

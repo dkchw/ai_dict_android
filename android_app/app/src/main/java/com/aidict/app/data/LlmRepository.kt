@@ -21,9 +21,16 @@ import com.aidict.app.data.AppDatabase
 
 class LlmRepository(private val database: AppDatabase) {
     private val client = OkHttpClient.Builder()
-        .connectTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
-        .writeTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
+        .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
         .readTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
+        .pingInterval(15, java.util.concurrent.TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
+        .connectionPool(okhttp3.ConnectionPool(10, 5, java.util.concurrent.TimeUnit.MINUTES))
+        .dispatcher(okhttp3.Dispatcher().apply {
+            maxRequests = 32
+            maxRequestsPerHost = 10
+        })
         .build()
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -181,52 +188,79 @@ class LlmRepository(private val database: AppDatabase) {
             .build()
 
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-            try {
-                val response = client.newCall(request).execute()
-                val bodyStr = response.body?.string()
-                
-                if (response.isSuccessful && bodyStr != null) {
+            var lastException: Exception? = null
+            var success = false
+
+            for (attempt in 1..2) {
+                val call = client.newCall(request)
+                scope.invokeOnClose {
                     try {
-                        val obj = json.decodeFromString<JsonObject>(bodyStr)
-                        val message = obj["choices"]?.jsonArray?.firstOrNull()?.jsonObject?.get("message")?.jsonObject
-                        val content = message?.get("content")?.jsonPrimitive?.content
-                        
-                        if (content != null) {
-                            scope.trySend(content)
-                            scope.close()
-                            return@launch
-                        } else {
-                            scope.close(Exception("API Error: Valid response but no content found.\n$bodyStr"))
-                            return@launch
-                        }
-                    } catch (e: Exception) {
-                        scope.close(Exception("API Error: Failed to parse JSON response.\n$bodyStr"))
-                        return@launch
-                    }
-                } else {
-                    var errMessage: String? = null
-                    if (bodyStr != null) {
+                        if (!call.isCanceled()) call.cancel()
+                    } catch (ignored: Exception) {}
+                }
+
+                try {
+                    val response = call.execute()
+                    val bodyStr = response.body?.string()
+
+                    if (response.isSuccessful && bodyStr != null) {
                         try {
                             val obj = json.decodeFromString<JsonObject>(bodyStr)
-                            val errorElement = obj["error"]
-                            if (errorElement != null) {
-                                if (errorElement is kotlinx.serialization.json.JsonObject) {
-                                    errMessage = errorElement["message"]?.jsonPrimitive?.content ?: errorElement.toString()
-                                } else if (errorElement is kotlinx.serialization.json.JsonPrimitive) {
-                                    errMessage = errorElement.content
-                                } else {
-                                    errMessage = errorElement.toString()
-                                }
+                            val message = obj["choices"]?.jsonArray?.firstOrNull()?.jsonObject?.get("message")?.jsonObject
+                            val content = message?.get("content")?.jsonPrimitive?.content
+
+                            if (content != null) {
+                                scope.trySend(content)
+                                scope.close()
+                                success = true
+                                break
                             } else {
-                                errMessage = obj["message"]?.jsonPrimitive?.content
+                                throw Exception("API Error: Valid response but no content found.\n$bodyStr")
                             }
-                        } catch (e: Exception) {}
+                        } catch (e: Exception) {
+                            throw Exception("API Error: Failed to parse JSON response.\n$bodyStr")
+                        }
+                    } else {
+                        // If transient server error (502, 503, 504, 429) on first attempt, retry once
+                        if (attempt == 1 && response.code in listOf(429, 500, 502, 503, 504)) {
+                            kotlinx.coroutines.delay(1500)
+                            continue
+                        }
+
+                        var errMessage: String? = null
+                        if (bodyStr != null) {
+                            try {
+                                val obj = json.decodeFromString<JsonObject>(bodyStr)
+                                val errorElement = obj["error"]
+                                if (errorElement != null) {
+                                    if (errorElement is kotlinx.serialization.json.JsonObject) {
+                                        errMessage = errorElement["message"]?.jsonPrimitive?.content ?: errorElement.toString()
+                                    } else if (errorElement is kotlinx.serialization.json.JsonPrimitive) {
+                                        errMessage = errorElement.content
+                                    } else {
+                                        errMessage = errorElement.toString()
+                                    }
+                                } else {
+                                    errMessage = obj["message"]?.jsonPrimitive?.content
+                                }
+                            } catch (e: Exception) {}
+                        }
+                        val finalMessage = errMessage ?: bodyStr ?: "${response.code} ${response.message}"
+                        throw Exception("API Error: $finalMessage")
                     }
-                    val finalMessage = errMessage ?: bodyStr ?: "${response.code} ${response.message}"
-                    scope.close(Exception("API Error: $finalMessage"))
+                } catch (e: Exception) {
+                    lastException = e
+                    // Retry once if socket timeout or IO exception occurred
+                    if (attempt == 1 && (e is java.net.SocketTimeoutException || e is java.io.IOException)) {
+                        kotlinx.coroutines.delay(1000)
+                        continue
+                    }
+                    break
                 }
-            } catch (e: Exception) {
-                scope.close(Exception("Network Error: ${e.localizedMessage}"))
+            }
+
+            if (!success && lastException != null) {
+                scope.close(Exception("Network Error: ${lastException.localizedMessage}"))
             }
         }
     }

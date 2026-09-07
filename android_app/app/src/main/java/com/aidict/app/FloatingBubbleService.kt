@@ -1,6 +1,9 @@
 package com.aidict.app
 
 import android.app.Service
+import android.app.PendingIntent
+import android.content.pm.ServiceInfo
+import androidx.core.app.NotificationCompat
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
@@ -32,6 +35,59 @@ class FloatingBubbleService : Service() {
         super.onCreate()
         isRunning = true
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+
+        val openIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            openIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val closeIntent = Intent(this, FloatingBubbleService::class.java).apply {
+            action = "ACTION_STOP_BUBBLE"
+        }
+        val closePendingIntent = PendingIntent.getService(
+            this,
+            1,
+            closeIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(this, AiDictApplication.BUBBLE_CHANNEL_ID)
+            .setSmallIcon(R.mipmap.app_icon)
+            .setContentTitle("AI Dict Bubble Active")
+            .setContentText("Tap bubble on screen or here to open. Background search ready.")
+            .setOngoing(true)
+            .setSilent(true)
+            .setContentIntent(pendingIntent)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Close Bubble", closePendingIntent)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(
+                    1001,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE or ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                )
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(
+                    1001,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                )
+            } else {
+                startForeground(1001, notification)
+            }
+        } catch (e: Exception) {
+            try {
+                startForeground(1001, notification)
+            } catch (ignored: Exception) {}
+        }
 
         bubbleView = ImageView(this).apply {
             setImageResource(R.mipmap.app_icon_round)
@@ -182,14 +238,23 @@ class FloatingBubbleService : Service() {
         }
     }
 
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == "ACTION_STOP_BUBBLE") {
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        return START_STICKY
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         isRunning = false
+        stopForeground(STOP_FOREGROUND_REMOVE)
         if (::bubbleView.isInitialized) {
-            windowManager.removeView(bubbleView)
+            try { windowManager.removeView(bubbleView) } catch (ignored: Exception) {}
         }
         if (closeView != null) {
-            windowManager.removeView(closeView)
+            try { windowManager.removeView(closeView) } catch (ignored: Exception) {}
             closeView = null
         }
     }
