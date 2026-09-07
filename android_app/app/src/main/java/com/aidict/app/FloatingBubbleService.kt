@@ -57,7 +57,7 @@ class FloatingBubbleService : Service() {
         )
 
         val notification = NotificationCompat.Builder(this, AiDictApplication.BUBBLE_CHANNEL_ID)
-            .setSmallIcon(R.mipmap.app_icon)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("AI Dict Bubble Active")
             .setContentText("Tap bubble on screen or here to open. Background search ready.")
             .setOngoing(true)

@@ -77,10 +77,6 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Floating dictionary bubble and background AI processing" />
         </service>
-        <service
-            android:name=".AiDictTaskService"
-            android:foregroundServiceType="dataSync"
-            android:exported="false" />
     </application>
 
 </manifest>
