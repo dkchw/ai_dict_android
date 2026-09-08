@@ -10,6 +10,7 @@ import com.aidict.app.data.LlmRepository
 import com.aidict.app.data.entities.AppSetting
 import com.aidict.app.data.entities.Profile
 import com.aidict.app.utils.DefaultPrompts
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -17,6 +18,30 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+
+data class ProfileSettingItem(
+    val key: String,
+    val effectiveValue: String,
+    val isCustom: Boolean,
+    val globalValue: String,
+    val defaultValue: String
+)
+
+data class ProfileAiConfig(
+    val selectedProfileId: Int?,
+    val selectedProfileName: String,
+    val dictModel: ProfileSettingItem,
+    val compareModel: ProfileSettingItem,
+    val explainModel: ProfileSettingItem,
+    val translateModel: ProfileSettingItem,
+    val fallbackModels: ProfileSettingItem,
+    val chatModel: ProfileSettingItem,
+    val dictPrompt: ProfileSettingItem,
+    val comparePrompt: ProfileSettingItem,
+    val explainPrompt: ProfileSettingItem,
+    val translatePrompt: ProfileSettingItem,
+    val hasCustomOverrides: Boolean
+)
 
 class SettingsViewModel(
     private val database: AppDatabase,
@@ -54,6 +79,150 @@ class SettingsViewModel(
     
     val profiles = database.appDao().getProfiles()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    private val _selectedProfileId = MutableStateFlow<Int?>(null)
+    val selectedProfileId: StateFlow<Int?> = _selectedProfileId.asStateFlow()
+
+    fun selectProfileScope(profileId: Int?) {
+        _selectedProfileId.value = profileId
+    }
+
+    val aiConfig: StateFlow<ProfileAiConfig> = combine(
+        _selectedProfileId,
+        database.appDao().getSettingsFlow(),
+        profiles
+    ) { selId, settings, profileList ->
+        val profileName = if (selId == null) {
+            "Global Defaults"
+        } else {
+            profileList.find { it.id == selId }?.name ?: "Profile #$selId"
+        }
+
+        fun resolveItem(key: String, defaultVal: String): ProfileSettingItem {
+            val globalVal = settings.find { it.key == key }?.value?.trim()?.ifEmpty { null } ?: defaultVal
+            if (selId == null) {
+                return ProfileSettingItem(
+                    key = key,
+                    effectiveValue = globalVal,
+                    isCustom = false,
+                    globalValue = globalVal,
+                    defaultValue = defaultVal
+                )
+            } else {
+                val profileVal = settings.find { it.key == "PROFILE_${selId}_$key" }?.value?.trim()?.ifEmpty { null }
+                val isCustom = profileVal != null
+                return ProfileSettingItem(
+                    key = key,
+                    effectiveValue = profileVal ?: globalVal,
+                    isCustom = isCustom,
+                    globalValue = globalVal,
+                    defaultValue = defaultVal
+                )
+            }
+        }
+
+        val dModel = resolveItem("DICT_MODEL", "inclusionai/ling-3.0-flash")
+        val cModel = resolveItem("COMPARE_MODEL", "inclusionai/ling-3.0-flash")
+        val eModel = resolveItem("EXPLAIN_MODEL", "inclusionai/ling-3.0-flash")
+        val tModel = resolveItem("TRANSLATE_MODEL", "inclusionai/ling-3.0-flash")
+        val fModel = resolveItem("FALLBACK_MODELS", "~deepseek/deepseek-v4-flash-latest")
+        val chModel = resolveItem("CHAT_MODEL", "~deepseek/deepseek-v4-flash-latest")
+
+        val dPrompt = resolveItem("DICT_PROMPT", DefaultPrompts.DICT_PROMPT)
+        val cPrompt = resolveItem("COMPARE_PROMPT", DefaultPrompts.COMPARE_PROMPT)
+        val ePrompt = resolveItem("EXPLAIN_PROMPT", DefaultPrompts.EXPLAIN_PROMPT)
+        val tPrompt = resolveItem("TRANSLATE_PROMPT", DefaultPrompts.TRANSLATE_PROMPT)
+
+        val hasAnyCustom = selId != null && (
+            dModel.isCustom || cModel.isCustom || eModel.isCustom || tModel.isCustom ||
+            fModel.isCustom || chModel.isCustom || dPrompt.isCustom || cPrompt.isCustom ||
+            ePrompt.isCustom || tPrompt.isCustom
+        )
+
+        ProfileAiConfig(
+            selectedProfileId = selId,
+            selectedProfileName = profileName,
+            dictModel = dModel,
+            compareModel = cModel,
+            explainModel = eModel,
+            translateModel = tModel,
+            fallbackModels = fModel,
+            chatModel = chModel,
+            dictPrompt = dPrompt,
+            comparePrompt = cPrompt,
+            explainPrompt = ePrompt,
+            translatePrompt = tPrompt,
+            hasCustomOverrides = hasAnyCustom
+        )
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.Lazily,
+        ProfileAiConfig(
+            selectedProfileId = null,
+            selectedProfileName = "Global Defaults",
+            dictModel = ProfileSettingItem("DICT_MODEL", "inclusionai/ling-3.0-flash", false, "inclusionai/ling-3.0-flash", "inclusionai/ling-3.0-flash"),
+            compareModel = ProfileSettingItem("COMPARE_MODEL", "inclusionai/ling-3.0-flash", false, "inclusionai/ling-3.0-flash", "inclusionai/ling-3.0-flash"),
+            explainModel = ProfileSettingItem("EXPLAIN_MODEL", "inclusionai/ling-3.0-flash", false, "inclusionai/ling-3.0-flash", "inclusionai/ling-3.0-flash"),
+            translateModel = ProfileSettingItem("TRANSLATE_MODEL", "inclusionai/ling-3.0-flash", false, "inclusionai/ling-3.0-flash", "inclusionai/ling-3.0-flash"),
+            fallbackModels = ProfileSettingItem("FALLBACK_MODELS", "~deepseek/deepseek-v4-flash-latest", false, "~deepseek/deepseek-v4-flash-latest", "~deepseek/deepseek-v4-flash-latest"),
+            chatModel = ProfileSettingItem("CHAT_MODEL", "~deepseek/deepseek-v4-flash-latest", false, "~deepseek/deepseek-v4-flash-latest", "~deepseek/deepseek-v4-flash-latest"),
+            dictPrompt = ProfileSettingItem("DICT_PROMPT", DefaultPrompts.DICT_PROMPT, false, DefaultPrompts.DICT_PROMPT, DefaultPrompts.DICT_PROMPT),
+            comparePrompt = ProfileSettingItem("COMPARE_PROMPT", DefaultPrompts.COMPARE_PROMPT, false, DefaultPrompts.COMPARE_PROMPT, DefaultPrompts.COMPARE_PROMPT),
+            explainPrompt = ProfileSettingItem("EXPLAIN_PROMPT", DefaultPrompts.EXPLAIN_PROMPT, false, DefaultPrompts.EXPLAIN_PROMPT, DefaultPrompts.EXPLAIN_PROMPT),
+            translatePrompt = ProfileSettingItem("TRANSLATE_PROMPT", DefaultPrompts.TRANSLATE_PROMPT, false, DefaultPrompts.TRANSLATE_PROMPT, DefaultPrompts.TRANSLATE_PROMPT),
+            hasCustomOverrides = false
+        )
+    )
+
+    fun saveAiSetting(key: String, value: String) {
+        val selId = _selectedProfileId.value
+        viewModelScope.launch {
+            if (selId == null) {
+                database.appDao().insertSetting(AppSetting(key, value))
+            } else {
+                database.appDao().insertSetting(AppSetting("PROFILE_${selId}_$key", value))
+            }
+        }
+    }
+
+    fun resetAiSetting(key: String) {
+        val selId = _selectedProfileId.value
+        viewModelScope.launch {
+            if (selId != null) {
+                database.appDao().deleteSetting("PROFILE_${selId}_$key")
+            } else {
+                database.appDao().deleteSetting(key)
+            }
+        }
+    }
+
+    fun resetCurrentProfileToDefaults() {
+        val selId = _selectedProfileId.value ?: return
+        viewModelScope.launch {
+            database.appDao().deleteProfileSettings(selId)
+        }
+    }
+
+    fun copyAiSettings(fromProfileId: Int?, toProfileId: Int) {
+        viewModelScope.launch {
+            val keys = listOf(
+                "DICT_MODEL", "COMPARE_MODEL", "EXPLAIN_MODEL", "TRANSLATE_MODEL",
+                "FALLBACK_MODELS", "CHAT_MODEL",
+                "DICT_PROMPT", "COMPARE_PROMPT", "EXPLAIN_PROMPT", "TRANSLATE_PROMPT"
+            )
+            for (k in keys) {
+                val value = if (fromProfileId == null) {
+                    database.appDao().getSetting(k)?.value
+                } else {
+                    database.appDao().getSetting("PROFILE_${fromProfileId}_$k")?.value
+                        ?: database.appDao().getSetting(k)?.value
+                }
+                if (value != null) {
+                    database.appDao().insertSetting(AppSetting("PROFILE_${toProfileId}_$k", value))
+                }
+            }
+        }
+    }
 
     private val _availableModels = MutableStateFlow<List<String>>(emptyList())
     val availableModels: StateFlow<List<String>> = _availableModels
@@ -101,7 +270,11 @@ class SettingsViewModel(
 
     fun deleteProfile(profile: Profile) {
         viewModelScope.launch {
+            database.appDao().deleteProfileSettings(profile.id)
             database.appDao().deleteProfile(profile)
+            if (_selectedProfileId.value == profile.id) {
+                _selectedProfileId.value = null
+            }
         }
     }
 

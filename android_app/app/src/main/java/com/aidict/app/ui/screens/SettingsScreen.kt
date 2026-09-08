@@ -40,6 +40,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Restore
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.ui.text.font.FontWeight
+import com.aidict.app.ui.viewmodels.ProfileSettingItem
 import com.aidict.app.ui.viewmodels.BackupHelper
 import kotlinx.coroutines.launch
 import android.widget.Toast
@@ -79,22 +84,10 @@ fun SettingsGroup(title: String, content: @Composable () -> Unit) {
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) {
     val apiKey by viewModel.apiKey.collectAsState()
-    val isDarkMode by viewModel.isDarkMode.collectAsState()
     val appTheme by viewModel.appTheme.collectAsState()
-    val dictModel by viewModel.dictModel.collectAsState()
-    val compareModel by viewModel.compareModel.collectAsState()
-    val explainModel by viewModel.explainModel.collectAsState()
-    val translateModel by viewModel.translateModel.collectAsState()
-    val fallbackModels by viewModel.fallbackModels.collectAsState()
-    val chatModel by viewModel.chatModel.collectAsState()
-    
-    val dictPrompt by viewModel.dictPrompt.collectAsState()
-    val explainPrompt by viewModel.explainPrompt.collectAsState()
-    val translatePrompt by viewModel.translatePrompt.collectAsState()
-    val comparePrompt by viewModel.comparePrompt.collectAsState()
-    
     val profiles by viewModel.profiles.collectAsState()
     val availableModels by viewModel.availableModels.collectAsState()
+    val aiConfig by viewModel.aiConfig.collectAsState()
 
     var showProfileDialog by remember { mutableStateOf(false) }
     var newProfileName by remember { mutableStateOf("") }
@@ -127,7 +120,6 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
 
     LazyColumn(modifier = modifier.fillMaxSize().padding(16.dp)) {
         item {
-            val context = androidx.compose.ui.platform.LocalContext.current
             Row(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = { com.aidict.app.utils.AutoUpdater(context).checkForUpdates() },
@@ -580,30 +572,282 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
         
         item { Spacer(Modifier.height(16.dp)) }
         item {
-            SettingsGroup("Models") {
-                Row(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.End) {
-                    Button(onClick = { viewModel.refreshModels() }) { Icon(Icons.Default.Refresh, contentDescription = "Refresh Models", modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Refresh") }
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f))
+            ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "AI Configuration Scope",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Surface(
+                            color = if (aiConfig.selectedProfileId == null) MaterialTheme.colorScheme.tertiaryContainer else if (aiConfig.hasCustomOverrides) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = if (aiConfig.selectedProfileId == null) "Global" else if (aiConfig.hasCustomOverrides) "Custom Overrides" else "Inheriting Global",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (aiConfig.selectedProfileId == null) MaterialTheme.colorScheme.onTertiaryContainer else if (aiConfig.hasCustomOverrides) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+                    
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Configure models and prompts globally or customize them independently for each profile.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(12.dp))
+
+                    var scopeMenuExpanded by remember { mutableStateOf(false) }
+                    val currentScopeLabel = if (aiConfig.selectedProfileId == null) {
+                        "🌐 Global Defaults (App-wide fallback)"
+                    } else {
+                        "👤 Profile: ${aiConfig.selectedProfileName}"
+                    }
+
+                    ExposedDropdownMenuBox(
+                        expanded = scopeMenuExpanded,
+                        onExpandedChange = { scopeMenuExpanded = !scopeMenuExpanded },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            value = currentScopeLabel,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Editing Scope") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = scopeMenuExpanded) },
+                            modifier = Modifier.menuAnchor().fillMaxWidth(),
+                            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = scopeMenuExpanded,
+                            onDismissRequest = { scopeMenuExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("🌐 Global Defaults (App-wide fallback)") },
+                                onClick = {
+                                    viewModel.selectProfileScope(null)
+                                    scopeMenuExpanded = false
+                                }
+                            )
+                            if (profiles.isNotEmpty()) {
+                                HorizontalDivider()
+                            }
+                            profiles.sortedBy { it.rank }.forEach { profile ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text("👤 ${profile.name}")
+                                            if (profile.isDefault) {
+                                                Spacer(Modifier.width(6.dp))
+                                                Text("(Default)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                                            }
+                                        }
+                                    },
+                                    onClick = {
+                                        viewModel.selectProfileScope(profile.id)
+                                        scopeMenuExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    if (aiConfig.selectedProfileId != null) {
+                        Spacer(Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            var showCopyDialog by remember { mutableStateOf(false) }
+                            OutlinedButton(
+                                onClick = { showCopyDialog = true },
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                            ) {
+                                Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Copy From...", style = MaterialTheme.typography.labelMedium)
+                            }
+
+                            if (aiConfig.hasCustomOverrides) {
+                                Spacer(Modifier.width(8.dp))
+                                var showConfirmReset by remember { mutableStateOf(false) }
+                                FilledTonalButton(
+                                    onClick = { showConfirmReset = true },
+                                    colors = ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                                ) {
+                                    Icon(Icons.Default.Restore, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Reset All", style = MaterialTheme.typography.labelMedium)
+                                }
+
+                                if (showConfirmReset) {
+                                    AlertDialog(
+                                        onDismissRequest = { showConfirmReset = false },
+                                        title = { Text("Reset Profile Settings?") },
+                                        text = { Text("Reset all models and prompts for \"${aiConfig.selectedProfileName}\" back to Global Defaults?") },
+                                        confirmButton = {
+                                            TextButton(onClick = {
+                                                viewModel.resetCurrentProfileToDefaults()
+                                                showConfirmReset = false
+                                            }) { Text("Reset", color = MaterialTheme.colorScheme.error) }
+                                        },
+                                        dismissButton = {
+                                            TextButton(onClick = { showConfirmReset = false }) { Text("Cancel") }
+                                        }
+                                    )
+                                }
+                            }
+
+                            if (showCopyDialog) {
+                                AlertDialog(
+                                    onDismissRequest = { showCopyDialog = false },
+                                    title = { Text("Copy Settings From") },
+                                    text = {
+                                        Column {
+                                            Text("Select source to copy models and prompts from into \"${aiConfig.selectedProfileName}\":")
+                                            Spacer(Modifier.height(8.dp))
+                                            TextButton(
+                                                onClick = {
+                                                    viewModel.copyAiSettings(null, aiConfig.selectedProfileId!!)
+                                                    showCopyDialog = false
+                                                },
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Text("🌐 Global Defaults", modifier = Modifier.fillMaxWidth())
+                                            }
+                                            profiles.filter { it.id != aiConfig.selectedProfileId }.forEach { p ->
+                                                TextButton(
+                                                    onClick = {
+                                                        viewModel.copyAiSettings(p.id, aiConfig.selectedProfileId!!)
+                                                        showCopyDialog = false
+                                                    },
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    Text("👤 Profile: ${p.name}", modifier = Modifier.fillMaxWidth())
+                                                }
+                                            }
+                                        }
+                                    },
+                                    confirmButton = {},
+                                    dismissButton = {
+                                        TextButton(onClick = { showCopyDialog = false }) { Text("Cancel") }
+                                    }
+                                )
+                            }
+                        }
+                    }
                 }
-                SearchableModelDropdown("Dict Model", dictModel, availableModels) { viewModel.saveSetting("DICT_MODEL", it) }
-                SearchableModelDropdown("Compare Model", compareModel, availableModels) { viewModel.saveSetting("COMPARE_MODEL", it) }
-                SearchableModelDropdown("Explain Model", explainModel, availableModels) { viewModel.saveSetting("EXPLAIN_MODEL", it) }
-                SearchableModelDropdown("Translate Model", translateModel, availableModels) { viewModel.saveSetting("TRANSLATE_MODEL", it) }
-                SearchableModelDropdown("Fallback Model", fallbackModels, availableModels) { viewModel.saveSetting("FALLBACK_MODELS", it) }
-                SearchableModelDropdown("Chat Model", chatModel, availableModels) { viewModel.saveSetting("CHAT_MODEL", it) }
             }
         }
 
-        
-        item { Spacer(Modifier.height(16.dp)) }
-        
-
-        item { Spacer(Modifier.height(16.dp)) }
+        item { Spacer(Modifier.height(8.dp)) }
         item {
-            SettingsGroup("Prompts") {
-                OutlinedTextField(value = dictPrompt, onValueChange = { viewModel.saveSetting("DICT_PROMPT", it) }, label = { Text("Dictionary Prompt") }, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), minLines = 3, maxLines = 10)
-                OutlinedTextField(value = explainPrompt, onValueChange = { viewModel.saveSetting("EXPLAIN_PROMPT", it) }, label = { Text("Explain Prompt") }, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), minLines = 3, maxLines = 10)
-                OutlinedTextField(value = translatePrompt, onValueChange = { viewModel.saveSetting("TRANSLATE_PROMPT", it) }, label = { Text("Translate Prompt") }, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), minLines = 3, maxLines = 10)
-                OutlinedTextField(value = comparePrompt, onValueChange = { viewModel.saveSetting("COMPARE_PROMPT", it) }, label = { Text("Compare Prompt") }, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), minLines = 3, maxLines = 10)
+            val scopeTitle = if (aiConfig.selectedProfileId == null) "Models (Global Defaults)" else "Models (${aiConfig.selectedProfileName})"
+            SettingsGroup(scopeTitle) {
+                Row(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.End) {
+                    Button(onClick = { viewModel.refreshModels() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh Models", modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Refresh Models")
+                    }
+                }
+                AiModelSettingItem(
+                    label = "Dict Model",
+                    settingItem = aiConfig.dictModel,
+                    isProfileScope = aiConfig.selectedProfileId != null,
+                    availableModels = availableModels,
+                    onSave = { viewModel.saveAiSetting("DICT_MODEL", it) },
+                    onReset = { viewModel.resetAiSetting("DICT_MODEL") }
+                )
+                AiModelSettingItem(
+                    label = "Compare Model",
+                    settingItem = aiConfig.compareModel,
+                    isProfileScope = aiConfig.selectedProfileId != null,
+                    availableModels = availableModels,
+                    onSave = { viewModel.saveAiSetting("COMPARE_MODEL", it) },
+                    onReset = { viewModel.resetAiSetting("COMPARE_MODEL") }
+                )
+                AiModelSettingItem(
+                    label = "Explain Model",
+                    settingItem = aiConfig.explainModel,
+                    isProfileScope = aiConfig.selectedProfileId != null,
+                    availableModels = availableModels,
+                    onSave = { viewModel.saveAiSetting("EXPLAIN_MODEL", it) },
+                    onReset = { viewModel.resetAiSetting("EXPLAIN_MODEL") }
+                )
+                AiModelSettingItem(
+                    label = "Translate Model",
+                    settingItem = aiConfig.translateModel,
+                    isProfileScope = aiConfig.selectedProfileId != null,
+                    availableModels = availableModels,
+                    onSave = { viewModel.saveAiSetting("TRANSLATE_MODEL", it) },
+                    onReset = { viewModel.resetAiSetting("TRANSLATE_MODEL") }
+                )
+                AiModelSettingItem(
+                    label = "Fallback Model",
+                    settingItem = aiConfig.fallbackModels,
+                    isProfileScope = aiConfig.selectedProfileId != null,
+                    availableModels = availableModels,
+                    onSave = { viewModel.saveAiSetting("FALLBACK_MODELS", it) },
+                    onReset = { viewModel.resetAiSetting("FALLBACK_MODELS") }
+                )
+                AiModelSettingItem(
+                    label = "Chat Model",
+                    settingItem = aiConfig.chatModel,
+                    isProfileScope = aiConfig.selectedProfileId != null,
+                    availableModels = availableModels,
+                    onSave = { viewModel.saveAiSetting("CHAT_MODEL", it) },
+                    onReset = { viewModel.resetAiSetting("CHAT_MODEL") }
+                )
+            }
+        }
+
+        item { Spacer(Modifier.height(8.dp)) }
+        item {
+            val scopeTitle = if (aiConfig.selectedProfileId == null) "Prompts (Global Defaults)" else "Prompts (${aiConfig.selectedProfileName})"
+            SettingsGroup(scopeTitle) {
+                AiPromptSettingItem(
+                    label = "Dictionary Prompt",
+                    settingItem = aiConfig.dictPrompt,
+                    isProfileScope = aiConfig.selectedProfileId != null,
+                    onSave = { viewModel.saveAiSetting("DICT_PROMPT", it) },
+                    onReset = { viewModel.resetAiSetting("DICT_PROMPT") }
+                )
+                AiPromptSettingItem(
+                    label = "Explain Prompt",
+                    settingItem = aiConfig.explainPrompt,
+                    isProfileScope = aiConfig.selectedProfileId != null,
+                    onSave = { viewModel.saveAiSetting("EXPLAIN_PROMPT", it) },
+                    onReset = { viewModel.resetAiSetting("EXPLAIN_PROMPT") }
+                )
+                AiPromptSettingItem(
+                    label = "Translate Prompt",
+                    settingItem = aiConfig.translatePrompt,
+                    isProfileScope = aiConfig.selectedProfileId != null,
+                    onSave = { viewModel.saveAiSetting("TRANSLATE_PROMPT", it) },
+                    onReset = { viewModel.resetAiSetting("TRANSLATE_PROMPT") }
+                )
+                AiPromptSettingItem(
+                    label = "Compare Prompt",
+                    settingItem = aiConfig.comparePrompt,
+                    isProfileScope = aiConfig.selectedProfileId != null,
+                    onSave = { viewModel.saveAiSetting("COMPARE_PROMPT", it) },
+                    onReset = { viewModel.resetAiSetting("COMPARE_PROMPT") }
+                )
             }
         }
 
@@ -621,6 +865,16 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                     Icon(if (profile.isDefault) Icons.Default.Star else Icons.Outlined.StarBorder, contentDescription = "Default Profile")
                 }
                 Text(profile.name, modifier = Modifier.weight(1f))
+                IconButton(onClick = { 
+                    viewModel.selectProfileScope(profile.id)
+                    Toast.makeText(context, "Editing AI settings for: ${profile.name}", Toast.LENGTH_SHORT).show()
+                }) {
+                    Icon(
+                        Icons.Default.Tune,
+                        contentDescription = "Configure AI Settings",
+                        tint = if (aiConfig.selectedProfileId == profile.id) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 IconButton(onClick = { viewModel.moveProfileUp(profile) }) {
                     Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move Up")
                 }
@@ -693,7 +947,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
 @Composable
 fun SearchableModelDropdown(label: String, currentValue: String, availableModels: List<String>, onSelected: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
-    var searchText by remember { mutableStateOf(currentValue) }
+    var searchText by remember(currentValue) { mutableStateOf(currentValue) }
 
     ExposedDropdownMenuBox(
         expanded = expanded,
@@ -730,6 +984,130 @@ fun SearchableModelDropdown(label: String, currentValue: String, availableModels
                 }
             }
         }
+    }
+}
+
+@Composable
+fun AiModelSettingItem(
+    label: String,
+    settingItem: ProfileSettingItem,
+    isProfileScope: Boolean,
+    availableModels: List<String>,
+    onSave: (String) -> Unit,
+    onReset: () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                if (isProfileScope) {
+                    Spacer(Modifier.width(8.dp))
+                    Surface(
+                        color = if (settingItem.isCustom) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            text = if (settingItem.isCustom) "Custom" else "Inherited",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (settingItem.isCustom) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+            if (isProfileScope && settingItem.isCustom) {
+                TextButton(
+                    onClick = onReset,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                ) {
+                    Icon(Icons.Default.Restore, contentDescription = "Reset to global", modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Inherit", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+        SearchableModelDropdown(
+            label = if (isProfileScope && !settingItem.isCustom) "$label (Inherited: ${settingItem.globalValue.take(24)}...)" else label,
+            currentValue = settingItem.effectiveValue,
+            availableModels = availableModels,
+            onSelected = onSave
+        )
+    }
+}
+
+@Composable
+fun AiPromptSettingItem(
+    label: String,
+    settingItem: ProfileSettingItem,
+    isProfileScope: Boolean,
+    onSave: (String) -> Unit,
+    onReset: () -> Unit
+) {
+    var text by remember(settingItem.key, settingItem.effectiveValue) { mutableStateOf(settingItem.effectiveValue) }
+
+    LaunchedEffect(settingItem.effectiveValue) {
+        if (text != settingItem.effectiveValue) {
+            text = settingItem.effectiveValue
+        }
+    }
+
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                if (isProfileScope) {
+                    Spacer(Modifier.width(8.dp))
+                    Surface(
+                        color = if (settingItem.isCustom) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            text = if (settingItem.isCustom) "Custom" else "Inherited",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (settingItem.isCustom) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+            if (isProfileScope && settingItem.isCustom) {
+                TextButton(
+                    onClick = onReset,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                ) {
+                    Icon(Icons.Default.Restore, contentDescription = "Reset to global", modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Inherit", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+        OutlinedTextField(
+            value = text,
+            onValueChange = {
+                text = it
+                onSave(it)
+            },
+            label = { Text(if (isProfileScope && !settingItem.isCustom) "$label (Inherited from Global)" else label) },
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            minLines = 3,
+            maxLines = 10
+        )
     }
 }
 

@@ -134,10 +134,18 @@ class LlmRepository(private val database: AppDatabase) {
         throw lastException ?: Exception("Network request failed")
     }
 
-    fun streamExplanation(term: String, sourceLang: String, targetLang: String): Flow<String> = flow {
-        val model = database.appDao().getSetting("DICT_MODEL")?.value ?: "inclusionai/ling-3.0-flash"
-        val promptTemplate = database.appDao().getSetting("DICT_PROMPT")?.value ?: com.aidict.app.utils.DefaultPrompts.DICT_PROMPT
-        val fallbackModel = database.appDao().getSetting("FALLBACK_MODELS")?.value ?: "~deepseek/deepseek-v4-flash-latest"
+    private suspend fun getProfileOrGlobalSetting(profileId: Int, key: String, default: String): String {
+        val profileVal = database.appDao().getSetting("PROFILE_${profileId}_$key")?.value?.trim()
+        if (!profileVal.isNullOrBlank()) return profileVal
+        val globalVal = database.appDao().getSetting(key)?.value?.trim()
+        if (!globalVal.isNullOrBlank()) return globalVal
+        return default
+    }
+
+    fun streamExplanation(term: String, sourceLang: String, targetLang: String, profileId: Int = 1): Flow<String> = flow {
+        val model = getProfileOrGlobalSetting(profileId, "DICT_MODEL", "inclusionai/ling-3.0-flash")
+        val promptTemplate = getProfileOrGlobalSetting(profileId, "DICT_PROMPT", com.aidict.app.utils.DefaultPrompts.DICT_PROMPT)
+        val fallbackModel = getProfileOrGlobalSetting(profileId, "FALLBACK_MODELS", "~deepseek/deepseek-v4-flash-latest")
         val modelsList = if (fallbackModel.isNotBlank() && fallbackModel != model) listOf(model, fallbackModel) else null
         val singleModel = if (modelsList == null) model else null
 
@@ -154,10 +162,10 @@ class LlmRepository(private val database: AppDatabase) {
         emit(content)
     }.flowOn(Dispatchers.IO)
 
-    fun streamExplain(text: String, sourceLang: String, targetLang: String): Flow<String> = flow {
-        val model = database.appDao().getSetting("EXPLAIN_MODEL")?.value ?: "inclusionai/ling-3.0-flash"
-        val promptTemplate = database.appDao().getSetting("EXPLAIN_PROMPT")?.value ?: com.aidict.app.utils.DefaultPrompts.EXPLAIN_PROMPT
-        val fallbackModel = database.appDao().getSetting("FALLBACK_MODELS")?.value ?: "~deepseek/deepseek-v4-flash-latest"
+    fun streamExplain(text: String, sourceLang: String, targetLang: String, profileId: Int = 1): Flow<String> = flow {
+        val model = getProfileOrGlobalSetting(profileId, "EXPLAIN_MODEL", "inclusionai/ling-3.0-flash")
+        val promptTemplate = getProfileOrGlobalSetting(profileId, "EXPLAIN_PROMPT", com.aidict.app.utils.DefaultPrompts.EXPLAIN_PROMPT)
+        val fallbackModel = getProfileOrGlobalSetting(profileId, "FALLBACK_MODELS", "~deepseek/deepseek-v4-flash-latest")
         val modelsList = if (fallbackModel.isNotBlank() && fallbackModel != model) listOf(model, fallbackModel) else null
         val singleModel = if (modelsList == null) model else null
 
@@ -174,10 +182,10 @@ class LlmRepository(private val database: AppDatabase) {
         emit(content)
     }.flowOn(Dispatchers.IO)
 
-    fun streamTranslation(sourceText: String, sourceLang: String, targetLang: String): Flow<String> = flow {
-        val model = database.appDao().getSetting("TRANSLATE_MODEL")?.value ?: "inclusionai/ling-3.0-flash"
-        val promptTemplate = database.appDao().getSetting("TRANSLATE_PROMPT")?.value ?: com.aidict.app.utils.DefaultPrompts.TRANSLATE_PROMPT
-        val fallbackModel = database.appDao().getSetting("FALLBACK_MODELS")?.value ?: "~deepseek/deepseek-v4-flash-latest"
+    fun streamTranslation(sourceText: String, sourceLang: String, targetLang: String, profileId: Int = 1): Flow<String> = flow {
+        val model = getProfileOrGlobalSetting(profileId, "TRANSLATE_MODEL", "inclusionai/ling-3.0-flash")
+        val promptTemplate = getProfileOrGlobalSetting(profileId, "TRANSLATE_PROMPT", com.aidict.app.utils.DefaultPrompts.TRANSLATE_PROMPT)
+        val fallbackModel = getProfileOrGlobalSetting(profileId, "FALLBACK_MODELS", "~deepseek/deepseek-v4-flash-latest")
         val modelsList = if (fallbackModel.isNotBlank() && fallbackModel != model) listOf(model, fallbackModel) else null
         val singleModel = if (modelsList == null) model else null
 
@@ -194,10 +202,10 @@ class LlmRepository(private val database: AppDatabase) {
         emit(content)
     }.flowOn(Dispatchers.IO)
 
-    fun streamCompare(words: String, sourceLang: String, targetLang: String): Flow<String> = flow {
-        val model = database.appDao().getSetting("COMPARE_MODEL")?.value ?: "inclusionai/ling-3.0-flash"
-        val promptTemplate = database.appDao().getSetting("COMPARE_PROMPT")?.value ?: com.aidict.app.utils.DefaultPrompts.COMPARE_PROMPT
-        val fallbackModel = database.appDao().getSetting("FALLBACK_MODELS")?.value ?: "~deepseek/deepseek-v4-flash-latest"
+    fun streamCompare(words: String, sourceLang: String, targetLang: String, profileId: Int = 1): Flow<String> = flow {
+        val model = getProfileOrGlobalSetting(profileId, "COMPARE_MODEL", "inclusionai/ling-3.0-flash")
+        val promptTemplate = getProfileOrGlobalSetting(profileId, "COMPARE_PROMPT", com.aidict.app.utils.DefaultPrompts.COMPARE_PROMPT)
+        val fallbackModel = getProfileOrGlobalSetting(profileId, "FALLBACK_MODELS", "~deepseek/deepseek-v4-flash-latest")
         val modelsList = if (fallbackModel.isNotBlank() && fallbackModel != model) listOf(model, fallbackModel) else null
         val singleModel = if (modelsList == null) model else null
 
@@ -215,8 +223,9 @@ class LlmRepository(private val database: AppDatabase) {
     }.flowOn(Dispatchers.IO)
 
     fun streamChat(word: com.aidict.app.data.entities.Word, messages: List<com.aidict.app.data.entities.ChatMessage>, forceFallback: Boolean = false): Flow<String> = flow {
-        val configuredModel = database.appDao().getSetting("CHAT_MODEL")?.value ?: "~deepseek/deepseek-v4-flash-latest"
-        val fallbackModel = database.appDao().getSetting("FALLBACK_MODELS")?.value ?: "~deepseek/deepseek-v4-flash-latest"
+        val profileId = word.profileId
+        val configuredModel = getProfileOrGlobalSetting(profileId, "CHAT_MODEL", "~deepseek/deepseek-v4-flash-latest")
+        val fallbackModel = getProfileOrGlobalSetting(profileId, "FALLBACK_MODELS", "~deepseek/deepseek-v4-flash-latest")
         val model = if (forceFallback && fallbackModel.isNotBlank()) fallbackModel else configuredModel
         val modelsList = if (!forceFallback && fallbackModel.isNotBlank() && fallbackModel != model) listOf(model, fallbackModel) else null
         val singleModel = if (modelsList == null) model else null
@@ -224,7 +233,7 @@ class LlmRepository(private val database: AppDatabase) {
         val initialContext = mutableListOf<ChatMessageDto>()
         when (word.mode) {
             "dict" -> {
-                val prompt = database.appDao().getSetting("DICT_PROMPT")?.value ?: com.aidict.app.utils.DefaultPrompts.DICT_PROMPT
+                val prompt = getProfileOrGlobalSetting(profileId, "DICT_PROMPT", com.aidict.app.utils.DefaultPrompts.DICT_PROMPT)
                 initialContext.add(ChatMessageDto(role = "system", content = prompt))
                 val langs = word.language?.split(" -> ")
                 val src = langs?.getOrNull(0) ?: ""
@@ -232,7 +241,7 @@ class LlmRepository(private val database: AppDatabase) {
                 initialContext.add(ChatMessageDto(role = "user", content = "Word/Phrase: ${word.term}\nSource language: $src\nTarget language: $tgt"))
             }
             "translate" -> {
-                val prompt = database.appDao().getSetting("TRANSLATE_PROMPT")?.value ?: com.aidict.app.utils.DefaultPrompts.TRANSLATE_PROMPT
+                val prompt = getProfileOrGlobalSetting(profileId, "TRANSLATE_PROMPT", com.aidict.app.utils.DefaultPrompts.TRANSLATE_PROMPT)
                 initialContext.add(ChatMessageDto(role = "system", content = prompt))
                 val langs = word.language?.split(" -> ")
                 val src = langs?.getOrNull(0) ?: ""
@@ -240,12 +249,12 @@ class LlmRepository(private val database: AppDatabase) {
                 initialContext.add(ChatMessageDto(role = "user", content = "Source language: $src\nTarget language: $tgt\nConcept: ${word.term}"))
             }
             "explain" -> {
-                val prompt = database.appDao().getSetting("EXPLAIN_PROMPT")?.value ?: com.aidict.app.utils.DefaultPrompts.EXPLAIN_PROMPT
+                val prompt = getProfileOrGlobalSetting(profileId, "EXPLAIN_PROMPT", com.aidict.app.utils.DefaultPrompts.EXPLAIN_PROMPT)
                 initialContext.add(ChatMessageDto(role = "system", content = prompt))
                 initialContext.add(ChatMessageDto(role = "user", content = "Please explain this sentence/paragraph:\n${word.term}"))
             }
             "compare" -> {
-                val prompt = database.appDao().getSetting("COMPARE_PROMPT")?.value ?: com.aidict.app.utils.DefaultPrompts.COMPARE_PROMPT
+                val prompt = getProfileOrGlobalSetting(profileId, "COMPARE_PROMPT", com.aidict.app.utils.DefaultPrompts.COMPARE_PROMPT)
                 initialContext.add(ChatMessageDto(role = "system", content = prompt))
                 initialContext.add(ChatMessageDto(role = "user", content = "Please compare the following words:\n${word.term}"))
             }
@@ -264,6 +273,7 @@ class LlmRepository(private val database: AppDatabase) {
         val content = executeRequest(json.encodeToString(requestBody))
         emit(content)
     }.flowOn(Dispatchers.IO)
+
 
 
 

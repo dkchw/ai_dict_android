@@ -24,6 +24,10 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.material3.*
@@ -64,6 +68,7 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
     var query by remember { mutableStateOf("") }
     
         var selectedWord by remember { mutableStateOf<Word?>(null) }
+    var isDetailMaximized by remember { mutableStateOf(false) }
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedSessionIds by remember { mutableStateOf(setOf<String>()) }
     var selectedWordIds by remember { mutableStateOf(setOf<Int>()) }
@@ -71,6 +76,9 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
     
     LaunchedEffect(selectedWord) {
         viewModel.setSelectedWordId(selectedWord?.id)
+        if (selectedWord == null) {
+            isDetailMaximized = false
+        }
     }
     
     if (isSelectionMode) {
@@ -81,8 +89,12 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
         }
     } else if (selectedWord != null) {
         BackHandler {
-            selectedWord = null
-            viewModel.setSelectedWordId(null)
+            if (isDetailMaximized) {
+                isDetailMaximized = false
+            } else {
+                selectedWord = null
+                viewModel.setSelectedWordId(null)
+            }
         }
     }
     
@@ -94,7 +106,10 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
     var wordNameInput by remember { mutableStateOf("") }
     var sessionNameInput by remember { mutableStateOf("") }
 
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
     val isTablet = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Expanded
+    val isHorizontalSplit = isTablet || isLandscape
     val context = androidx.compose.ui.platform.LocalContext.current
 
     val colors = listOf(
@@ -106,8 +121,14 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
     )
 
     val listContent = @Composable {
-        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-            Text("Mode: ${viewModel.currentMode.collectAsState().value.uppercase()} | Profile: ${appState.activeProfile?.name ?: "Unknown"}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 8.dp))
+        val listPadding = if (isLandscape) PaddingValues(horizontal = 8.dp, vertical = 6.dp) else PaddingValues(16.dp)
+        Column(modifier = Modifier.fillMaxSize().padding(listPadding)) {
+            Text(
+                "Mode: ${viewModel.currentMode.collectAsState().value.uppercase()} | Profile: ${appState.activeProfile?.name ?: "Unknown"}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = if (isLandscape) 4.dp else 8.dp)
+            )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     value = query,
@@ -116,16 +137,21 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                         viewModel.updateSearchQuery(it)
                     },
                     label = { Text("Search history...") },
+                    singleLine = true,
                     modifier = Modifier.weight(1f)
                 )
                 Spacer(Modifier.width(8.dp))
-                Button(onClick = { /* TODO: Special sort */ }) {
+                Button(
+                    onClick = { /* TODO: Special sort */ },
+                    modifier = if (isLandscape) Modifier.height(36.dp) else Modifier,
+                    contentPadding = if (isLandscape) PaddingValues(horizontal = 12.dp, vertical = 0.dp) else ButtonDefaults.ContentPadding
+                ) {
                     Text("Sort")
                 }
             }
             
             Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = if (isLandscape) 4.dp else 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -399,55 +425,71 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
     val detailContent = @Composable {
         val messages by viewModel.selectedChatMessages.collectAsState()
         if (selectedWord != null) {
-            Column(modifier = Modifier.fillMaxSize().padding(16.dp).background(MaterialTheme.colorScheme.surface)) {
-                
+            val outerPadding = if (isLandscape) PaddingValues(horizontal = 8.dp, vertical = 4.dp) else PaddingValues(12.dp)
+            val cardPadding = if (isLandscape) PaddingValues(horizontal = 10.dp, vertical = 6.dp) else PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+
+            Column(modifier = Modifier.fillMaxSize().padding(outerPadding).background(MaterialTheme.colorScheme.surface)) {
                 androidx.compose.material3.Card(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = if (isLandscape) 4.dp else 8.dp),
                     colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    Column(modifier = Modifier.padding(cardPadding)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             SelectionContainer(modifier = Modifier.weight(1f)) { 
                                 Text(
                                     text = selectedWord!!.term, 
-                                    style = MaterialTheme.typography.titleLarge,
+                                    style = if (isLandscape) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
+                            IconButton(
+                                onClick = { isDetailMaximized = !isDetailMaximized },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    if (isDetailMaximized) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                                    contentDescription = "Toggle Fullscreen",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Spacer(Modifier.width(4.dp))
                             IconButton(onClick = { 
                                 selectedWord = null
                                 viewModel.setSelectedWordId(null) 
-                            }) {
-                                Icon(Icons.Default.Close, contentDescription = "Close Details")
+                                isDetailMaximized = false
+                            }, modifier = Modifier.size(28.dp)) {
+                                Icon(Icons.Default.Close, contentDescription = "Close Details", modifier = Modifier.size(18.dp))
                             }
                         }
                         
+                        val dateFormatted = java.text.SimpleDateFormat("MMM dd, yyyy  HH:mm", java.util.Locale.getDefault()).format(java.util.Date(selectedWord!!.createdAt))
                         Text(
-                            text = java.text.SimpleDateFormat("MMM dd, yyyy  HH:mm", java.util.Locale.getDefault()).format(java.util.Date(selectedWord!!.createdAt)),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "Searches: ${selectedWord!!.searchCount} | Views: ${selectedWord!!.viewCount} | Gens: ${selectedWord!!.generationCount}",
+                            text = "$dateFormatted • 🔍 ${selectedWord!!.searchCount} • 👁 ${selectedWord!!.viewCount} • ⚡ ${selectedWord!!.generationCount}",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                         )
                         
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(if (isLandscape) 4.dp else 8.dp))
                         
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                             Button(
                                 onClick = { onNavigateToChat(selectedWord!!) },
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f).height(if (isLandscape) 30.dp else 36.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
                             ) {
-                                Text("Resume Chat")
+                                Text("Resume Chat", style = MaterialTheme.typography.labelMedium)
                             }
                             
                             IconButton(
                                 onClick = { isDetailSearching = !isDetailSearching }, 
-                                modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer, androidx.compose.foundation.shape.CircleShape)
+                                modifier = Modifier.size(if (isLandscape) 30.dp else 36.dp).background(if (isDetailSearching) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer, CircleShape)
                             ) {
-                                Icon(Icons.Default.Search, contentDescription = "Search in Chat", tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                                Icon(Icons.Default.Search, contentDescription = "Search in Chat", tint = if (isDetailSearching) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(16.dp))
                             }
                             
                             IconButton(
@@ -455,9 +497,9 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                                     val lastUserMsg = messages.findLast { it.role == "assistant" }
                                     if (lastUserMsg != null) onRestartChat(selectedWord!!, lastUserMsg, false)
                                 }, 
-                                modifier = Modifier.background(MaterialTheme.colorScheme.secondaryContainer, androidx.compose.foundation.shape.CircleShape)
+                                modifier = Modifier.size(if (isLandscape) 30.dp else 36.dp).background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)
                             ) {
-                                Icon(Icons.Default.Refresh, contentDescription = "Restart with Current Model", tint = MaterialTheme.colorScheme.primary)
+                                Icon(Icons.Default.Refresh, contentDescription = "Restart with Current Model", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                             }
                             
                             IconButton(
@@ -465,9 +507,9 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                                     val lastUserMsg = messages.findLast { it.role == "assistant" }
                                     if (lastUserMsg != null) onRestartChat(selectedWord!!, lastUserMsg, true)
                                 }, 
-                                modifier = Modifier.background(MaterialTheme.colorScheme.errorContainer, androidx.compose.foundation.shape.CircleShape)
+                                modifier = Modifier.size(if (isLandscape) 30.dp else 36.dp).background(MaterialTheme.colorScheme.errorContainer, CircleShape)
                             ) {
-                                Icon(Icons.Default.Autorenew, contentDescription = "Restart with Fallback Model", tint = MaterialTheme.colorScheme.error)
+                                Icon(Icons.Default.Autorenew, contentDescription = "Restart with Fallback Model", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
                             }
                         }
                     }
@@ -477,23 +519,26 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                     OutlinedTextField(
                         value = detailSearchQuery,
                         onValueChange = { detailSearchQuery = it },
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                        placeholder = { Text("Find in chat...") },
+                        modifier = Modifier.fillMaxWidth().padding(bottom = if (isLandscape) 4.dp else 8.dp),
+                        placeholder = { Text("Find in chat...", style = MaterialTheme.typography.bodySmall) },
                         singleLine = true,
+                        textStyle = MaterialTheme.typography.bodySmall,
                         trailingIcon = {
                             if (detailSearchQuery.isNotEmpty()) {
-                                IconButton(onClick = { detailSearchQuery = "" }) {
-                                    Icon(Icons.Default.Clear, contentDescription = "Clear Search")
+                                IconButton(onClick = { detailSearchQuery = "" }, modifier = Modifier.size(24.dp)) {
+                                    Icon(Icons.Default.Clear, contentDescription = "Clear Search", modifier = Modifier.size(16.dp))
                                 }
                             }
                         }
                     )
                 }
+
+                val displayMessages = if (detailSearchQuery.isBlank()) messages else messages.filter { it.content.contains(detailSearchQuery, ignoreCase = true) }
                 LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    items(messages) { msg ->
+                    items(displayMessages) { msg ->
                         val isUser = msg.role == "user"
                         Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            modifier = Modifier.fillMaxWidth().padding(vertical = if (isLandscape) 2.dp else 4.dp),
                             horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
                         ) {
                             Column(modifier = Modifier.fillMaxWidth(if (isUser) 0.85f else 1f)) {
@@ -504,7 +549,7 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                                             color = if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
                                             shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
                                         )
-                                        .padding(12.dp)
+                                        .padding(if (isLandscape) 8.dp else 12.dp)
                                 ) {
                                     com.aidict.app.ui.components.MarkdownText(
                                         text = msg.content,
@@ -517,9 +562,9 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                                             val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                                             clipboard.setPrimaryClip(android.content.ClipData.newPlainText("AI Dict", msg.content))
                                             android.widget.Toast.makeText(context, "Copied", android.widget.Toast.LENGTH_SHORT).show()
-                                        }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.ContentCopy, "Copy", modifier = Modifier.size(16.dp)) }
-                                        IconButton(onClick = { onRestartChat(selectedWord!!, msg, false) }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Refresh, "Regenerate (Current)", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp)) }
-                                        IconButton(onClick = { onRestartChat(selectedWord!!, msg, true) }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Autorenew, "Regenerate (Fallback)", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp)) }
+                                        }, modifier = Modifier.size(if (isLandscape) 28.dp else 32.dp)) { Icon(Icons.Default.ContentCopy, "Copy", modifier = Modifier.size(16.dp)) }
+                                        IconButton(onClick = { onRestartChat(selectedWord!!, msg, false) }, modifier = Modifier.size(if (isLandscape) 28.dp else 32.dp)) { Icon(Icons.Default.Refresh, "Regenerate (Current)", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp)) }
+                                        IconButton(onClick = { onRestartChat(selectedWord!!, msg, true) }, modifier = Modifier.size(if (isLandscape) 28.dp else 32.dp)) { Icon(Icons.Default.Autorenew, "Regenerate (Fallback)", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp)) }
                                     }
                                 }
                             }
@@ -531,14 +576,16 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
     }
 
     val splitFraction by viewModel.splitFraction.collectAsState()
-    val configuration = LocalConfiguration.current
-    val density = LocalDensity.current
 
-    if (isTablet) {
+    if (isHorizontalSplit) {
         val totalWidthDp = configuration.screenWidthDp.dp
         Row(modifier = modifier.fillMaxSize()) {
-            Box(modifier = Modifier.weight(if (selectedWord != null) splitFraction else 1f)) { listContent() }
-            if (selectedWord != null) {
+            if (selectedWord == null) {
+                Box(modifier = Modifier.fillMaxSize()) { listContent() }
+            } else if (isDetailMaximized) {
+                Box(modifier = Modifier.fillMaxSize()) { detailContent() }
+            } else {
+                Box(modifier = Modifier.weight(splitFraction)) { listContent() }
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
@@ -561,8 +608,12 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
     } else {
         val totalHeightDp = configuration.screenHeightDp.dp
         Column(modifier = modifier.fillMaxSize()) {
-            Box(modifier = Modifier.weight(if (selectedWord != null) splitFraction else 1f)) { listContent() }
-            if (selectedWord != null) {
+            if (selectedWord == null) {
+                Box(modifier = Modifier.fillMaxSize()) { listContent() }
+            } else if (isDetailMaximized) {
+                Box(modifier = Modifier.fillMaxSize()) { detailContent() }
+            } else {
+                Box(modifier = Modifier.weight(splitFraction)) { listContent() }
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()

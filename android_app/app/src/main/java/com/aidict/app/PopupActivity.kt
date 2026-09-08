@@ -151,6 +151,23 @@ class PopupActivity : ComponentActivity() {
                 androidx.compose.runtime.CompositionLocalProvider(
                     androidx.compose.ui.platform.LocalDensity provides newDensity
                 ) {
+                    val config = androidx.compose.ui.platform.LocalConfiguration.current
+                    val orientation = config.orientation
+                    val isLandscape = orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+                    val screenHeight = androidx.compose.runtime.remember(orientation) { config.screenHeightDp.dp }
+
+                    val isTablet = windowSizeClass.widthSizeClass == androidx.compose.material3.windowsizeclass.WindowWidthSizeClass.Expanded || windowSizeClass.widthSizeClass == androidx.compose.material3.windowsizeclass.WindowWidthSizeClass.Medium
+                    val defaultWidth = if (isLandscape) {
+                        if (isTablet) 0.88f else 0.96f
+                    } else {
+                        if (isTablet) 0.6f else 0.95f
+                    }
+                    val defaultHeight = if (isLandscape) {
+                        0.96f
+                    } else {
+                        if (isTablet) 0.8f else 0.9f
+                    }
+
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -161,24 +178,21 @@ class PopupActivity : ComponentActivity() {
                             ) {
                                 finish()
                             },
-                        contentAlignment = Alignment.BottomCenter
+                        contentAlignment = if (isLandscape) Alignment.Center else Alignment.BottomCenter
                     ) {
-                        val isTablet = windowSizeClass.widthSizeClass == androidx.compose.material3.windowsizeclass.WindowWidthSizeClass.Expanded || windowSizeClass.widthSizeClass == androidx.compose.material3.windowsizeclass.WindowWidthSizeClass.Medium
-                        val defaultWidth = if (isTablet) 0.6f else 0.95f
-                        val defaultHeight = if (isTablet) 0.8f else 0.9f
                         
                         val popupWidthStr by settingsViewModel.getSettingFlow("POPUP_WIDTH", defaultWidth.toString()).collectAsState()
                         val popupHeightStr by settingsViewModel.getSettingFlow("POPUP_HEIGHT", defaultHeight.toString()).collectAsState()
                         
                         val popupWidth = popupWidthStr.toFloatOrNull()?.coerceIn(0.3f, 1.0f) ?: defaultWidth
-                        val popupHeight = popupHeightStr.toFloatOrNull()?.coerceIn(0.3f, 1.0f) ?: defaultHeight
-                        
-                        val config = androidx.compose.ui.platform.LocalConfiguration.current
-                        val orientation = config.orientation
-                        val screenHeight = androidx.compose.runtime.remember(orientation) { config.screenHeightDp.dp }
+                        val popupHeight = if (isLandscape) {
+                            popupHeightStr.toFloatOrNull()?.coerceIn(0.7f, 1.0f) ?: defaultHeight
+                        } else {
+                            popupHeightStr.toFloatOrNull()?.coerceIn(0.3f, 1.0f) ?: defaultHeight
+                        }
 
                         Surface(
-                            shape = RoundedCornerShape(16.dp),
+                            shape = RoundedCornerShape(if (isLandscape) 12.dp else 16.dp),
                             color = MaterialTheme.colorScheme.background,
                             modifier = Modifier
                                 .fillMaxWidth(popupWidth)
@@ -189,7 +203,7 @@ class PopupActivity : ComponentActivity() {
                                 ) {
                                     // Do nothing on internal clicks
                                 }
-                                .clip(RoundedCornerShape(16.dp))
+                                .clip(RoundedCornerShape(if (isLandscape) 12.dp else 16.dp))
                         ) {
                             AppNavigation(
                                 appViewModel = appViewModel,

@@ -38,6 +38,12 @@ interface AppDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSetting(setting: AppSetting)
 
+    @Query("DELETE FROM app_setting WHERE `key` = :key")
+    suspend fun deleteSetting(key: String)
+
+    @Query("DELETE FROM app_setting WHERE `key` LIKE 'PROFILE_' || :profileId || '_%'")
+    suspend fun deleteProfileSettings(profileId: Int)
+
     @Query("SELECT DISTINCT wordId FROM chat_message WHERE content LIKE '%' || :query || '%'")
     suspend fun getWordIdsMatchingContent(query: String): List<Int>
 

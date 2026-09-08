@@ -176,7 +176,7 @@ class SearchViewModel(
                 _uiState.value = SearchState(isLoading = true, word = savedWord, chatMessages = listOf(savedMsg), currentStream = "")
                 
                 var currentText = ""
-                llmRepository.streamExplanation(cleanTerm, sourceLang, targetLang).collect { chunk ->
+                llmRepository.streamExplanation(cleanTerm, sourceLang, targetLang, profileId).collect { chunk ->
                     currentText = chunk
                     if (_uiState.value.word?.id == wordId) {
                         _uiState.value = _uiState.value.copy(currentStream = currentText)
@@ -452,7 +452,7 @@ class SearchViewModel(
                 _uiState.value = SearchState(isLoading = true, word = savedWord, chatMessages = listOf(savedMsg), currentStream = "")
 
                 var currentText = ""
-                llmRepository.streamTranslation(cleanText, source, target).collect { chunk ->
+                llmRepository.streamTranslation(cleanText, source, target, profileId).collect { chunk ->
                     currentText = chunk
                     if (_uiState.value.word?.id == wordId) {
                         _uiState.value = _uiState.value.copy(currentStream = currentText)
@@ -505,7 +505,7 @@ class SearchViewModel(
                 _uiState.value = SearchState(isLoading = true, word = savedWord, chatMessages = listOf(savedMsg), currentStream = "")
 
                 var currentText = ""
-                llmRepository.streamExplain(cleanText, sourceLang, targetLang).collect { chunk ->
+                llmRepository.streamExplain(cleanText, sourceLang, targetLang, profileId).collect { chunk ->
                     currentText = chunk
                     if (_uiState.value.word?.id == wordId) {
                         _uiState.value = _uiState.value.copy(currentStream = currentText)
@@ -558,7 +558,7 @@ class SearchViewModel(
                 _uiState.value = SearchState(isLoading = true, word = savedWord, chatMessages = listOf(savedMsg), currentStream = "")
 
                 var currentText = ""
-                llmRepository.streamCompare(cleanWords, sourceLang, targetLang).collect { chunk ->
+                llmRepository.streamCompare(cleanWords, sourceLang, targetLang, profileId).collect { chunk ->
                     currentText = chunk
                     if (_uiState.value.word?.id == wordId) {
                         _uiState.value = _uiState.value.copy(currentStream = currentText)
