@@ -78,18 +78,24 @@ class LlmRepository(private val database: AppDatabase) {
                 val bodyStr = response.body?.string()
 
                 if (response.isSuccessful && bodyStr != null) {
-                    try {
-                        val obj = json.decodeFromString<JsonObject>(bodyStr)
-                        val message = obj["choices"]?.jsonArray?.firstOrNull()?.jsonObject?.get("message")?.jsonObject
-                        val content = message?.get("content")?.jsonPrimitive?.content
-
-                        if (content != null) {
-                            return@withContext content
-                        } else {
-                            throw Exception("API Error: Valid response but no content found.\n$bodyStr")
-                        }
+                    val obj = try {
+                        json.decodeFromString<JsonObject>(bodyStr)
                     } catch (e: Exception) {
-                        throw Exception("API Error: Failed to parse JSON response.\n$bodyStr")
+                        throw Exception("Failed to parse response: ${e.localizedMessage ?: e.message}")
+                    }
+                    val message = obj["choices"]?.jsonArray?.firstOrNull()?.jsonObject?.get("message")?.jsonObject
+                    val content = message?.get("content")?.jsonPrimitive?.content
+
+                    if (!content.isNullOrBlank()) {
+                        return@withContext content
+                    } else {
+                        val errorElement = obj["error"]
+                        val errMsg = when (errorElement) {
+                            is JsonObject -> errorElement["message"]?.jsonPrimitive?.content ?: errorElement.toString()
+                            is kotlinx.serialization.json.JsonPrimitive -> errorElement.content
+                            else -> errorElement?.toString()
+                        }
+                        throw Exception("Model returned empty content: ${errMsg ?: "Check model selection"}")
                     }
                 } else {
                     if (attempt == 1 && response.code in listOf(429, 500, 502, 503, 504)) {
@@ -115,8 +121,8 @@ class LlmRepository(private val database: AppDatabase) {
                             }
                         } catch (e: Exception) {}
                     }
-                    val finalMessage = errMessage ?: bodyStr ?: "${response.code} ${response.message}"
-                    throw Exception("API Error: $finalMessage")
+                    val finalMessage = errMessage ?: bodyStr?.take(200) ?: "${response.code} ${response.message}"
+                    throw Exception("API Error (${response.code}): $finalMessage")
                 }
             } catch (e: Exception) {
                 lastException = e
@@ -131,7 +137,14 @@ class LlmRepository(private val database: AppDatabase) {
             }
         }
 
-        throw lastException ?: Exception("Network request failed")
+        val finalEx = lastException ?: Exception("Network request failed")
+        val friendlyMessage = when (finalEx) {
+            is java.net.SocketTimeoutException -> "Request timed out waiting for AI response."
+            is java.net.UnknownHostException -> "Cannot connect to server. Check internet connection."
+            is java.io.IOException -> "Network interrupted (${finalEx.localizedMessage ?: "I/O connection closed"})."
+            else -> finalEx.localizedMessage?.takeIf { it.isNotBlank() } ?: finalEx.message?.takeIf { it.isNotBlank() } ?: "Request failed (${finalEx.javaClass.simpleName})"
+        }
+        throw Exception(friendlyMessage, finalEx)
     }
 
     private suspend fun getProfileOrGlobalSetting(profileId: Int, key: String, default: String): String {
@@ -224,7 +237,18 @@ class LlmRepository(private val database: AppDatabase) {
 
     fun streamChat(word: com.aidict.app.data.entities.Word, messages: List<com.aidict.app.data.entities.ChatMessage>, forceFallback: Boolean = false): Flow<String> = flow {
         val profileId = word.profileId
-        val configuredModel = getProfileOrGlobalSetting(profileId, "CHAT_MODEL", "~deepseek/deepseek-v4-flash-latest")
+        val defaultModelKey = if (messages.isEmpty()) {
+            when (word.mode) {
+                "dict" -> "DICT_MODEL"
+                "translate" -> "TRANSLATE_MODEL"
+                "explain" -> "EXPLAIN_MODEL"
+                "compare" -> "COMPARE_MODEL"
+                else -> "CHAT_MODEL"
+            }
+        } else {
+            "CHAT_MODEL"
+        }
+        val configuredModel = getProfileOrGlobalSetting(profileId, defaultModelKey, getProfileOrGlobalSetting(profileId, "CHAT_MODEL", "inclusionai/ling-3.0-flash"))
         val fallbackModel = getProfileOrGlobalSetting(profileId, "FALLBACK_MODELS", "~deepseek/deepseek-v4-flash-latest")
         val model = if (forceFallback && fallbackModel.isNotBlank()) fallbackModel else configuredModel
         val modelsList = if (!forceFallback && fallbackModel.isNotBlank() && fallbackModel != model) listOf(model, fallbackModel) else null

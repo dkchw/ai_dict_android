@@ -390,12 +390,11 @@ fun AppNavigation(
                             currentScreen = Screen.MAIN
                         },
                         onRestartChat = { word, msg, fallback ->
-                            searchViewModel.loadWord(word)
-                            // Don't switch screens, let it generate in the background
-                            searchViewModel.retryMessage(msg, fallback, word.mode)
+                            searchViewModel.retryMessage(msg, fallback, word.mode, word)
                         },
                         viewModel = historyViewModel,
-                        windowSizeClass = windowSizeClass
+                        windowSizeClass = windowSizeClass,
+                        searchViewModel = searchViewModel
                     )
                 }
                 Screen.MAIN -> {

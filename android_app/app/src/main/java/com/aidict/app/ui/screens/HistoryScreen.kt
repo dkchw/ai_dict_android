@@ -56,6 +56,7 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
     onRestartChat: (Word, com.aidict.app.data.entities.ChatMessage, Boolean) -> Unit = {_,_,_ -> }, 
     viewModel: HistoryViewModel,
     windowSizeClass: WindowSizeClass,
+    searchViewModel: com.aidict.app.ui.viewmodels.SearchViewModel? = null,
     modifier: Modifier = Modifier
 ) {
     val history by viewModel.historyState.collectAsState()
@@ -67,7 +68,9 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
     val searchInOutput by viewModel.searchInOutput.collectAsState()
     var query by remember { mutableStateOf("") }
     
-        var selectedWord by remember { mutableStateOf<Word?>(null) }
+    var selectedWord by remember { mutableStateOf<Word?>(null) }
+    val restartingWordId by (searchViewModel?.isRestartingWordId ?: kotlinx.coroutines.flow.MutableStateFlow(null)).collectAsState()
+    val isCurrentWordRestarting = selectedWord != null && restartingWordId == selectedWord?.id
     var isDetailMaximized by remember { mutableStateOf(false) }
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedSessionIds by remember { mutableStateOf(setOf<String>()) }
@@ -495,21 +498,33 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                             IconButton(
                                 onClick = {
                                     val lastUserMsg = messages.findLast { it.role == "assistant" }
-                                    if (lastUserMsg != null) onRestartChat(selectedWord!!, lastUserMsg, false)
+                                    val targetMsg = lastUserMsg ?: messages.lastOrNull() ?: com.aidict.app.data.entities.ChatMessage(wordId = selectedWord!!.id, role = "assistant", content = "")
+                                    android.widget.Toast.makeText(context, "Restarting with Current Model...", android.widget.Toast.LENGTH_SHORT).show()
+                                    onRestartChat(selectedWord!!, targetMsg, false)
                                 }, 
                                 modifier = Modifier.size(if (isLandscape) 30.dp else 36.dp).background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)
                             ) {
-                                Icon(Icons.Default.Refresh, contentDescription = "Restart with Current Model", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                if (isCurrentWordRestarting) {
+                                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.primary)
+                                } else {
+                                    Icon(Icons.Default.Refresh, contentDescription = "Restart with Current Model", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                }
                             }
                             
                             IconButton(
                                 onClick = {
                                     val lastUserMsg = messages.findLast { it.role == "assistant" }
-                                    if (lastUserMsg != null) onRestartChat(selectedWord!!, lastUserMsg, true)
+                                    val targetMsg = lastUserMsg ?: messages.lastOrNull() ?: com.aidict.app.data.entities.ChatMessage(wordId = selectedWord!!.id, role = "assistant", content = "")
+                                    android.widget.Toast.makeText(context, "Restarting with Fallback Model...", android.widget.Toast.LENGTH_SHORT).show()
+                                    onRestartChat(selectedWord!!, targetMsg, true)
                                 }, 
                                 modifier = Modifier.size(if (isLandscape) 30.dp else 36.dp).background(MaterialTheme.colorScheme.errorContainer, CircleShape)
                             ) {
-                                Icon(Icons.Default.Autorenew, contentDescription = "Restart with Fallback Model", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
+                                if (isCurrentWordRestarting) {
+                                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.error)
+                                } else {
+                                    Icon(Icons.Default.Autorenew, contentDescription = "Restart with Fallback Model", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
+                                }
                             }
                         }
                     }
@@ -537,6 +552,8 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                 LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     items(displayMessages) { msg ->
                         val isUser = msg.role == "user"
+                        val isGenerating = msg.content == "Generating..." || msg.content.startsWith("Generating...")
+                        val isError = msg.content.contains("Generation Failed")
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(vertical = if (isLandscape) 2.dp else 4.dp),
                             horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
@@ -546,27 +563,100 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                                     modifier = Modifier
                                         .fillMaxWidth(if (isUser) 1f else 0.85f)
                                         .background(
-                                            color = if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                                            color = if (isError) MaterialTheme.colorScheme.errorContainer
+                                                    else if (isUser) MaterialTheme.colorScheme.primary 
+                                                    else MaterialTheme.colorScheme.secondaryContainer,
                                             shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
                                         )
                                         .padding(if (isLandscape) 8.dp else 12.dp)
                                 ) {
-                                    com.aidict.app.ui.components.MarkdownText(
-                                        text = msg.content,
-                                        color = if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
+                                    if (isGenerating) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            com.aidict.app.ui.components.PulsingDots()
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text("Working on it...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                                        }
+                                    } else {
+                                        Column {
+                                            com.aidict.app.ui.components.MarkdownText(
+                                                text = msg.content,
+                                                color = if (isError) MaterialTheme.colorScheme.onErrorContainer else (if (isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer)
+                                            )
+                                            if (isError) {
+                                                Spacer(Modifier.height(8.dp))
+                                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                    Button(
+                                                        onClick = {
+                                                            android.widget.Toast.makeText(context, "Restarting with Current Model...", android.widget.Toast.LENGTH_SHORT).show()
+                                                            onRestartChat(selectedWord!!, msg, false)
+                                                        },
+                                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                                        modifier = Modifier.height(28.dp)
+                                                    ) {
+                                                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                        Spacer(Modifier.width(4.dp))
+                                                        Text("Retry", style = MaterialTheme.typography.labelSmall)
+                                                    }
+                                                    OutlinedButton(
+                                                        onClick = {
+                                                            android.widget.Toast.makeText(context, "Restarting with Fallback Model...", android.widget.Toast.LENGTH_SHORT).show()
+                                                            onRestartChat(selectedWord!!, msg, true)
+                                                        },
+                                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                                        modifier = Modifier.height(28.dp)
+                                                    ) {
+                                                        Icon(Icons.Default.Autorenew, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                        Spacer(Modifier.width(4.dp))
+                                                        Text("Fallback", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
-                                if (!isUser) {
+                                if (!isUser && !isGenerating) {
                                     Row(modifier = Modifier.fillMaxWidth(0.85f), horizontalArrangement = Arrangement.Start) {
                                         IconButton(onClick = {
                                             val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                                             clipboard.setPrimaryClip(android.content.ClipData.newPlainText("AI Dict", msg.content))
                                             android.widget.Toast.makeText(context, "Copied", android.widget.Toast.LENGTH_SHORT).show()
                                         }, modifier = Modifier.size(if (isLandscape) 28.dp else 32.dp)) { Icon(Icons.Default.ContentCopy, "Copy", modifier = Modifier.size(16.dp)) }
-                                        IconButton(onClick = { onRestartChat(selectedWord!!, msg, false) }, modifier = Modifier.size(if (isLandscape) 28.dp else 32.dp)) { Icon(Icons.Default.Refresh, "Regenerate (Current)", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp)) }
-                                        IconButton(onClick = { onRestartChat(selectedWord!!, msg, true) }, modifier = Modifier.size(if (isLandscape) 28.dp else 32.dp)) { Icon(Icons.Default.Autorenew, "Regenerate (Fallback)", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp)) }
+                                        IconButton(onClick = { 
+                                            android.widget.Toast.makeText(context, "Restarting with Current Model...", android.widget.Toast.LENGTH_SHORT).show()
+                                            onRestartChat(selectedWord!!, msg, false) 
+                                        }, modifier = Modifier.size(if (isLandscape) 28.dp else 32.dp)) { 
+                                            if (isCurrentWordRestarting) {
+                                                CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.primary)
+                                            } else {
+                                                Icon(Icons.Default.Refresh, "Regenerate (Current)", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp)) 
+                                            }
+                                        }
+                                        IconButton(onClick = { 
+                                            android.widget.Toast.makeText(context, "Restarting with Fallback Model...", android.widget.Toast.LENGTH_SHORT).show()
+                                            onRestartChat(selectedWord!!, msg, true) 
+                                        }, modifier = Modifier.size(if (isLandscape) 28.dp else 32.dp)) { 
+                                            if (isCurrentWordRestarting) {
+                                                CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.error)
+                                            } else {
+                                                Icon(Icons.Default.Autorenew, "Regenerate (Fallback)", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp)) 
+                                            }
+                                        }
                                     }
                                 }
+                            }
+                        }
+                    }
+                    if (isCurrentWordRestarting && displayMessages.none { it.content.startsWith("Generating") }) {
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                com.aidict.app.ui.components.PulsingDots()
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Working on it...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                             }
                         }
                     }

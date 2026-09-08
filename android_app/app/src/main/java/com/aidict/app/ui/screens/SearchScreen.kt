@@ -71,10 +71,58 @@ fun SearchScreen(
 
     Column(modifier = modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
 
-        // Error
-        state.error?.let {
-            Text(text = "Error: $it", color = MaterialTheme.colorScheme.error)
-            Spacer(modifier = Modifier.height(8.dp))
+        // Error Banner Card
+        state.error?.let { errorText ->
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Warning, contentDescription = "Error", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Query Failed",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(onClick = { viewModel.clearError("dict") }, modifier = Modifier.size(24.dp)) {
+                            Icon(Icons.Default.Clear, contentDescription = "Dismiss", tint = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(text = errorText, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = {
+                                val lastUserMsg = state.chatMessages.findLast { it.role == "assistant" }
+                                Toast.makeText(context, "Restarting with Current Model...", Toast.LENGTH_SHORT).show()
+                                viewModel.retryMessage(lastUserMsg, false, "dict", state.word)
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                            modifier = Modifier.height(30.dp)
+                        ) {
+                            Text("Retry", style = MaterialTheme.typography.labelSmall)
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                val lastUserMsg = state.chatMessages.findLast { it.role == "assistant" }
+                                Toast.makeText(context, "Restarting with Fallback Model...", Toast.LENGTH_SHORT).show()
+                                viewModel.retryMessage(lastUserMsg, true, "dict", state.word)
+                            },
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                            modifier = Modifier.height(30.dp)
+                        ) {
+                            Text("Retry (Fallback)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
+            }
         }
 
         // Action Bar (Only if word is saved)
@@ -112,16 +160,26 @@ fun SearchScreen(
                     }
                     IconButton(onClick = {
                         val lastUserMsg = state.chatMessages.findLast { it.role == "assistant" }
-                        if (lastUserMsg != null) viewModel.retryMessage(lastUserMsg, false, "dict")
+                        Toast.makeText(context, "Restarting with Current Model...", Toast.LENGTH_SHORT).show()
+                        viewModel.retryMessage(lastUserMsg, false, "dict", state.word)
                     }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Restart with Current Model", tint = MaterialTheme.colorScheme.primary)
+                        if (state.isLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.primary)
+                        } else {
+                            Icon(Icons.Default.Refresh, contentDescription = "Restart with Current Model", tint = MaterialTheme.colorScheme.primary)
+                        }
                     }
                     
                     IconButton(onClick = { 
                         val lastUserMsg = state.chatMessages.findLast { it.role == "assistant" }
-                        if (lastUserMsg != null) viewModel.retryMessage(lastUserMsg, true, "dict")
+                        Toast.makeText(context, "Restarting with Fallback Model...", Toast.LENGTH_SHORT).show()
+                        viewModel.retryMessage(lastUserMsg, true, "dict", state.word)
                     }) {
-                        Icon(Icons.Default.Autorenew, contentDescription = "Restart with Fallback Model", tint = MaterialTheme.colorScheme.error)
+                        if (state.isLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.error)
+                        } else {
+                            Icon(Icons.Default.Autorenew, contentDescription = "Restart with Fallback Model", tint = MaterialTheme.colorScheme.error)
+                        }
                     }
                     
                     IconButton(onClick = { viewModel.deleteCurrentWord("dict") }) {
@@ -192,6 +250,8 @@ fun SearchScreen(
                 var isEditing by remember { mutableStateOf(false) }
                 var editingContent by remember { mutableStateOf("") }
                 val isUser = msg.role == "user"
+                val isGenerating = !isUser && msg.content == "Generating..."
+                val isError = !isUser && msg.content.startsWith("### ⚠️ Generation Failed")
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
@@ -202,13 +262,23 @@ fun SearchScreen(
                                 .fillMaxWidth(if (isUser) 1f else 0.85f)
                                 .padding(vertical = 4.dp)
                                 .background(
-                                    color = if (isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                                    color = when {
+                                        isUser -> MaterialTheme.colorScheme.primary
+                                        isError -> MaterialTheme.colorScheme.errorContainer
+                                        else -> MaterialTheme.colorScheme.secondaryContainer
+                                    },
                                     shape = RoundedCornerShape(12.dp)
                                 )
                                 .padding(12.dp)
                         ) {
                             if (isUser) {
                                 MarkdownText(text = msg.content, color = MaterialTheme.colorScheme.onPrimary, searchQuery = chatSearchQuery)
+                            } else if (isGenerating) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    com.aidict.app.ui.components.PulsingDots()
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Working on it...", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                }
                             } else {
                                 if (isEditing) {
                                     Column {
@@ -226,11 +296,47 @@ fun SearchScreen(
                                         }
                                     }
                                 } else {
-                                    MarkdownText(text = msg.content, color = MaterialTheme.colorScheme.onSecondaryContainer, searchQuery = chatSearchQuery)
+                                    Column {
+                                        MarkdownText(
+                                            text = msg.content,
+                                            color = if (isError) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSecondaryContainer,
+                                            searchQuery = chatSearchQuery
+                                        )
+                                        if (isError) {
+                                            Spacer(Modifier.height(8.dp))
+                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                Button(
+                                                    onClick = {
+                                                        Toast.makeText(context, "Restarting with Current Model...", Toast.LENGTH_SHORT).show()
+                                                        viewModel.retryMessage(msg, false, "dict", state.word)
+                                                    },
+                                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                                    modifier = Modifier.height(30.dp)
+                                                ) {
+                                                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                    Spacer(Modifier.width(4.dp))
+                                                    Text("Retry", style = MaterialTheme.typography.labelSmall)
+                                                }
+                                                OutlinedButton(
+                                                    onClick = {
+                                                        Toast.makeText(context, "Restarting with Fallback Model...", Toast.LENGTH_SHORT).show()
+                                                        viewModel.retryMessage(msg, true, "dict", state.word)
+                                                    },
+                                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                                                    modifier = Modifier.height(30.dp)
+                                                ) {
+                                                    Icon(Icons.Default.Autorenew, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                    Spacer(Modifier.width(4.dp))
+                                                    Text("Fallback", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
-                        if (!isUser && !isEditing) {
+                        if (!isUser && !isEditing && !isGenerating) {
                             Row(modifier = Modifier.fillMaxWidth(0.85f), horizontalArrangement = Arrangement.Start) {
                                 IconButton(onClick = {
                                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -238,8 +344,26 @@ fun SearchScreen(
                                     Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
                                 }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.ContentCopy, "Copy", modifier = Modifier.size(16.dp)) }
                                 IconButton(onClick = { isEditing = true; editingContent = msg.content }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Edit, "Edit", modifier = Modifier.size(16.dp)) }
-                                                                IconButton(onClick = { viewModel.retryMessage(msg, false, "dict") }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Refresh, "Regenerate (Current)", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp)) }
-                                IconButton(onClick = { viewModel.retryMessage(msg, true, "dict") }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Autorenew, "Regenerate (Fallback)", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp)) }
+                                IconButton(onClick = { 
+                                    Toast.makeText(context, "Restarting with Current Model...", Toast.LENGTH_SHORT).show()
+                                    viewModel.retryMessage(msg, false, "dict", state.word) 
+                                }, modifier = Modifier.size(32.dp)) { 
+                                    if (state.isLoading) {
+                                        CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.primary)
+                                    } else {
+                                        Icon(Icons.Default.Refresh, "Regenerate (Current)", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                    }
+                                }
+                                IconButton(onClick = { 
+                                    Toast.makeText(context, "Restarting with Fallback Model...", Toast.LENGTH_SHORT).show()
+                                    viewModel.retryMessage(msg, true, "dict", state.word) 
+                                }, modifier = Modifier.size(32.dp)) { 
+                                    if (state.isLoading) {
+                                        CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.error)
+                                    } else {
+                                        Icon(Icons.Default.Autorenew, "Regenerate (Fallback)", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
+                                    }
+                                }
                                 IconButton(onClick = { viewModel.deleteMessage(msg, "dict") }, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.Delete, "Delete", modifier = Modifier.size(16.dp)) }
                             }
                         }
@@ -265,7 +389,17 @@ fun SearchScreen(
             }
             
             if (state.isLoading && state.currentStream.isEmpty()) {
-                item { com.aidict.app.ui.components.PulsingDots(modifier = Modifier.fillMaxWidth().wrapContentWidth(androidx.compose.ui.Alignment.CenterHorizontally)) }
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        com.aidict.app.ui.components.PulsingDots()
+                        Spacer(Modifier.width(8.dp))
+                        Text("Working on it...", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
             }
         }
 

@@ -46,6 +46,17 @@ class SearchViewModel(
     private val _suggestions = MutableStateFlow<List<com.aidict.app.data.entities.Word>>(emptyList())
     val suggestions: StateFlow<List<com.aidict.app.data.entities.Word>> = _suggestions.asStateFlow()
 
+    val isRestartingWordId = MutableStateFlow<Int?>(null)
+
+    fun clearError(mode: String) {
+        val _uiState = getUiState(mode)
+        _uiState.value = _uiState.value.copy(error = null)
+    }
+
+    private fun formatFailureMarkdown(errorDetail: String): String {
+        return "⚠️ **Generation Failed**\n\n*Error details:* $errorDetail\n\n*Please check your network connection, API key in Settings, or try with the Fallback Model.*"
+    }
+
     private suspend fun updateSuggestions(mode: String, query: String) {
         if (query.isBlank()) {
             _suggestions.value = emptyList()
@@ -160,20 +171,28 @@ class SearchViewModel(
                 val sessionId = getOrCreateActiveSessionId(profileId)
                 val existingWord = database.appDao().findWordExact(profileId, "dict", cleanTerm, null)
                 if (existingWord != null) {
-                    database.appDao().incrementSearchCount(existingWord.id)
-                    val updatedWord = existingWord.copy(searchCount = existingWord.searchCount + 1, sessionId = sessionId)
-                    database.appDao().updateWord(updatedWord)
-                    loadWord(updatedWord)
-                    return@launch
+                    val existingMsgs = database.appDao().getChatMessagesSync(existingWord.id)
+                    val hasValidOutput = existingMsgs.any { it.role == "assistant" && it.content.isNotBlank() && !it.content.startsWith("Generating") && !it.content.contains("Generation Failed") }
+                    if (hasValidOutput) {
+                        database.appDao().incrementSearchCount(existingWord.id)
+                        val updatedWord = existingWord.copy(searchCount = existingWord.searchCount + 1, sessionId = sessionId)
+                        database.appDao().updateWord(updatedWord)
+                        loadWord(updatedWord)
+                        return@launch
+                    }
+                    savedWord = existingWord
                 }
-                val initialWord = com.aidict.app.data.entities.Word(profileId = profileId, term = cleanTerm, sessionId = sessionId, mode = "dict")
-                val wordId = database.appDao().insertWord(initialWord).toInt()
-                savedWord = initialWord.copy(id = wordId)
-                val initialMsg = com.aidict.app.data.entities.ChatMessage(wordId = wordId, role = "assistant", content = "")
+                val wordId = savedWord?.id ?: database.appDao().insertWord(
+                    com.aidict.app.data.entities.Word(profileId = profileId, term = cleanTerm, sessionId = sessionId, mode = "dict")
+                ).toInt()
+                if (savedWord == null) {
+                    savedWord = com.aidict.app.data.entities.Word(id = wordId, profileId = profileId, term = cleanTerm, sessionId = sessionId, mode = "dict")
+                }
+                val initialMsg = com.aidict.app.data.entities.ChatMessage(wordId = wordId, role = "assistant", content = "Generating...")
                 val msgId = database.appDao().insertChatMessage(initialMsg).toInt()
                 savedMsg = initialMsg.copy(id = msgId)
                 
-                _uiState.value = SearchState(isLoading = true, word = savedWord, chatMessages = listOf(savedMsg), currentStream = "")
+                _uiState.value = SearchState(isLoading = true, word = savedWord, chatMessages = listOf(savedMsg), currentStream = "", error = null)
                 
                 var currentText = ""
                 llmRepository.streamExplanation(cleanTerm, sourceLang, targetLang, profileId).collect { chunk ->
@@ -195,15 +214,24 @@ class SearchViewModel(
                     _uiState.value = SearchState(isLoading = false, word = finalWord, chatMessages = listOf(finalMsg), currentStream = "")
                 }
             } catch (e: Exception) {
+                val errorDetail = e.localizedMessage?.takeIf { it.isNotBlank() }
+                    ?: e.message?.takeIf { it.isNotBlank() }
+                    ?: "Network timeout or connection error (${e.javaClass.simpleName})"
+                val failureMarkdown = formatFailureMarkdown(errorDetail)
                 val wordId = savedWord?.id ?: _uiState.value.word?.id
                 if (wordId != null) {
                     try {
-                        val userMsg = savedMsg?.copy(content = "*Generation Failed:* \n${e.localizedMessage}")
-                            ?: com.aidict.app.data.entities.ChatMessage(wordId = wordId, role = "assistant", content = "*Generation Failed:* \n${e.localizedMessage}")
+                        val userMsg = savedMsg?.copy(content = failureMarkdown)
+                            ?: com.aidict.app.data.entities.ChatMessage(wordId = wordId, role = "assistant", content = failureMarkdown)
                         database.appDao().insertChatMessage(userMsg)
                     } catch (ignored: Exception) {}
+                    val updated = database.appDao().getChatMessagesSync(wordId)
+                    if (_uiState.value.word?.id == wordId) {
+                        _uiState.value = _uiState.value.copy(isLoading = false, chatMessages = updated, currentStream = "", error = errorDetail)
+                    }
+                } else {
+                    _uiState.value = _uiState.value.copy(isLoading = false, currentStream = "", error = errorDetail)
                 }
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.localizedMessage)
             }
         }
     }
@@ -287,12 +315,17 @@ class SearchViewModel(
                     _uiState.value = _uiState.value.copy(isLoading = false, chatMessages = finalMessages, currentStream = "")
                 }
             } catch (e: Exception) {
+                val errorDetail = e.localizedMessage?.takeIf { it.isNotBlank() }
+                    ?: e.message?.takeIf { it.isNotBlank() }
+                    ?: "Network timeout or connection error (${e.javaClass.simpleName})"
+                val failureMarkdown = formatFailureMarkdown(errorDetail)
                 try {
-                    val errorMsg = ChatMessage(wordId = word.id, role = "assistant", content = "*Generation Failed:* \n${e.localizedMessage}")
+                    val errorMsg = ChatMessage(wordId = word.id, role = "assistant", content = failureMarkdown)
                     database.appDao().insertChatMessage(errorMsg)
                 } catch (ignored: Exception) {}
+                val finalMessages = database.appDao().getChatMessagesSync(word.id)
                 if (_uiState.value.word?.id == currentWordId) {
-                    _uiState.value = _uiState.value.copy(isLoading = false, error = e.localizedMessage)
+                    _uiState.value = _uiState.value.copy(isLoading = false, chatMessages = finalMessages, currentStream = "", error = errorDetail)
                 }
             }
         }
@@ -349,7 +382,7 @@ class SearchViewModel(
             database.appDao().deleteChatMessage(msg)
             val updated = database.appDao().getChatMessagesSync(msg.wordId)
             if (updated.isEmpty() || updated.none { it.role == "assistant" }) {
-                deleteCurrentWord()
+                deleteCurrentWord(mode)
             } else {
                 _uiState.value = _uiState.value.copy(chatMessages = updated)
             }
@@ -365,34 +398,55 @@ class SearchViewModel(
             _uiState.value = _uiState.value.copy(chatMessages = updated)
         }
     }
-    fun retryMessage(assistantMsg: com.aidict.app.data.entities.ChatMessage, forceFallback: Boolean, mode: String = "dict") {
+    fun retryMessage(
+        assistantMsg: com.aidict.app.data.entities.ChatMessage? = null,
+        forceFallback: Boolean = false,
+        mode: String = "dict",
+        targetWord: com.aidict.app.data.entities.Word? = null
+    ) {
         val _uiState = getUiState(mode)
-        val word = _uiState.value.word ?: return
-        val currentWordId = word.id
         bgScope.launch {
+            val word = targetWord
+                ?: _uiState.value.word
+                ?: (assistantMsg?.wordId?.let { database.appDao().getWord(it) })
+                ?: return@launch
+            val currentWordId = word.id
+            isRestartingWordId.value = currentWordId
+
             val updatedWordForGen = word.copy(generationCount = word.generationCount + 1)
             database.appDao().updateWord(updatedWordForGen)
-            if (_uiState.value.word?.id == currentWordId) {
-                _uiState.value = _uiState.value.copy(word = updatedWordForGen)
+
+            // Delete the assistant message to restart generation from that point if one was specified
+            if (assistantMsg != null) {
+                database.appDao().deleteChatMessage(assistantMsg)
             }
-            // Delete the assistant message to restart generation from that point
-            database.appDao().deleteChatMessage(assistantMsg)
-            val historyBefore = database.appDao().getChatMessagesSync(assistantMsg.wordId)
-            val loadingMsg = assistantMsg.copy(content = "Generating...")
-            database.appDao().insertChatMessage(loadingMsg)
-            
-            if (_uiState.value.word?.id == currentWordId) {
-                _uiState.value = _uiState.value.copy(
-                    chatMessages = historyBefore,
-                    isLoading = true,
-                    currentStream = ""
-                )
+            val allHistory = database.appDao().getChatMessagesSync(currentWordId)
+            val historyBefore = allHistory.filter {
+                it.content.isNotBlank() &&
+                !it.content.startsWith("Generating") &&
+                !it.content.contains("Generation Failed")
             }
+            val loadingMsg = com.aidict.app.data.entities.ChatMessage(
+                wordId = currentWordId,
+                role = "assistant",
+                content = "Generating..."
+            )
+            val loadingId = database.appDao().insertChatMessage(loadingMsg).toInt()
+            val activeLoadingMsg = loadingMsg.copy(id = loadingId)
+
+            val initialDisplay = database.appDao().getChatMessagesSync(currentWordId)
+            _uiState.value = _uiState.value.copy(
+                word = updatedWordForGen,
+                chatMessages = initialDisplay,
+                isLoading = true,
+                currentStream = "",
+                error = null
+            )
 
             try {
                 var currentText = ""
                 val flow = llmRepository.streamChat(word, historyBefore, forceFallback)
-                
+
                 flow.collect { chunk ->
                     currentText = chunk
                     if (_uiState.value.word?.id == currentWordId) {
@@ -401,24 +455,40 @@ class SearchViewModel(
                 }
 
                 val finalMarkdown = currentText
-                val newAssistantMsg = loadingMsg.copy(content = finalMarkdown)
+                val newAssistantMsg = activeLoadingMsg.copy(content = finalMarkdown)
                 database.appDao().insertChatMessage(newAssistantMsg)
 
-                val finalMessages = database.appDao().getChatMessagesSync(assistantMsg.wordId)
+                val finalMessages = database.appDao().getChatMessagesSync(currentWordId)
                 if (_uiState.value.word?.id == currentWordId) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         chatMessages = finalMessages,
-                        currentStream = ""
+                        currentStream = "",
+                        error = null
                     )
                 }
             } catch (e: Exception) {
+                val errorDetail = e.localizedMessage?.takeIf { it.isNotBlank() }
+                    ?: e.message?.takeIf { it.isNotBlank() }
+                    ?: "Network timeout or connection error (${e.javaClass.simpleName})"
+                val failureMarkdown = formatFailureMarkdown(errorDetail)
                 try {
-                    val errorMsg = loadingMsg.copy(content = "*Generation Failed:* \n${e.localizedMessage}")
+                    val errorMsg = activeLoadingMsg.copy(content = failureMarkdown)
                     database.appDao().insertChatMessage(errorMsg)
                 } catch (ignored: Exception) {}
+                val finalMessages = database.appDao().getChatMessagesSync(currentWordId)
                 if (_uiState.value.word?.id == currentWordId) {
-                    _uiState.value = _uiState.value.copy(isLoading = false, error = e.localizedMessage)
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        chatMessages = finalMessages,
+                        currentStream = "",
+                        error = errorDetail
+                    )
+                }
+            } finally {
+                isRestartingWordId.value = null
+                if (_uiState.value.word?.id == currentWordId) {
+                    _uiState.value = _uiState.value.copy(isLoading = false)
                 }
             }
         }
@@ -436,20 +506,28 @@ class SearchViewModel(
                 val langKey = "$source -> $target"
                 val existingWord = database.appDao().findWordExact(profileId, "translate", cleanText, langKey)
                 if (existingWord != null) {
-                    database.appDao().incrementSearchCount(existingWord.id)
-                    val updatedWord = existingWord.copy(searchCount = existingWord.searchCount + 1, sessionId = sessionId)
-                    database.appDao().updateWord(updatedWord)
-                    loadWord(updatedWord)
-                    return@launch
+                    val existingMsgs = database.appDao().getChatMessagesSync(existingWord.id)
+                    val hasValidOutput = existingMsgs.any { it.role == "assistant" && it.content.isNotBlank() && !it.content.startsWith("Generating") && !it.content.contains("Generation Failed") }
+                    if (hasValidOutput) {
+                        database.appDao().incrementSearchCount(existingWord.id)
+                        val updatedWord = existingWord.copy(searchCount = existingWord.searchCount + 1, sessionId = sessionId)
+                        database.appDao().updateWord(updatedWord)
+                        loadWord(updatedWord)
+                        return@launch
+                    }
+                    savedWord = existingWord
                 }
-                val initialWord = com.aidict.app.data.entities.Word(profileId = profileId, term = cleanText, language = langKey, sessionId = sessionId, mode = "translate")
-                val wordId = database.appDao().insertWord(initialWord).toInt()
-                savedWord = initialWord.copy(id = wordId)
-                val initialMsg = com.aidict.app.data.entities.ChatMessage(wordId = wordId, role = "assistant", content = "")
+                val wordId = savedWord?.id ?: database.appDao().insertWord(
+                    com.aidict.app.data.entities.Word(profileId = profileId, term = cleanText, language = langKey, sessionId = sessionId, mode = "translate")
+                ).toInt()
+                if (savedWord == null) {
+                    savedWord = com.aidict.app.data.entities.Word(id = wordId, profileId = profileId, term = cleanText, language = langKey, sessionId = sessionId, mode = "translate")
+                }
+                val initialMsg = com.aidict.app.data.entities.ChatMessage(wordId = wordId, role = "assistant", content = "Generating...")
                 val msgId = database.appDao().insertChatMessage(initialMsg).toInt()
                 savedMsg = initialMsg.copy(id = msgId)
 
-                _uiState.value = SearchState(isLoading = true, word = savedWord, chatMessages = listOf(savedMsg), currentStream = "")
+                _uiState.value = SearchState(isLoading = true, word = savedWord, chatMessages = listOf(savedMsg), currentStream = "", error = null)
 
                 var currentText = ""
                 llmRepository.streamTranslation(cleanText, source, target, profileId).collect { chunk ->
@@ -465,15 +543,24 @@ class SearchViewModel(
                     _uiState.value = SearchState(isLoading = false, word = savedWord, chatMessages = listOf(finalMsg), currentStream = "")
                 }
             } catch (e: Exception) {
+                val errorDetail = e.localizedMessage?.takeIf { it.isNotBlank() }
+                    ?: e.message?.takeIf { it.isNotBlank() }
+                    ?: "Network timeout or connection error (${e.javaClass.simpleName})"
+                val failureMarkdown = formatFailureMarkdown(errorDetail)
                 val wordId = savedWord?.id ?: _uiState.value.word?.id
                 if (wordId != null) {
                     try {
-                        val userMsg = savedMsg?.copy(content = "*Generation Failed:* \n${e.localizedMessage}")
-                            ?: com.aidict.app.data.entities.ChatMessage(wordId = wordId, role = "assistant", content = "*Generation Failed:* \n${e.localizedMessage}")
+                        val userMsg = savedMsg?.copy(content = failureMarkdown)
+                            ?: com.aidict.app.data.entities.ChatMessage(wordId = wordId, role = "assistant", content = failureMarkdown)
                         database.appDao().insertChatMessage(userMsg)
                     } catch (ignored: Exception) {}
+                    val updated = database.appDao().getChatMessagesSync(wordId)
+                    if (_uiState.value.word?.id == wordId) {
+                        _uiState.value = _uiState.value.copy(isLoading = false, chatMessages = updated, currentStream = "", error = errorDetail)
+                    }
+                } else {
+                    _uiState.value = _uiState.value.copy(isLoading = false, currentStream = "", error = errorDetail)
                 }
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.localizedMessage)
             }
         }
     }
@@ -489,20 +576,28 @@ class SearchViewModel(
                 val langKey = "$sourceLang -> $targetLang"
                 val existingWord = database.appDao().findWordExact(profileId, "explain", cleanText, langKey)
                 if (existingWord != null) {
-                    database.appDao().incrementSearchCount(existingWord.id)
-                    val updatedWord = existingWord.copy(searchCount = existingWord.searchCount + 1, sessionId = sessionId)
-                    database.appDao().updateWord(updatedWord)
-                    loadWord(updatedWord)
-                    return@launch
+                    val existingMsgs = database.appDao().getChatMessagesSync(existingWord.id)
+                    val hasValidOutput = existingMsgs.any { it.role == "assistant" && it.content.isNotBlank() && !it.content.startsWith("Generating") && !it.content.contains("Generation Failed") }
+                    if (hasValidOutput) {
+                        database.appDao().incrementSearchCount(existingWord.id)
+                        val updatedWord = existingWord.copy(searchCount = existingWord.searchCount + 1, sessionId = sessionId)
+                        database.appDao().updateWord(updatedWord)
+                        loadWord(updatedWord)
+                        return@launch
+                    }
+                    savedWord = existingWord
                 }
-                val initialWord = com.aidict.app.data.entities.Word(profileId = profileId, term = cleanText, language = langKey, sessionId = sessionId, mode = "explain")
-                val wordId = database.appDao().insertWord(initialWord).toInt()
-                savedWord = initialWord.copy(id = wordId)
-                val initialMsg = com.aidict.app.data.entities.ChatMessage(wordId = wordId, role = "assistant", content = "")
+                val wordId = savedWord?.id ?: database.appDao().insertWord(
+                    com.aidict.app.data.entities.Word(profileId = profileId, term = cleanText, language = langKey, sessionId = sessionId, mode = "explain")
+                ).toInt()
+                if (savedWord == null) {
+                    savedWord = com.aidict.app.data.entities.Word(id = wordId, profileId = profileId, term = cleanText, language = langKey, sessionId = sessionId, mode = "explain")
+                }
+                val initialMsg = com.aidict.app.data.entities.ChatMessage(wordId = wordId, role = "assistant", content = "Generating...")
                 val msgId = database.appDao().insertChatMessage(initialMsg).toInt()
                 savedMsg = initialMsg.copy(id = msgId)
 
-                _uiState.value = SearchState(isLoading = true, word = savedWord, chatMessages = listOf(savedMsg), currentStream = "")
+                _uiState.value = SearchState(isLoading = true, word = savedWord, chatMessages = listOf(savedMsg), currentStream = "", error = null)
 
                 var currentText = ""
                 llmRepository.streamExplain(cleanText, sourceLang, targetLang, profileId).collect { chunk ->
@@ -518,15 +613,24 @@ class SearchViewModel(
                     _uiState.value = SearchState(isLoading = false, word = savedWord, chatMessages = listOf(finalMsg), currentStream = "")
                 }
             } catch (e: Exception) {
+                val errorDetail = e.localizedMessage?.takeIf { it.isNotBlank() }
+                    ?: e.message?.takeIf { it.isNotBlank() }
+                    ?: "Network timeout or connection error (${e.javaClass.simpleName})"
+                val failureMarkdown = formatFailureMarkdown(errorDetail)
                 val wordId = savedWord?.id ?: _uiState.value.word?.id
                 if (wordId != null) {
                     try {
-                        val userMsg = savedMsg?.copy(content = "*Generation Failed:* \n${e.localizedMessage}")
-                            ?: com.aidict.app.data.entities.ChatMessage(wordId = wordId, role = "assistant", content = "*Generation Failed:* \n${e.localizedMessage}")
+                        val userMsg = savedMsg?.copy(content = failureMarkdown)
+                            ?: com.aidict.app.data.entities.ChatMessage(wordId = wordId, role = "assistant", content = failureMarkdown)
                         database.appDao().insertChatMessage(userMsg)
                     } catch (ignored: Exception) {}
+                    val updated = database.appDao().getChatMessagesSync(wordId)
+                    if (_uiState.value.word?.id == wordId) {
+                        _uiState.value = _uiState.value.copy(isLoading = false, chatMessages = updated, currentStream = "", error = errorDetail)
+                    }
+                } else {
+                    _uiState.value = _uiState.value.copy(isLoading = false, currentStream = "", error = errorDetail)
                 }
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.localizedMessage)
             }
         }
     }
@@ -542,20 +646,28 @@ class SearchViewModel(
                 val langKey = "$sourceLang -> $targetLang"
                 val existingWord = database.appDao().findWordExact(profileId, "compare", cleanWords, langKey)
                 if (existingWord != null) {
-                    database.appDao().incrementSearchCount(existingWord.id)
-                    val updatedWord = existingWord.copy(searchCount = existingWord.searchCount + 1, sessionId = sessionId)
-                    database.appDao().updateWord(updatedWord)
-                    loadWord(updatedWord)
-                    return@launch
+                    val existingMsgs = database.appDao().getChatMessagesSync(existingWord.id)
+                    val hasValidOutput = existingMsgs.any { it.role == "assistant" && it.content.isNotBlank() && !it.content.startsWith("Generating") && !it.content.contains("Generation Failed") }
+                    if (hasValidOutput) {
+                        database.appDao().incrementSearchCount(existingWord.id)
+                        val updatedWord = existingWord.copy(searchCount = existingWord.searchCount + 1, sessionId = sessionId)
+                        database.appDao().updateWord(updatedWord)
+                        loadWord(updatedWord)
+                        return@launch
+                    }
+                    savedWord = existingWord
                 }
-                val initialWord = com.aidict.app.data.entities.Word(profileId = profileId, term = cleanWords, language = langKey, sessionId = sessionId, mode = "compare")
-                val wordId = database.appDao().insertWord(initialWord).toInt()
-                savedWord = initialWord.copy(id = wordId)
-                val initialMsg = com.aidict.app.data.entities.ChatMessage(wordId = wordId, role = "assistant", content = "")
+                val wordId = savedWord?.id ?: database.appDao().insertWord(
+                    com.aidict.app.data.entities.Word(profileId = profileId, term = cleanWords, language = langKey, sessionId = sessionId, mode = "compare")
+                ).toInt()
+                if (savedWord == null) {
+                    savedWord = com.aidict.app.data.entities.Word(id = wordId, profileId = profileId, term = cleanWords, language = langKey, sessionId = sessionId, mode = "compare")
+                }
+                val initialMsg = com.aidict.app.data.entities.ChatMessage(wordId = wordId, role = "assistant", content = "Generating...")
                 val msgId = database.appDao().insertChatMessage(initialMsg).toInt()
                 savedMsg = initialMsg.copy(id = msgId)
 
-                _uiState.value = SearchState(isLoading = true, word = savedWord, chatMessages = listOf(savedMsg), currentStream = "")
+                _uiState.value = SearchState(isLoading = true, word = savedWord, chatMessages = listOf(savedMsg), currentStream = "", error = null)
 
                 var currentText = ""
                 llmRepository.streamCompare(cleanWords, sourceLang, targetLang, profileId).collect { chunk ->
@@ -571,15 +683,24 @@ class SearchViewModel(
                     _uiState.value = SearchState(isLoading = false, word = savedWord, chatMessages = listOf(finalMsg), currentStream = "")
                 }
             } catch (e: Exception) {
+                val errorDetail = e.localizedMessage?.takeIf { it.isNotBlank() }
+                    ?: e.message?.takeIf { it.isNotBlank() }
+                    ?: "Network timeout or connection error (${e.javaClass.simpleName})"
+                val failureMarkdown = formatFailureMarkdown(errorDetail)
                 val wordId = savedWord?.id ?: _uiState.value.word?.id
                 if (wordId != null) {
                     try {
-                        val userMsg = savedMsg?.copy(content = "*Generation Failed:* \n${e.localizedMessage}")
-                            ?: com.aidict.app.data.entities.ChatMessage(wordId = wordId, role = "assistant", content = "*Generation Failed:* \n${e.localizedMessage}")
+                        val userMsg = savedMsg?.copy(content = failureMarkdown)
+                            ?: com.aidict.app.data.entities.ChatMessage(wordId = wordId, role = "assistant", content = failureMarkdown)
                         database.appDao().insertChatMessage(userMsg)
                     } catch (ignored: Exception) {}
+                    val updated = database.appDao().getChatMessagesSync(wordId)
+                    if (_uiState.value.word?.id == wordId) {
+                        _uiState.value = _uiState.value.copy(isLoading = false, chatMessages = updated, currentStream = "", error = errorDetail)
+                    }
+                } else {
+                    _uiState.value = _uiState.value.copy(isLoading = false, currentStream = "", error = errorDetail)
                 }
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.localizedMessage)
             }
         }
     }
