@@ -117,12 +117,12 @@ export default function SettingsTab({
                 list="main-models-list"
                 value={settings.MAIN_MODEL || ''}
                 onChange={e => setSettings({...settings, MAIN_MODEL: e.target.value})}
-                placeholder="inclusionai/ling-3.0-flash"
+                placeholder="~deepseek/deepseek-v4-flash-latest"
                 className="w-full border dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               {models.length > 0 && (
                 <datalist id="main-models-list">
-                  <option value="inclusionai/ling-3.0-flash" />
+                  <option value="~deepseek/deepseek-v4-flash-latest" />
                   {models.map(m => <option key={m.id} value={m.id} />)}
                 </datalist>
               )}

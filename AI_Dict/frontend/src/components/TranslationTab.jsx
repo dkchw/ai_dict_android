@@ -61,7 +61,7 @@ export default function TranslationTab({ tabId, fetchTranslations, settings, def
       const res = await fetch('/api/translations/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: translationSearchTerm, source_lang: translationSourceLang, target_lang: translationTargetLang, session_id: localStorage.getItem('active_session_id') || undefined, model: settings.TRANSLATION_MODEL || 'inclusionai/ling-3.0-flash' })
+        body: JSON.stringify({ text: translationSearchTerm, source_lang: translationSourceLang, target_lang: translationTargetLang, session_id: localStorage.getItem('active_session_id') || undefined, model: settings.TRANSLATION_MODEL || '~deepseek/deepseek-v4-flash-latest' })
       })
       if (!res.ok) throw new Error(await res.text())
       const data = await res.json()
