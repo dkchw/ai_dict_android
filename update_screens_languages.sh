@@ -1,2 +1,0 @@
-sed -i 's/SmallLanguageSelector(/SmallLanguageSelector(availableLanguages = viewModel.orderedLanguages.collectAsState().value, /g' android_app/app/src/main/java/com/aidict/app/ui/screens/SearchScreen.kt
-sed -i 's/SmallLanguageSelector(/SmallLanguageSelector(availableLanguages = viewModel.orderedLanguages.collectAsState().value, /g' android_app/app/src/main/java/com/aidict/app/ui/screens/TranslateScreen.kt

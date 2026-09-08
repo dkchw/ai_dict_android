@@ -1,1 +1,0 @@
-sed -i 's/settingsViewModel: SettingsViewModel/settingsViewModel: SettingsViewModel,\n    onColorExtracted: (androidx.compose.ui.graphics.Color?) -> Unit/' android_app/app/src/main/java/com/aidict/app/ui/AppNavigation.kt

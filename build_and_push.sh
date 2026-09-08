@@ -42,6 +42,12 @@ git add .
 git commit -m "Auto-release v$NEW_VNAME"
 git push
 
+# 7. Create GitHub Release
+if command -v gh &> /dev/null; then
+    echo "Publishing GitHub Release v$NEW_VNAME..."
+    gh release create "v$NEW_VNAME" release_latest.apk -t "AI Dict v$NEW_VNAME" --generate-notes || true
+fi
+
 echo "====================================="
-echo "Done! The GitHub Action will now instantly publish v$NEW_VNAME"
+echo "Done! Published v$NEW_VNAME successfully!"
 echo "====================================="
