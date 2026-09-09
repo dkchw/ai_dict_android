@@ -159,6 +159,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
         }
+        item { BackgroundSyncSettings(viewModel) }
         item {
         SettingsGroup("Floating UI & Bubble Sizing") {
             Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
@@ -268,7 +269,6 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                 }
             }
         }
-        item { BackgroundSyncSettings(viewModel) }
         item {
             SettingsGroup("Display & Scaling") {
 
@@ -1482,211 +1482,237 @@ fun BackgroundSyncSettings(viewModel: SettingsViewModel) {
         }
     }
 
-    SettingsGroup("24/7 Background & Network Resilience") {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("24/7 Background Execution", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    "Keep AI Dict running 24/7 in the background with WakeLock protection. Queries & streaming continue uninterrupted even when screen is locked or switching apps.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+    var showDetails by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isRunning) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            width = if (isRunning) 1.5.dp else 1.dp,
+            color = if (isRunning) MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+            else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+        )
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            // Header: Title, Active Badge, and Direct Switch
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "24/7 Background Engine",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+                        ) {
+                            Text(
+                                text = if (isRunning) " ACTIVE " else " OFF ",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isRunning) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        if (isRunning) "24/7 Protected. CPU WakeLock & persistent notification active."
+                        else "Run 24/7 in background. Never drop searches or streaming.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                Switch(
+                    checked = isPersistentBg,
+                    onCheckedChange = { enable ->
+                        viewModel.saveSetting("PERSISTENT_BACKGROUND_SERVICE", enable.toString())
+                        if (enable) {
+                            com.aidict.app.services.BackgroundSyncService.start(context)
+                            if (!hasNotificationPermission) {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                                } else {
+                                    openNotificationSettings()
+                                }
+                            }
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !isIgnoringBattery) {
+                                openBatteryOptimizationList()
+                            }
+                        } else {
+                            com.aidict.app.services.BackgroundSyncService.stop(context)
+                        }
+                    }
                 )
             }
-            Switch(
-                checked = isPersistentBg,
-                onCheckedChange = { enable ->
-                    viewModel.saveSetting("PERSISTENT_BACKGROUND_SERVICE", enable.toString())
-                    if (enable) {
-                        com.aidict.app.services.BackgroundSyncService.start(context)
-                        if (!hasNotificationPermission) {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                            } else {
-                                openNotificationSettings()
-                            }
-                        }
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !isIgnoringBattery) {
-                            openBatteryOptimizationList()
-                        }
-                    } else {
-                        com.aidict.app.services.BackgroundSyncService.stop(context)
-                    }
-                }
-            )
-        }
 
-        Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-        // Live Service Status Card
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = if (isRunning) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
-                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            ),
-            shape = RoundedCornerShape(8.dp),
-            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-        ) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = if (isRunning) "🟢 Service Active (24/7 Protected)" else "⚪ Service Inactive",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = if (isRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.weight(1f))
+            // Live status badges
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (isNetworkOnline) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f) else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f),
+                    modifier = Modifier.weight(1f)
+                ) {
                     Text(
                         text = if (isNetworkOnline) "🌐 Online" else "⚠️ Offline",
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (isNetworkOnline) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error
+                        fontWeight = FontWeight.Medium,
+                        color = if (isNetworkOnline) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp),
+                        textAlign = TextAlign.Center
                     )
                 }
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = if (isRunning) {
-                        "CPU WakeLock and network sockets are actively preserved. Android cannot freeze or kill API responses."
-                    } else {
-                        "Turn on to keep searches and API streaming alive indefinitely in the background."
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
 
-        Spacer(modifier = Modifier.height(6.dp))
-
-        // Notification Permission Section
-        if (!hasNotificationPermission) {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f)),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-            ) {
-                Column(modifier = Modifier.padding(12.dp)) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (hasNotificationPermission) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f) else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f),
+                    modifier = Modifier.weight(1f)
+                ) {
                     Text(
-                        "⚠️ Notification Permission Required",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        "Android requires notification permission to display the persistent 24/7 background status in the notification shade.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            Button(
-                                onClick = { notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS) },
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                            ) {
-                                Text("Grant Permission")
-                            }
-                        }
-                        OutlinedButton(
-                            onClick = { openNotificationSettings() },
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                        ) {
-                            Text("Notification Settings")
-                        }
-                    }
-                }
-            }
-        } else {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Notification Permission", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "Allowed. Persistent background service notification is enabled.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = if (hasNotificationPermission) "🔔 Notice: OK" else "⚠️ Notice: Need Perm",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Medium,
+                        color = if (hasNotificationPermission) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp),
+                        textAlign = TextAlign.Center
                     )
                 }
-                AssistChip(
-                    onClick = { openNotificationSettings() },
-                    label = { Text("Enabled ✓", color = MaterialTheme.colorScheme.primary) },
-                    colors = AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
-                )
-            }
-        }
 
-        Spacer(modifier = Modifier.height(6.dp))
-
-        // Battery Optimization Exemption Section
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Battery Optimization Exemption", style = MaterialTheme.typography.titleMedium)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isIgnoringBattery) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f) else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f),
+                        modifier = Modifier.weight(1f)
+                    ) {
                         Text(
-                            if (isIgnoringBattery) "Whitelisted: Android Doze mode will never throttle network connections or freeze AI Dict."
-                            else "Action required: Whitelist app from battery optimizations so Android never sleeps network sockets.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    if (isIgnoringBattery) {
-                        AssistChip(
-                            onClick = { openBatteryOptimizationList() },
-                            label = { Text("Protected ✓", color = MaterialTheme.colorScheme.primary) },
-                            colors = AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
+                            text = if (isIgnoringBattery) "🔋 Battery: Safe" else "⚠️ Battery: Sleep Risk",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Medium,
+                            color = if (isIgnoringBattery) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp),
+                            textAlign = TextAlign.Center
                         )
                     }
                 }
-                if (!isIgnoringBattery) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            }
+
+            // Direct Action Buttons if permission or battery optimization needed
+            if (!hasNotificationPermission || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !isIgnoringBattery)) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (!hasNotificationPermission) {
+                        Button(
+                            onClick = {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                                } else {
+                                    openNotificationSettings()
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text("Grant Notice Perm", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !isIgnoringBattery) {
                         Button(
                             onClick = { openBatteryOptimizationList() },
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                         ) {
-                            Text("Battery Whitelist")
-                        }
-                        OutlinedButton(
-                            onClick = { openAppDetailsSettings() },
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                        ) {
-                            Text("App Info (Set Unrestricted)")
+                            Text("Whitelist Battery", style = MaterialTheme.typography.labelSmall)
                         }
                     }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        "Tip: In App Info, tap 'Battery' and select 'Unrestricted' for uninterrupted 24/7 background operation.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.tertiary
-                    )
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-        // Network Resilience Information
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)),
-            shape = RoundedCornerShape(8.dp),
-            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-        ) {
-            Column(modifier = Modifier.padding(10.dp)) {
+            // Expandable details toggle
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showDetails = !showDetails }
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    "🛡️ Built-in Network Resilience",
+                    "Network & Battery Details",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    "• 180s read / 240s call timeouts support deep reasoning models.\n• 4x auto-retry with exponential backoff on timeouts & 50x/429/52x errors.\n• Auto-waits up to 15s for network reconnect when switching between Wi-Fi and mobile data.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                Icon(
+                    if (showDetails) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = "Toggle Details",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp)
                 )
+            }
+
+            if (showDetails) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Text(
+                            "🛡️ Resilience Architecture",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "• Indestructible foreground service notification resurrects immediately if swiped away.\n" +
+                            "• Automatic CPU WakeLock prevents Android Doze from freezing streaming tokens.\n" +
+                            "• 180s read / 240s call timeouts support deep reasoning models.\n" +
+                            "• 4x auto-retry with exponential backoff on timeouts & 50x/429/52x errors.\n" +
+                            "• Auto-waits up to 15s for network reconnect when switching Wi-Fi / mobile data.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = { openNotificationSettings() },
+                                modifier = Modifier.weight(1f),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text("Notice Settings", style = MaterialTheme.typography.labelSmall)
+                            }
+                            OutlinedButton(
+                                onClick = { openAppDetailsSettings() },
+                                modifier = Modifier.weight(1f),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text("App Info Settings", style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
+                }
             }
         }
     }

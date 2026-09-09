@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentCopy
@@ -22,6 +23,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Fullscreen
@@ -124,298 +126,491 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
     )
 
     val listContent = @Composable {
-        val listPadding = if (isLandscape) PaddingValues(horizontal = 8.dp, vertical = 6.dp) else PaddingValues(16.dp)
+        val listPadding = if (isLandscape) PaddingValues(horizontal = 6.dp, vertical = 4.dp) else PaddingValues(horizontal = 12.dp, vertical = 8.dp)
         Column(modifier = Modifier.fillMaxSize().padding(listPadding)) {
-            Text(
-                "Mode: ${viewModel.currentMode.collectAsState().value.uppercase()} | Profile: ${appState.activeProfile?.name ?: "Unknown"}",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = if (isLandscape) 4.dp else 8.dp)
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { 
-                        query = it
-                        viewModel.updateSearchQuery(it)
-                    },
-                    label = { Text("Search history...") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
-                )
-                Spacer(Modifier.width(8.dp))
-                Button(
-                    onClick = { /* TODO: Special sort */ },
-                    modifier = if (isLandscape) Modifier.height(36.dp) else Modifier,
-                    contentPadding = if (isLandscape) PaddingValues(horizontal = 12.dp, vertical = 0.dp) else ButtonDefaults.ContentPadding
-                ) {
-                    Text("Sort")
-                }
-            }
-            
+            // Mode & Profile tag header
             Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = if (isLandscape) 4.dp else 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = if (isLandscape) 4.dp else 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
+                ) {
+                    Text(
+                        text = viewModel.currentMode.collectAsState().value.uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+                Text(
+                    text = "Profile: ${appState.activeProfile?.name ?: "Default"}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            // Compact Search Bar
+            OutlinedTextField(
+                value = query,
+                onValueChange = { 
+                    query = it
+                    viewModel.updateSearchQuery(it)
+                },
+                placeholder = { Text("Search history...", style = MaterialTheme.typography.bodySmall) },
+                singleLine = true,
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = "Search",
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                trailingIcon = {
+                    if (query.isNotEmpty()) {
+                        IconButton(
+                            onClick = {
+                                query = ""
+                                viewModel.updateSearchQuery("")
+                            },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear", modifier = Modifier.size(16.dp))
+                        }
+                    }
+                },
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(if (isLandscape) Modifier.heightIn(min = 40.dp, max = 42.dp) else Modifier)
+            )
+
+            // Filter Chips Bar (Compact horizontal scroll)
+            val hasActiveFilters = searchInOutput || colorFilter != null || starsFilter != null
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(vertical = if (isLandscape) 3.dp else 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                if (hasActiveFilters) {
+                    AssistChip(
+                        onClick = {
+                            if (searchInOutput) viewModel.toggleSearchInOutput()
+                            viewModel.setFilterColor(null)
+                            viewModel.setFilterStars(null)
+                        },
+                        label = { Text("Reset ✕", style = MaterialTheme.typography.labelSmall) },
+                        colors = AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f))
+                    )
+                }
+
                 FilterChip(
                     selected = searchInOutput,
                     onClick = { viewModel.toggleSearchInOutput() },
-                    label = { Text("Search Output") },
-                    leadingIcon = { if (searchInOutput) Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                    label = { Text("Search Output", style = MaterialTheme.typography.labelSmall) },
+                    leadingIcon = { if (searchInOutput) Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
                 )
-                HorizontalDivider(modifier = Modifier.width(1.dp).height(24.dp))
+
+                HorizontalDivider(modifier = Modifier.width(1.dp).height(18.dp))
+
                 colors.forEach { (name, colorValue) ->
                     FilterChip(
                         selected = colorFilter == name,
                         onClick = { viewModel.setFilterColor(name) },
-                        label = { Text(name) },
-                        leadingIcon = { Box(modifier = Modifier.size(12.dp).background(colorValue, CircleShape)) }
+                        label = { Text(name, style = MaterialTheme.typography.labelSmall) },
+                        leadingIcon = { Box(modifier = Modifier.size(10.dp).background(colorValue, CircleShape)) }
                     )
                 }
-                
-                Spacer(modifier = Modifier.width(4.dp))
-                HorizontalDivider(modifier = Modifier.width(1.dp).height(24.dp))
-                Spacer(modifier = Modifier.width(4.dp))
+
+                HorizontalDivider(modifier = Modifier.width(1.dp).height(18.dp))
 
                 (1..5).forEach { star ->
                     FilterChip(
                         selected = starsFilter == star,
                         onClick = { viewModel.setFilterStars(star) },
-                        label = { Text("$star") },
-                        leadingIcon = { Icon(Icons.Default.Star, contentDescription = "Star $star", tint = Color(0xFFFFC107), modifier = Modifier.size(16.dp)) }
+                        label = { Text("$star ★", style = MaterialTheme.typography.labelSmall) },
+                        leadingIcon = { Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFC107), modifier = Modifier.size(14.dp)) }
                     )
                 }
             }
-            
-            if (isSelectionMode) {
-                Row(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primaryContainer, androidx.compose.foundation.shape.RoundedCornerShape(8.dp)).padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { isSelectionMode = false; selectedSessionIds = emptySet(); selectedWordIds = emptySet() }) {
-                        Icon(Icons.Default.Close, contentDescription = "Cancel Selection")
-                    }
-                    Text("${selectedSessionIds.size} Sessions, ${selectedWordIds.size} Words", modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-                    IconButton(onClick = { showMoveToProfile = true }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Move Selected to Profile", tint = MaterialTheme.colorScheme.primary)
-                    }
-                    IconButton(onClick = {
-                        viewModel.deleteSelectedSessions(selectedSessionIds)
-                        viewModel.deleteSelectedWords(selectedWordIds)
-                        isSelectionMode = false
-                        selectedSessionIds = emptySet()
-                        selectedWordIds = emptySet()
-                    }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete Selected", tint = MaterialTheme.colorScheme.error)
-                    }
-                }
-            } else {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = { viewModel.setActiveSession(null) },
-                    modifier = Modifier.weight(1f),
-                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                        containerColor = if (activeSessionId.isNullOrBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = if (activeSessionId.isNullOrBlank()) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                ) {
-                    Text("Default Session")
-                }
-                Button(
-                    onClick = { showCreateSession = true }, 
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Create Session")
-                    Spacer(Modifier.width(8.dp))
-                    Text("New Session")
-                }
-            }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
 
             val grouped = history.groupBy { it.sessionId }
 
+            // Selection Mode Actions Bar OR Streamlined Session Chips Bar
+            if (isSelectionMode) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(8.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = { isSelectionMode = false; selectedSessionIds = emptySet(); selectedWordIds = emptySet() },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(Icons.Default.Close, contentDescription = "Cancel Selection", modifier = Modifier.size(18.dp))
+                    }
+                    Text(
+                        "${selectedSessionIds.size}S, ${selectedWordIds.size}W",
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(
+                        onClick = { showMoveToProfile = true },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Move to Profile", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                    }
+                    IconButton(
+                        onClick = {
+                            viewModel.deleteSelectedSessions(selectedSessionIds)
+                            viewModel.deleteSelectedWords(selectedWordIds)
+                            isSelectionMode = false
+                            selectedSessionIds = emptySet()
+                            selectedWordIds = emptySet()
+                        },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete Selected", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                    }
+                }
+            } else {
+                // Sleek, modern horizontally scrollable Session Chips Bar
+                // Replaces the clunky, squished "Default Session" & "New Session" buttons!
+                val defaultCount = history.count { it.sessionId.isNullOrBlank() }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(bottom = if (isLandscape) 4.dp else 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    // Default session chip
+                    val isDefaultActive = activeSessionId.isNullOrBlank()
+                    FilterChip(
+                        selected = isDefaultActive,
+                        onClick = { viewModel.setActiveSession(null) },
+                        label = {
+                            Text(
+                                "Default ($defaultCount)",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (isDefaultActive) FontWeight.Bold else FontWeight.Normal
+                            )
+                        },
+                        leadingIcon = if (isDefaultActive) {
+                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                        } else null
+                    )
+
+                    // Individual session chips
+                    sessions.forEach { session ->
+                        val count = grouped[session.id]?.size ?: 0
+                        val isActive = activeSessionId == session.id
+                        FilterChip(
+                            selected = isActive,
+                            onClick = { viewModel.setActiveSession(session.id) },
+                            label = {
+                                Text(
+                                    "${session.name} ($count)",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal
+                                )
+                            },
+                            leadingIcon = if (isActive) {
+                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                            } else null
+                        )
+                    }
+
+                    // "+ New" Session Chip
+                    AssistChip(
+                        onClick = { showCreateSession = true },
+                        leadingIcon = { Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp)) },
+                        label = { Text("New Session", style = MaterialTheme.typography.labelSmall) }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            // LazyColumn of sessions & history items
             @OptIn(ExperimentalFoundationApi::class)
             LazyColumn(modifier = Modifier.weight(1f)) {
+                // Known Sessions
                 sessions.forEach { session ->
                     val wordsInSession = grouped[session.id] ?: emptyList()
                     val isSessionActive = activeSessionId == session.id
                     val isCollapsed = collapsedSessionIds.contains(session.id)
                     item {
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
-                            .background(if (isSelectionMode && selectedSessionIds.contains(session.id)) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else if (isSessionActive) MaterialTheme.colorScheme.primaryContainer else Color.Transparent, shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
-                            .combinedClickable(
+                        var sessionMenuExpanded by remember { mutableStateOf(false) }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .background(
+                                    if (isSelectionMode && selectedSessionIds.contains(session.id)) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                                    else if (isSessionActive) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                .combinedClickable(
+                                    onClick = {
+                                        if (isSelectionMode) {
+                                            selectedSessionIds = if (selectedSessionIds.contains(session.id)) selectedSessionIds - session.id else selectedSessionIds + session.id
+                                        } else {
+                                            collapsedSessionIds = if (isCollapsed) collapsedSessionIds - session.id else collapsedSessionIds + session.id
+                                        }
+                                    },
+                                    onLongClick = {
+                                        if (!isSelectionMode) {
+                                            isSelectionMode = true
+                                            selectedSessionIds = selectedSessionIds + session.id
+                                        }
+                                    }
+                                )
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            if (isSelectionMode) {
+                                Checkbox(
+                                    checked = selectedSessionIds.contains(session.id),
+                                    onCheckedChange = { selectedSessionIds = if (it) selectedSessionIds + session.id else selectedSessionIds - session.id },
+                                    modifier = Modifier.size(24.dp).padding(end = 4.dp)
+                                )
+                            }
+
+                            Icon(
+                                if (isCollapsed) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+                                contentDescription = "Toggle Collapse",
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            Spacer(modifier = Modifier.width(6.dp))
+
+                            Text(
+                                text = "${session.name} (${wordsInSession.size})",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isSessionActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+
+                            if (isSessionActive) {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(end = 4.dp)
+                                ) {
+                                    Text(
+                                        "ACTIVE",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
+
+                            if (!isSelectionMode) {
+                                Box {
+                                    IconButton(
+                                        onClick = { sessionMenuExpanded = true },
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(Icons.Default.MoreVert, contentDescription = "Session Menu", modifier = Modifier.size(16.dp))
+                                    }
+                                    DropdownMenu(
+                                        expanded = sessionMenuExpanded,
+                                        onDismissRequest = { sessionMenuExpanded = false }
+                                    ) {
+                                        if (!isSessionActive) {
+                                            DropdownMenuItem(
+                                                text = { Text("Set as Active") },
+                                                leadingIcon = { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                                                onClick = {
+                                                    sessionMenuExpanded = false
+                                                    viewModel.setActiveSession(session.id)
+                                                }
+                                            )
+                                        }
+                                        DropdownMenuItem(
+                                            text = { Text("Rename") },
+                                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                                            onClick = {
+                                                sessionMenuExpanded = false
+                                                sessionNameInput = session.name
+                                                showRenameSession = session
+                                            }
+                                        )
+                                        HorizontalDivider()
+                                        DropdownMenuItem(
+                                            text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp)) },
+                                            onClick = {
+                                                sessionMenuExpanded = false
+                                                viewModel.deleteSession(session)
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (!isCollapsed) {
+                        items(wordsInSession, key = { it.id }) { word ->
+                            HistoryWordCard(
+                                word = word,
+                                isSelected = selectedWord?.id == word.id,
+                                isSelectionMode = isSelectionMode,
+                                isChecked = selectedWordIds.contains(word.id),
+                                colors = colors,
                                 onClick = {
                                     if (isSelectionMode) {
-                                        selectedSessionIds = if (selectedSessionIds.contains(session.id)) selectedSessionIds - session.id else selectedSessionIds + session.id
+                                        selectedWordIds = if (selectedWordIds.contains(word.id)) selectedWordIds - word.id else selectedWordIds + word.id
                                     } else {
-                                        viewModel.setActiveSession(session.id)
+                                        selectedWord = word
+                                        viewModel.setSelectedWordId(word.id)
                                     }
                                 },
                                 onLongClick = {
                                     if (!isSelectionMode) {
                                         isSelectionMode = true
-                                        selectedSessionIds = selectedSessionIds + session.id
+                                        selectedWordIds = selectedWordIds + word.id
                                     }
-                                }
-                            ).padding(8.dp)) {
-                            
-                            if (isSelectionMode) {
-                                Checkbox(checked = selectedSessionIds.contains(session.id), onCheckedChange = { selectedSessionIds = if (it) selectedSessionIds + session.id else selectedSessionIds - session.id })
-                            }
-                            
-                            Text(
-                                text = "${session.name} (${wordsInSession.size})" + if (isSessionActive) " (Active)" else "",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = if (isSessionActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.weight(1f)
+                                },
+                                onCheckChanged = { checked ->
+                                    selectedWordIds = if (checked) selectedWordIds + word.id else selectedWordIds - word.id
+                                },
+                                onRename = {
+                                    wordNameInput = word.term
+                                    showRenameWord = word
+                                },
+                                onMoveToProfile = {
+                                    moveTargetWord = word
+                                    showMoveToProfile = true
+                                },
+                                onDelete = { viewModel.deleteWord(word) }
                             )
-                            
-                            if (!isSelectionMode) {
-                                IconButton(onClick = { 
-                                    collapsedSessionIds = if (isCollapsed) collapsedSessionIds - session.id else collapsedSessionIds + session.id 
-                                }) {
-                                    Icon(if (isCollapsed) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp, contentDescription = "Toggle Collapse")
-                                }
-                                IconButton(onClick = { 
-                                    sessionNameInput = session.name
-                                    showRenameSession = session
-                                }) {
-                                    Icon(Icons.Default.Edit, contentDescription = "Rename")
-                                }
-                                IconButton(onClick = { viewModel.deleteSession(session) }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
-                                }
-                            }
-                        }
-                    }
-                    if (!isCollapsed) {
-                        items(wordsInSession, key = { it.id }) { word ->
-                            Card(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).combinedClickable(
-                                    onClick = {
-                                        if (isSelectionMode) {
-                                            selectedWordIds = if (selectedWordIds.contains(word.id)) selectedWordIds - word.id else selectedWordIds + word.id
-                                        } else {
-                                            selectedWord = word; viewModel.setSelectedWordId(word.id)
-                                        }
-                                    },
-                                    onLongClick = {
-                                        if (!isSelectionMode) {
-                                            isSelectionMode = true
-                                            selectedWordIds = selectedWordIds + word.id
-                                        }
-                                    }
-                                ),
-                                elevation = CardDefaults.cardElevation(if (selectedWord?.id == word.id) 8.dp else 2.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (isSelectionMode && selectedWordIds.contains(word.id)) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else if (selectedWord?.id == word.id) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
-                                )
-                            ) {
-                                Row(modifier = Modifier.padding(start = 12.dp, top = 4.dp, bottom = 4.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    if (isSelectionMode) {
-                                        Checkbox(checked = selectedWordIds.contains(word.id), onCheckedChange = { selectedWordIds = if (it) selectedWordIds + word.id else selectedWordIds - word.id })
-                                    }
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        SelectionContainer { Text(text = word.term, style = MaterialTheme.typography.bodyLarge) }
-                                        if (!word.language.isNullOrBlank()) {
-                                            Text(text = word.language, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
-                                        }
-                                    }
-                                    if (word.color != null) {
-                                        val c = colors.find { it.first == word.color }?.second ?: Color.Gray
-                                        Box(modifier = Modifier.size(12.dp).background(c, CircleShape).padding(end = 8.dp))
-                                    }
-                                    if (word.stars > 0) {
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Row { (1..word.stars).forEach { _ -> Icon(Icons.Default.Star, contentDescription = "Star", tint = Color(0xFFFFC107), modifier = Modifier.size(16.dp)) } }
-                                    }
-                                    if (!isSelectionMode) {
-                                        IconButton(onClick = {
-                                            wordNameInput = word.term
-                                            showRenameWord = word
-                                        }) {
-                                            Icon(Icons.Default.Edit, contentDescription = "Rename", modifier = Modifier.size(20.dp))
-                                        }
-                                        IconButton(onClick = { moveTargetWord = word; showMoveToProfile = true }) {
-                                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Move to Profile", modifier = Modifier.size(20.dp))
-                                        }
-                                        IconButton(onClick = { viewModel.deleteWord(word) }) {
-                                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
-                                        }
-                                    }
-                                }
-                            }
                         }
                     }
                 }
-                
+
+                // Default / Unassigned / Unknown Sessions
                 val unknownSessions = grouped.keys.filter { sid -> sessions.none { it.id == sid } }
                 unknownSessions.forEach { sid ->
-                    val isCollapsed = collapsedSessionIds.contains(sid)
-                    item { 
-                        val count = (grouped[sid] ?: emptyList()).size
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clickable { collapsedSessionIds = if (isCollapsed) collapsedSessionIds - sid else collapsedSessionIds + sid }) {
-                            Text(text = "Session: $sid ($count)", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                            Icon(if (isCollapsed) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp, contentDescription = "Toggle Collapse")
-                        }
-                    }
-                    if (!isCollapsed) {
-                        items(grouped[sid] ?: emptyList(), key = { it.id }) { word ->
-                            Card(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).combinedClickable(
-                                    onClick = {
-                                        if (isSelectionMode) {
-                                            selectedWordIds = if (selectedWordIds.contains(word.id)) selectedWordIds - word.id else selectedWordIds + word.id
-                                        } else {
-                                            selectedWord = word; viewModel.setSelectedWordId(word.id)
-                                        }
-                                    },
-                                    onLongClick = {
-                                        if (!isSelectionMode) {
-                                            isSelectionMode = true
-                                            selectedWordIds = selectedWordIds + word.id
-                                        }
-                                    }
-                                ),
-                                elevation = CardDefaults.cardElevation(if (selectedWord?.id == word.id) 8.dp else 2.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (isSelectionMode && selectedWordIds.contains(word.id)) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else if (selectedWord?.id == word.id) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                    val sessionKey = if (sid.isNullOrBlank()) "__default__" else sid
+                    val isCollapsed = collapsedSessionIds.contains(sessionKey)
+                    val wordsInSession = grouped[sid] ?: emptyList()
+                    val sessionDisplayName = if (sid.isNullOrBlank()) "Default Session" else "Session: $sid"
+                    val isDefaultActive = sid.isNullOrBlank() && activeSessionId.isNullOrBlank()
+
+                    item {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .background(
+                                    if (isDefaultActive) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                    shape = RoundedCornerShape(8.dp)
                                 )
-                            ) {
-                                Row(modifier = Modifier.padding(start = 12.dp, top = 4.dp, bottom = 4.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    if (isSelectionMode) {
-                                        Checkbox(checked = selectedWordIds.contains(word.id), onCheckedChange = { selectedWordIds = if (it) selectedWordIds + word.id else selectedWordIds - word.id })
-                                    }
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        SelectionContainer { Text(text = word.term, style = MaterialTheme.typography.bodyLarge) }
-                                        if (!word.language.isNullOrBlank()) {
-                                            Text(text = word.language, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
-                                        }
-                                    }
-                                    if (word.color != null) {
-                                        val c = colors.find { it.first == word.color }?.second ?: Color.Gray
-                                        Box(modifier = Modifier.size(12.dp).background(c, CircleShape).padding(end = 8.dp))
-                                    }
-                                    if (word.stars > 0) {
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Row { (1..word.stars).forEach { _ -> Icon(Icons.Default.Star, contentDescription = "Star", tint = Color(0xFFFFC107), modifier = Modifier.size(16.dp)) } }
-                                    }
-                                    if (!isSelectionMode) {
-                                        IconButton(onClick = {
-                                            wordNameInput = word.term
-                                            showRenameWord = word
-                                        }) {
-                                            Icon(Icons.Default.Edit, contentDescription = "Rename", modifier = Modifier.size(20.dp))
-                                        }
-                                        IconButton(onClick = { moveTargetWord = word; showMoveToProfile = true }) {
-                                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Move to Profile", modifier = Modifier.size(20.dp))
-                                        }
-                                        IconButton(onClick = { viewModel.deleteWord(word) }) {
-                                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
-                                        }
-                                    }
+                                .clickable {
+                                    collapsedSessionIds = if (isCollapsed) collapsedSessionIds - sessionKey else collapsedSessionIds + sessionKey
+                                }
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Icon(
+                                if (isCollapsed) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+                                contentDescription = "Toggle Collapse",
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            Spacer(modifier = Modifier.width(6.dp))
+
+                            Text(
+                                text = "$sessionDisplayName (${wordsInSession.size})",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isDefaultActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+
+                            if (isDefaultActive) {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(end = 4.dp)
+                                ) {
+                                    Text(
+                                        "ACTIVE",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                    )
                                 }
                             }
+                        }
+                    }
+
+                    if (!isCollapsed) {
+                        items(wordsInSession, key = { it.id }) { word ->
+                            HistoryWordCard(
+                                word = word,
+                                isSelected = selectedWord?.id == word.id,
+                                isSelectionMode = isSelectionMode,
+                                isChecked = selectedWordIds.contains(word.id),
+                                colors = colors,
+                                onClick = {
+                                    if (isSelectionMode) {
+                                        selectedWordIds = if (selectedWordIds.contains(word.id)) selectedWordIds - word.id else selectedWordIds + word.id
+                                    } else {
+                                        selectedWord = word
+                                        viewModel.setSelectedWordId(word.id)
+                                    }
+                                },
+                                onLongClick = {
+                                    if (!isSelectionMode) {
+                                        isSelectionMode = true
+                                        selectedWordIds = selectedWordIds + word.id
+                                    }
+                                },
+                                onCheckChanged = { checked ->
+                                    selectedWordIds = if (checked) selectedWordIds + word.id else selectedWordIds - word.id
+                                },
+                                onRename = {
+                                    wordNameInput = word.term
+                                    showRenameWord = word
+                                },
+                                onMoveToProfile = {
+                                    moveTargetWord = word
+                                    showMoveToProfile = true
+                                },
+                                onDelete = { viewModel.deleteWord(word) }
+                            )
                         }
                     }
                 }
@@ -679,8 +874,8 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .width(8.dp)
-                        .background(MaterialTheme.colorScheme.outlineVariant)
+                        .width(10.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                         .pointerInput(Unit) {
                             detectDragGestures { change, dragAmount ->
                                 change.consume()
@@ -690,7 +885,14 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                             }
                         }
                 ) {
-                    VerticalDivider(modifier = Modifier.align(Alignment.Center))
+                    VerticalDivider(modifier = Modifier.align(Alignment.Center), color = MaterialTheme.colorScheme.outlineVariant)
+                    Box(
+                        modifier = Modifier
+                            .width(4.dp)
+                            .height(36.dp)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.6f), RoundedCornerShape(2.dp))
+                            .align(Alignment.Center)
+                    )
                 }
                 Box(modifier = Modifier.weight(1f - splitFraction)) { detailContent() }
             }
@@ -707,8 +909,8 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(8.dp)
-                        .background(MaterialTheme.colorScheme.outlineVariant)
+                        .height(10.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                         .pointerInput(Unit) {
                             detectDragGestures { change, dragAmount ->
                                 change.consume()
@@ -718,7 +920,14 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                             }
                         }
                 ) {
-                    HorizontalDivider(modifier = Modifier.align(Alignment.Center))
+                    HorizontalDivider(modifier = Modifier.align(Alignment.Center), color = MaterialTheme.colorScheme.outlineVariant)
+                    Box(
+                        modifier = Modifier
+                            .width(36.dp)
+                            .height(4.dp)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.6f), RoundedCornerShape(2.dp))
+                            .align(Alignment.Center)
+                    )
                 }
                 Box(modifier = Modifier.weight(1f - splitFraction)) { detailContent() }
             }
@@ -839,5 +1048,155 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                 TextButton(onClick = { showMoveToProfile = false; moveTargetWord = null }) { Text("Cancel") }
             }
         )
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun HistoryWordCard(
+    word: Word,
+    isSelected: Boolean,
+    isSelectionMode: Boolean,
+    isChecked: Boolean,
+    colors: List<Pair<String, Color>>,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    onCheckChanged: (Boolean) -> Unit,
+    onRename: () -> Unit,
+    onMoveToProfile: () -> Unit,
+    onDelete: () -> Unit
+) {
+    var menuExpanded by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.5.dp)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+        elevation = CardDefaults.cardElevation(if (isSelected) 4.dp else 1.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelectionMode && isChecked) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+            else if (isSelected) MaterialTheme.colorScheme.primaryContainer
+            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 8.dp, top = 5.dp, bottom = 5.dp, end = 2.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (isSelectionMode) {
+                Checkbox(
+                    checked = isChecked,
+                    onCheckedChange = onCheckChanged,
+                    modifier = Modifier.size(24.dp).padding(end = 4.dp)
+                )
+            }
+
+            // Color tag: sleek vertical indicator bar
+            if (word.color != null) {
+                val c = colors.find { it.first == word.color }?.second ?: Color.Gray
+                Box(
+                    modifier = Modifier
+                        .width(4.dp)
+                        .height(26.dp)
+                        .background(c, androidx.compose.foundation.shape.RoundedCornerShape(2.dp))
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+
+            // Word term & language/stars
+            Column(modifier = Modifier.weight(1f)) {
+                androidx.compose.foundation.text.selection.SelectionContainer {
+                    Text(
+                        text = word.term,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    if (!word.language.isNullOrBlank()) {
+                        Text(
+                            text = word.language,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.secondary,
+                            maxLines = 1
+                        )
+                    }
+                    if (word.stars > 0) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Star,
+                                contentDescription = "Stars",
+                                tint = Color(0xFFFFC107),
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Spacer(modifier = Modifier.width(2.dp))
+                            Text(
+                                text = "${word.stars}",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFFFC107)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Single compact 3-dot overflow menu
+            if (!isSelectionMode) {
+                Box {
+                    IconButton(
+                        onClick = { menuExpanded = true },
+                        modifier = Modifier.size(30.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = "Options",
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Rename") },
+                            leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                            onClick = {
+                                menuExpanded = false
+                                onRename()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Move to Profile") },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                            onClick = {
+                                menuExpanded = false
+                                onMoveToProfile()
+                            }
+                        )
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp)) },
+                            onClick = {
+                                menuExpanded = false
+                                onDelete()
+                            }
+                        )
+                    }
+                }
+            }
+        }
     }
 }
