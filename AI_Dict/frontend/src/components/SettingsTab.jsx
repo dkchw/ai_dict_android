@@ -247,6 +247,40 @@ export default function SettingsTab({
                 <option value="none">None</option>
               </select>
             </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Explain Reasoning Effort</label>
+              <select 
+                value={settings.EXPLAIN_REASONING || 'default'} 
+                onChange={e => setSettings({...settings, EXPLAIN_REASONING: e.target.value})}
+                className="w-full border dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="default">Default</option>
+                <option value="max">Max</option>
+                <option value="xhigh">X-High</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+                <option value="minimal">Minimal</option>
+                <option value="none">None</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Fallback Reasoning Effort</label>
+              <select 
+                value={settings.FALLBACK_REASONING || 'default'} 
+                onChange={e => setSettings({...settings, FALLBACK_REASONING: e.target.value})}
+                className="w-full border dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="default">Default</option>
+                <option value="max">Max</option>
+                <option value="xhigh">X-High</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+                <option value="minimal">Minimal</option>
+                <option value="none">None</option>
+              </select>
+            </div>
 
 
             <div>
@@ -347,7 +381,7 @@ export default function SettingsTab({
 
             <button 
               onClick={async () => {
-                const keys = ['SEARCH_SOURCE_LANG', 'SEARCH_TARGET_LANG', 'OPENROUTER_API_KEY', 'MAIN_MODEL', 'CHAT_MODEL', 'COMPARE_MODEL', 'FALLBACK_MODELS', 'TRANSLATION_MODEL', 'MAIN_REASONING', 'CHAT_REASONING', 'COMPARE_REASONING', 'TRANSLATION_REASONING', 'DICT_PROMPT', 'COMPARE_PROMPT', 'EXPLAIN_PROMPT', 'TRANSLATE_PROMPT'];
+                const keys = ['SEARCH_SOURCE_LANG', 'SEARCH_TARGET_LANG', 'OPENROUTER_API_KEY', 'MAIN_MODEL', 'CHAT_MODEL', 'COMPARE_MODEL', 'FALLBACK_MODELS', 'TRANSLATION_MODEL', 'MAIN_REASONING', 'CHAT_REASONING', 'COMPARE_REASONING', 'TRANSLATION_REASONING', 'EXPLAIN_REASONING', 'FALLBACK_REASONING', 'DICT_PROMPT', 'COMPARE_PROMPT', 'EXPLAIN_PROMPT', 'TRANSLATE_PROMPT'];
                 for (let key of keys) {
                   await fetch('/api/settings', {
                     method: 'POST',

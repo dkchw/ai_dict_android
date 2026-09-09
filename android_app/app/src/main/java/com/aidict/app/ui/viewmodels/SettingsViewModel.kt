@@ -36,6 +36,12 @@ data class ProfileAiConfig(
     val translateModel: ProfileSettingItem,
     val fallbackModels: ProfileSettingItem,
     val chatModel: ProfileSettingItem,
+    val dictReasoning: ProfileSettingItem,
+    val compareReasoning: ProfileSettingItem,
+    val explainReasoning: ProfileSettingItem,
+    val translateReasoning: ProfileSettingItem,
+    val fallbackReasoning: ProfileSettingItem,
+    val chatReasoning: ProfileSettingItem,
     val dictPrompt: ProfileSettingItem,
     val comparePrompt: ProfileSettingItem,
     val explainPrompt: ProfileSettingItem,
@@ -60,6 +66,13 @@ class SettingsViewModel(
     val compareModel = getSettingFlow("COMPARE_MODEL", "~deepseek/deepseek-v4-flash-latest")
     val explainModel = getSettingFlow("EXPLAIN_MODEL", "~deepseek/deepseek-v4-flash-latest")
     val translateModel = getSettingFlow("TRANSLATE_MODEL", "~deepseek/deepseek-v4-flash-latest")
+    
+    val dictReasoning = getSettingFlow("DICT_REASONING", "default")
+    val compareReasoning = getSettingFlow("COMPARE_REASONING", "default")
+    val explainReasoning = getSettingFlow("EXPLAIN_REASONING", "default")
+    val translateReasoning = getSettingFlow("TRANSLATE_REASONING", "default")
+    val fallbackReasoning = getSettingFlow("FALLBACK_REASONING", "default")
+    val chatReasoning = getSettingFlow("CHAT_REASONING", "default")
     
     val autoNewSearch = getSettingFlow("AUTO_NEW_SEARCH", "false")
     val enterToSend = getSettingFlow("ENTER_TO_SEND", "false")
@@ -128,6 +141,13 @@ class SettingsViewModel(
         val fModel = resolveItem("FALLBACK_MODELS", "google/gemini-3.8-flash")
         val chModel = resolveItem("CHAT_MODEL", "~deepseek/deepseek-v4-flash-latest")
 
+        val dReasoning = resolveItem("DICT_REASONING", "default")
+        val cReasoning = resolveItem("COMPARE_REASONING", "default")
+        val eReasoning = resolveItem("EXPLAIN_REASONING", "default")
+        val tReasoning = resolveItem("TRANSLATE_REASONING", "default")
+        val fReasoning = resolveItem("FALLBACK_REASONING", "default")
+        val chReasoning = resolveItem("CHAT_REASONING", "default")
+
         val dPrompt = resolveItem("DICT_PROMPT", DefaultPrompts.DICT_PROMPT)
         val cPrompt = resolveItem("COMPARE_PROMPT", DefaultPrompts.COMPARE_PROMPT)
         val ePrompt = resolveItem("EXPLAIN_PROMPT", DefaultPrompts.EXPLAIN_PROMPT)
@@ -135,8 +155,10 @@ class SettingsViewModel(
 
         val hasAnyCustom = selId != null && (
             dModel.isCustom || cModel.isCustom || eModel.isCustom || tModel.isCustom ||
-            fModel.isCustom || chModel.isCustom || dPrompt.isCustom || cPrompt.isCustom ||
-            ePrompt.isCustom || tPrompt.isCustom
+            fModel.isCustom || chModel.isCustom ||
+            dReasoning.isCustom || cReasoning.isCustom || eReasoning.isCustom ||
+            tReasoning.isCustom || fReasoning.isCustom || chReasoning.isCustom ||
+            dPrompt.isCustom || cPrompt.isCustom || ePrompt.isCustom || tPrompt.isCustom
         )
 
         ProfileAiConfig(
@@ -148,6 +170,12 @@ class SettingsViewModel(
             translateModel = tModel,
             fallbackModels = fModel,
             chatModel = chModel,
+            dictReasoning = dReasoning,
+            compareReasoning = cReasoning,
+            explainReasoning = eReasoning,
+            translateReasoning = tReasoning,
+            fallbackReasoning = fReasoning,
+            chatReasoning = chReasoning,
             dictPrompt = dPrompt,
             comparePrompt = cPrompt,
             explainPrompt = ePrompt,
@@ -166,6 +194,12 @@ class SettingsViewModel(
             translateModel = ProfileSettingItem("TRANSLATE_MODEL", "~deepseek/deepseek-v4-flash-latest", false, "~deepseek/deepseek-v4-flash-latest", "~deepseek/deepseek-v4-flash-latest"),
             fallbackModels = ProfileSettingItem("FALLBACK_MODELS", "google/gemini-3.8-flash", false, "google/gemini-3.8-flash", "google/gemini-3.8-flash"),
             chatModel = ProfileSettingItem("CHAT_MODEL", "~deepseek/deepseek-v4-flash-latest", false, "~deepseek/deepseek-v4-flash-latest", "~deepseek/deepseek-v4-flash-latest"),
+            dictReasoning = ProfileSettingItem("DICT_REASONING", "default", false, "default", "default"),
+            compareReasoning = ProfileSettingItem("COMPARE_REASONING", "default", false, "default", "default"),
+            explainReasoning = ProfileSettingItem("EXPLAIN_REASONING", "default", false, "default", "default"),
+            translateReasoning = ProfileSettingItem("TRANSLATE_REASONING", "default", false, "default", "default"),
+            fallbackReasoning = ProfileSettingItem("FALLBACK_REASONING", "default", false, "default", "default"),
+            chatReasoning = ProfileSettingItem("CHAT_REASONING", "default", false, "default", "default"),
             dictPrompt = ProfileSettingItem("DICT_PROMPT", DefaultPrompts.DICT_PROMPT, false, DefaultPrompts.DICT_PROMPT, DefaultPrompts.DICT_PROMPT),
             comparePrompt = ProfileSettingItem("COMPARE_PROMPT", DefaultPrompts.COMPARE_PROMPT, false, DefaultPrompts.COMPARE_PROMPT, DefaultPrompts.COMPARE_PROMPT),
             explainPrompt = ProfileSettingItem("EXPLAIN_PROMPT", DefaultPrompts.EXPLAIN_PROMPT, false, DefaultPrompts.EXPLAIN_PROMPT, DefaultPrompts.EXPLAIN_PROMPT),
@@ -208,6 +242,8 @@ class SettingsViewModel(
             val keys = listOf(
                 "DICT_MODEL", "COMPARE_MODEL", "EXPLAIN_MODEL", "TRANSLATE_MODEL",
                 "FALLBACK_MODELS", "CHAT_MODEL",
+                "DICT_REASONING", "COMPARE_REASONING", "EXPLAIN_REASONING", "TRANSLATE_REASONING",
+                "FALLBACK_REASONING", "CHAT_REASONING",
                 "DICT_PROMPT", "COMPARE_PROMPT", "EXPLAIN_PROMPT", "TRANSLATE_PROMPT"
             )
             for (k in keys) {

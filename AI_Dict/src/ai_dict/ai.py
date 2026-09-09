@@ -29,6 +29,8 @@ def apply_reasoning_level(kwargs: dict, level: str):
 
 def apply_reasoning(kwargs: dict, session, model_key: str):
     level = get_model(session, model_key.replace("MODEL", "REASONING"))
+    if not level and model_key == "EXPLAIN_MODEL":
+        level = get_model(session, "MAIN_REASONING")
     apply_reasoning_level(kwargs, level)
 
 from .config import settings
@@ -218,7 +220,7 @@ async def explain_text(text: str, session: Session, explicit_model: str = None) 
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"Please explain this sentence/paragraph:\n{text}"}
         ]}
-    apply_reasoning(kwargs, session, "MAIN_MODEL")
+    apply_reasoning(kwargs, session, "EXPLAIN_MODEL")
     response = await client.chat.completions.create(**kwargs)
     
     return response.choices[0].message.content

@@ -21,6 +21,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
+@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
 class LlmRepository(private val database: AppDatabase) {
     private val client = OkHttpClient.Builder()
         .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
@@ -34,7 +35,21 @@ class LlmRepository(private val database: AppDatabase) {
             maxRequestsPerHost = 10
         })
         .build()
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json = Json {
+        ignoreUnknownKeys = true
+        explicitNulls = false
+    }
+
+    private fun buildReasoning(effort: String?): com.aidict.app.api.ReasoningDto? {
+        if (effort.isNullOrBlank() || effort.equals("default", ignoreCase = true)) {
+            return null
+        }
+        val clean = effort.lowercase().trim()
+        if (clean == "none") {
+            return com.aidict.app.api.ReasoningDto(effort = "none", exclude = true)
+        }
+        return com.aidict.app.api.ReasoningDto(effort = clean)
+    }
 
     private suspend fun getApiKey(): String {
         return database.appDao().getSetting("OPENROUTER_API_KEY")?.value?.trim() ?: ""
@@ -89,6 +104,11 @@ class LlmRepository(private val database: AppDatabase) {
                     if (!content.isNullOrBlank()) {
                         return@withContext content
                     } else {
+                        val reasoningContent = message?.get("reasoning_content")?.jsonPrimitive?.content
+                            ?: message?.get("reasoning")?.jsonPrimitive?.content
+                        if (!reasoningContent.isNullOrBlank()) {
+                            return@withContext reasoningContent
+                        }
                         val errorElement = obj["error"]
                         val errMsg = when (errorElement) {
                             is JsonObject -> errorElement["message"]?.jsonPrimitive?.content ?: errorElement.toString()
@@ -161,6 +181,8 @@ class LlmRepository(private val database: AppDatabase) {
         val fallbackModel = getProfileOrGlobalSetting(profileId, "FALLBACK_MODELS", "google/gemini-3.8-flash")
         val modelsList = if (fallbackModel.isNotBlank() && fallbackModel != model) listOf(model, fallbackModel) else null
         val singleModel = if (modelsList == null) model else null
+        val reasoningEffort = getProfileOrGlobalSetting(profileId, "DICT_REASONING", "default")
+            .ifBlank { getProfileOrGlobalSetting(profileId, "MAIN_REASONING", "default") }
 
         val requestBody = ChatRequest(
             model = singleModel,
@@ -169,7 +191,8 @@ class LlmRepository(private val database: AppDatabase) {
                 ChatMessageDto(role = "system", content = promptTemplate),
                 ChatMessageDto(role = "user", content = "Word/Phrase: $term\nSource language: $sourceLang\nTarget language: $targetLang")
             ),
-            stream = false
+            stream = false,
+            reasoning = buildReasoning(reasoningEffort)
         )
         val content = executeRequest(json.encodeToString(requestBody))
         emit(content)
@@ -181,6 +204,7 @@ class LlmRepository(private val database: AppDatabase) {
         val fallbackModel = getProfileOrGlobalSetting(profileId, "FALLBACK_MODELS", "google/gemini-3.8-flash")
         val modelsList = if (fallbackModel.isNotBlank() && fallbackModel != model) listOf(model, fallbackModel) else null
         val singleModel = if (modelsList == null) model else null
+        val reasoningEffort = getProfileOrGlobalSetting(profileId, "EXPLAIN_REASONING", "default")
 
         val requestBody = ChatRequest(
             model = singleModel,
@@ -189,7 +213,8 @@ class LlmRepository(private val database: AppDatabase) {
                 ChatMessageDto(role = "system", content = promptTemplate),
                 ChatMessageDto(role = "user", content = "Source language: $sourceLang\nTarget language: $targetLang\nPlease explain this sentence/paragraph:\n$text")
             ),
-            stream = false
+            stream = false,
+            reasoning = buildReasoning(reasoningEffort)
         )
         val content = executeRequest(json.encodeToString(requestBody))
         emit(content)
@@ -201,6 +226,8 @@ class LlmRepository(private val database: AppDatabase) {
         val fallbackModel = getProfileOrGlobalSetting(profileId, "FALLBACK_MODELS", "google/gemini-3.8-flash")
         val modelsList = if (fallbackModel.isNotBlank() && fallbackModel != model) listOf(model, fallbackModel) else null
         val singleModel = if (modelsList == null) model else null
+        val reasoningEffort = getProfileOrGlobalSetting(profileId, "TRANSLATE_REASONING", "default")
+            .ifBlank { getProfileOrGlobalSetting(profileId, "TRANSLATION_REASONING", "default") }
 
         val requestBody = ChatRequest(
             model = singleModel,
@@ -209,7 +236,8 @@ class LlmRepository(private val database: AppDatabase) {
                 ChatMessageDto(role = "system", content = promptTemplate),
                 ChatMessageDto(role = "user", content = "Source language: $sourceLang\nTarget language: $targetLang\nConcept: $sourceText")
             ),
-            stream = false
+            stream = false,
+            reasoning = buildReasoning(reasoningEffort)
         )
         val content = executeRequest(json.encodeToString(requestBody))
         emit(content)
@@ -221,6 +249,7 @@ class LlmRepository(private val database: AppDatabase) {
         val fallbackModel = getProfileOrGlobalSetting(profileId, "FALLBACK_MODELS", "google/gemini-3.8-flash")
         val modelsList = if (fallbackModel.isNotBlank() && fallbackModel != model) listOf(model, fallbackModel) else null
         val singleModel = if (modelsList == null) model else null
+        val reasoningEffort = getProfileOrGlobalSetting(profileId, "COMPARE_REASONING", "default")
 
         val requestBody = ChatRequest(
             model = singleModel,
@@ -229,7 +258,8 @@ class LlmRepository(private val database: AppDatabase) {
                 ChatMessageDto(role = "system", content = promptTemplate),
                 ChatMessageDto(role = "user", content = "Source language: $sourceLang\nTarget language: $targetLang\nPlease compare the following words:\n$words")
             ),
-            stream = false
+            stream = false,
+            reasoning = buildReasoning(reasoningEffort)
         )
         val content = executeRequest(json.encodeToString(requestBody))
         emit(content)
@@ -248,11 +278,28 @@ class LlmRepository(private val database: AppDatabase) {
         } else {
             "CHAT_MODEL"
         }
+        val defaultReasoningKey = if (messages.isEmpty()) {
+            when (word.mode) {
+                "dict" -> "DICT_REASONING"
+                "translate" -> "TRANSLATE_REASONING"
+                "explain" -> "EXPLAIN_REASONING"
+                "compare" -> "COMPARE_REASONING"
+                else -> "CHAT_REASONING"
+            }
+        } else {
+            "CHAT_REASONING"
+        }
         val configuredModel = getProfileOrGlobalSetting(profileId, defaultModelKey, getProfileOrGlobalSetting(profileId, "CHAT_MODEL", "~deepseek/deepseek-v4-flash-latest"))
         val fallbackModel = getProfileOrGlobalSetting(profileId, "FALLBACK_MODELS", "google/gemini-3.8-flash")
         val model = if (forceFallback && fallbackModel.isNotBlank()) fallbackModel else configuredModel
         val modelsList = if (!forceFallback && fallbackModel.isNotBlank() && fallbackModel != model) listOf(model, fallbackModel) else null
         val singleModel = if (modelsList == null) model else null
+
+        val reasoningEffort = if (forceFallback) {
+            getProfileOrGlobalSetting(profileId, "FALLBACK_REASONING", "default")
+        } else {
+            getProfileOrGlobalSetting(profileId, defaultReasoningKey, "default")
+        }
 
         val initialContext = mutableListOf<ChatMessageDto>()
         when (word.mode) {
@@ -291,7 +338,8 @@ class LlmRepository(private val database: AppDatabase) {
             model = singleModel,
             models = modelsList,
             messages = mappedMessages,
-            stream = false
+            stream = false,
+            reasoning = buildReasoning(reasoningEffort)
         )
 
         val content = executeRequest(json.encodeToString(requestBody))

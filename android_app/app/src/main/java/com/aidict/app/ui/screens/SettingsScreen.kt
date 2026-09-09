@@ -773,6 +773,14 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                     onSave = { viewModel.saveAiSetting("DICT_MODEL", it) },
                     onReset = { viewModel.resetAiSetting("DICT_MODEL") }
                 )
+                AiReasoningSettingItem(
+                    label = "Dict Reasoning Effort",
+                    settingItem = aiConfig.dictReasoning,
+                    isProfileScope = aiConfig.selectedProfileId != null,
+                    onSave = { viewModel.saveAiSetting("DICT_REASONING", it) },
+                    onReset = { viewModel.resetAiSetting("DICT_REASONING") }
+                )
+                Spacer(Modifier.height(4.dp))
                 AiModelSettingItem(
                     label = "Compare Model",
                     settingItem = aiConfig.compareModel,
@@ -781,6 +789,14 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                     onSave = { viewModel.saveAiSetting("COMPARE_MODEL", it) },
                     onReset = { viewModel.resetAiSetting("COMPARE_MODEL") }
                 )
+                AiReasoningSettingItem(
+                    label = "Compare Reasoning Effort",
+                    settingItem = aiConfig.compareReasoning,
+                    isProfileScope = aiConfig.selectedProfileId != null,
+                    onSave = { viewModel.saveAiSetting("COMPARE_REASONING", it) },
+                    onReset = { viewModel.resetAiSetting("COMPARE_REASONING") }
+                )
+                Spacer(Modifier.height(4.dp))
                 AiModelSettingItem(
                     label = "Explain Model",
                     settingItem = aiConfig.explainModel,
@@ -789,6 +805,14 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                     onSave = { viewModel.saveAiSetting("EXPLAIN_MODEL", it) },
                     onReset = { viewModel.resetAiSetting("EXPLAIN_MODEL") }
                 )
+                AiReasoningSettingItem(
+                    label = "Explain Reasoning Effort",
+                    settingItem = aiConfig.explainReasoning,
+                    isProfileScope = aiConfig.selectedProfileId != null,
+                    onSave = { viewModel.saveAiSetting("EXPLAIN_REASONING", it) },
+                    onReset = { viewModel.resetAiSetting("EXPLAIN_REASONING") }
+                )
+                Spacer(Modifier.height(4.dp))
                 AiModelSettingItem(
                     label = "Translate Model",
                     settingItem = aiConfig.translateModel,
@@ -797,6 +821,14 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                     onSave = { viewModel.saveAiSetting("TRANSLATE_MODEL", it) },
                     onReset = { viewModel.resetAiSetting("TRANSLATE_MODEL") }
                 )
+                AiReasoningSettingItem(
+                    label = "Translate Reasoning Effort",
+                    settingItem = aiConfig.translateReasoning,
+                    isProfileScope = aiConfig.selectedProfileId != null,
+                    onSave = { viewModel.saveAiSetting("TRANSLATE_REASONING", it) },
+                    onReset = { viewModel.resetAiSetting("TRANSLATE_REASONING") }
+                )
+                Spacer(Modifier.height(4.dp))
                 AiModelSettingItem(
                     label = "Fallback Model",
                     settingItem = aiConfig.fallbackModels,
@@ -805,6 +837,14 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                     onSave = { viewModel.saveAiSetting("FALLBACK_MODELS", it) },
                     onReset = { viewModel.resetAiSetting("FALLBACK_MODELS") }
                 )
+                AiReasoningSettingItem(
+                    label = "Fallback Reasoning Effort",
+                    settingItem = aiConfig.fallbackReasoning,
+                    isProfileScope = aiConfig.selectedProfileId != null,
+                    onSave = { viewModel.saveAiSetting("FALLBACK_REASONING", it) },
+                    onReset = { viewModel.resetAiSetting("FALLBACK_REASONING") }
+                )
+                Spacer(Modifier.height(4.dp))
                 AiModelSettingItem(
                     label = "Chat Model",
                     settingItem = aiConfig.chatModel,
@@ -812,6 +852,13 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                     availableModels = availableModels,
                     onSave = { viewModel.saveAiSetting("CHAT_MODEL", it) },
                     onReset = { viewModel.resetAiSetting("CHAT_MODEL") }
+                )
+                AiReasoningSettingItem(
+                    label = "Chat Reasoning Effort",
+                    settingItem = aiConfig.chatReasoning,
+                    isProfileScope = aiConfig.selectedProfileId != null,
+                    onSave = { viewModel.saveAiSetting("CHAT_REASONING", it) },
+                    onReset = { viewModel.resetAiSetting("CHAT_REASONING") }
                 )
             }
         }
@@ -1040,6 +1087,105 @@ fun AiModelSettingItem(
             availableModels = availableModels,
             onSelected = onSave
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AiReasoningSettingItem(
+    label: String,
+    settingItem: ProfileSettingItem,
+    isProfileScope: Boolean,
+    onSave: (String) -> Unit,
+    onReset: () -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val options = listOf(
+        "default" to "Default (Model Native)",
+        "none" to "None (Disabled)",
+        "minimal" to "Minimal",
+        "low" to "Low",
+        "medium" to "Medium",
+        "high" to "High",
+        "xhigh" to "Extra High",
+        "max" to "Max"
+    )
+    val currentEffort = settingItem.effectiveValue.ifBlank { "default" }
+    val displayLabel = options.find { it.first == currentEffort }?.second ?: currentEffort
+
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                if (isProfileScope) {
+                    Spacer(Modifier.width(8.dp))
+                    Surface(
+                        color = if (settingItem.isCustom) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            text = if (settingItem.isCustom) "Custom" else "Inherited",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (settingItem.isCustom) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+            if (isProfileScope && settingItem.isCustom) {
+                TextButton(
+                    onClick = onReset,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                ) {
+                    Icon(Icons.Default.Restore, contentDescription = "Reset to global", modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Inherit", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded },
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+        ) {
+            val inheritedText = if (isProfileScope && !settingItem.isCustom) {
+                val gLabel = options.find { it.first == settingItem.globalValue }?.second ?: settingItem.globalValue
+                "$label (Inherited: $gLabel)"
+            } else {
+                label
+            }
+            OutlinedTextField(
+                value = displayLabel,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text(inheritedText) },
+                modifier = Modifier.menuAnchor().fillMaxWidth(),
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+            )
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                options.forEach { (value, text) ->
+                    DropdownMenuItem(
+                        text = { Text(text) },
+                        onClick = {
+                            onSave(value)
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
     }
 }
 

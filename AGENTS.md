@@ -42,4 +42,5 @@ The architecture, Jetpack Compose layouts, Room Database integrations, LLM strea
 * **Dynamic Profiles & Data Architecture:** Building complex Room Database foreign key cascades to allow for custom user Profiles. Implementing stable layout nodes (`key = { it.id }`) to eliminate list scrolling lag.
 * **Complex UI Recomposition Optimization:** Identifying and isolating state reads (`collectAsState()`) from high-level screens into heavily localized composables (like `SettingsGroup` accordions and `ChatInputBar` overrides) to rescue the UI from dropping frames.
 * **Android File Scoped Permissions:** Resolving strict API 33+ (Android 13/14) limitations on `READ_EXTERNAL_STORAGE` and `FileProvider` by migrating the background Updater to purely native `DownloadManager` URI broadcast receivers, eliminating silent failures during auto-installation.
+* **Granular Reasoning Engine Control:** Implemented independent reasoning effort controls (`default`, `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`) per model and profile scope, seamlessly interfacing with OpenRouter's Reasoning API while preserving fallback safety and custom inheritance.
 
