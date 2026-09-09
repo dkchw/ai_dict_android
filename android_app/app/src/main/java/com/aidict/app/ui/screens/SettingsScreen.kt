@@ -48,6 +48,9 @@ import com.aidict.app.ui.viewmodels.ProfileSettingItem
 import com.aidict.app.ui.viewmodels.BackupHelper
 import kotlinx.coroutines.launch
 import android.widget.Toast
+import android.os.Build
+import android.os.PowerManager
+import android.content.Context
 
 @OptIn(ExperimentalMaterial3Api::class)
 
@@ -261,6 +264,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                 }
             }
         }
+        item { BackgroundSyncSettings(viewModel) }
         item {
             SettingsGroup("Display & Scaling") {
 
@@ -1375,6 +1379,176 @@ fun ExternalDictManager(viewModel: com.aidict.app.ui.viewmodels.SettingsViewMode
                 modifier = Modifier.align(Alignment.End).padding(top = 8.dp)
             ) {
                 Text("Add Link")
+            }
+        }
+    }
+}
+
+@Composable
+fun BackgroundSyncSettings(viewModel: SettingsViewModel) {
+    val context = LocalContext.current
+    val isRunning by com.aidict.app.services.BackgroundSyncService.isRunning.collectAsState()
+    val isNetworkOnline by com.aidict.app.services.BackgroundSyncService.isNetworkOnline.collectAsState()
+    val persistentBgStr by viewModel.persistentBackground.collectAsState()
+    val isPersistentBg = persistentBgStr.toBooleanStrictOrNull() ?: false
+
+    val powerManager = remember(context) { context.getSystemService(Context.POWER_SERVICE) as? PowerManager }
+    var isIgnoringBattery by remember(context) {
+        mutableStateOf(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true
+            } else true
+        )
+    }
+
+    DisposableEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            isIgnoringBattery = powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true
+        }
+        onDispose {}
+    }
+
+    SettingsGroup("24/7 Background & Network Resilience") {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("24/7 Background Execution", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Keep AI Dict running 24/7 in the background with WakeLock protection. Queries & streaming continue uninterrupted even when screen is locked or switching apps.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = isPersistentBg,
+                onCheckedChange = { enable ->
+                    viewModel.saveSetting("PERSISTENT_BACKGROUND_SERVICE", enable.toString())
+                    if (enable) {
+                        com.aidict.app.services.BackgroundSyncService.start(context)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !isIgnoringBattery) {
+                            try {
+                                val intent = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                    data = Uri.parse("package:${context.packageName}")
+                                }
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                try {
+                                    val fallback = Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                                    context.startActivity(fallback)
+                                } catch (ignored: Exception) {}
+                            }
+                        }
+                    } else {
+                        com.aidict.app.services.BackgroundSyncService.stop(context)
+                    }
+                }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // Status Card
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = if (isRunning) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            ),
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = if (isRunning) "🟢 Service Active (24/7 Protected)" else "⚪ Service Inactive",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (isRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                    Text(
+                        text = if (isNetworkOnline) "🌐 Online" else "⚠️ Offline",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isNetworkOnline) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = if (isRunning) {
+                        "CPU WakeLock and network sockets are actively preserved. Android cannot freeze or kill API responses."
+                    } else {
+                        "Turn on to keep searches and API streaming alive indefinitely in the background."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Battery Optimization Exemption
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Battery Optimization Exemption", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        if (isIgnoringBattery) "Whitelisted: Android Doze mode will never throttle network connections or freeze AI Dict."
+                        else "Recommended: Whitelist app from battery optimizations so Android never sleeps network sockets.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (isIgnoringBattery) {
+                    AssistChip(
+                        onClick = {},
+                        label = { Text("Protected ✓", color = MaterialTheme.colorScheme.primary) },
+                        colors = AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
+                    )
+                } else {
+                    Button(
+                        onClick = {
+                            val intent = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                data = Uri.parse("package:${context.packageName}")
+                            }
+                            try {
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                val fallback = Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                                try { context.startActivity(fallback) } catch (ignored: Exception) {}
+                            }
+                        },
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text("Whitelist", style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // Network Resilience Information
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)),
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+        ) {
+            Column(modifier = Modifier.padding(10.dp)) {
+                Text(
+                    "🛡️ Built-in Network Resilience",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    "• 180s read / 240s call timeouts support deep reasoning models.\n• 4x auto-retry with exponential backoff on timeouts & 50x/429/52x errors.\n• Auto-waits up to 15s for network reconnect when switching between Wi-Fi and mobile data.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

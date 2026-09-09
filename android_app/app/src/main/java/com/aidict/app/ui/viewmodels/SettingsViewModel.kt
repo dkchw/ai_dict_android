@@ -76,6 +76,7 @@ class SettingsViewModel(
     
     val autoNewSearch = getSettingFlow("AUTO_NEW_SEARCH", "false")
     val enterToSend = getSettingFlow("ENTER_TO_SEND", "false")
+    val persistentBackground = getSettingFlow("PERSISTENT_BACKGROUND_SERVICE", "false")
     
     val fallbackModels = getSettingFlow("FALLBACK_MODELS", "google/gemini-3.8-flash")
     val chatModel = getSettingFlow("CHAT_MODEL", "~deepseek/deepseek-v4-flash-latest")

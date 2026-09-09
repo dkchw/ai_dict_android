@@ -75,6 +75,28 @@ class SearchViewModel(
     private val activeStreamJobs = java.util.concurrent.ConcurrentHashMap<Int, kotlinx.coroutines.Job>()
     private val activeStreamTexts = java.util.concurrent.ConcurrentHashMap<Int, String>()
 
+    private fun notifyBackgroundStatus(activeTitle: String? = null) {
+        try {
+            val count = activeStreamJobs.size
+            if (count > 1) {
+                com.aidict.app.services.BackgroundSyncService.updateNotification(
+                    com.aidict.app.AiDictApplication.instance,
+                    "AI Dict: $count background tasks active..."
+                )
+            } else if (count == 1 && activeTitle != null) {
+                com.aidict.app.services.BackgroundSyncService.updateNotification(
+                    com.aidict.app.AiDictApplication.instance,
+                    "AI Dict: $activeTitle..."
+                )
+            } else if (count == 0) {
+                com.aidict.app.services.BackgroundSyncService.updateNotification(
+                    com.aidict.app.AiDictApplication.instance,
+                    "Online - Background search & API ready."
+                )
+            }
+        } catch (ignored: Exception) {}
+    }
+
     private var _searchInput = mutableStateOf("")
     var searchInput: String
         get() = _searchInput.value
@@ -200,6 +222,7 @@ class SearchViewModel(
                     activeStreamJobs[currentWordId] = it
                 }
                 activeStreamTexts[currentWordId] = ""
+                notifyBackgroundStatus("Looking up \"$cleanTerm\"")
 
                 val initialMsg = com.aidict.app.data.entities.ChatMessage(wordId = currentWordId, role = "assistant", content = "Generating...")
                 val msgId = database.appDao().insertChatMessage(initialMsg).toInt()
@@ -251,6 +274,7 @@ class SearchViewModel(
                     activeStreamJobs.remove(it)
                     activeStreamTexts.remove(it)
                 }
+                notifyBackgroundStatus()
             }
         }
     }
@@ -309,6 +333,7 @@ class SearchViewModel(
                 activeStreamJobs[currentWordId] = it
             }
             activeStreamTexts[currentWordId] = ""
+            notifyBackgroundStatus("Chat response in progress")
             try {
                 val updatedWordForGen = word.copy(generationCount = word.generationCount + 1)
                 database.appDao().updateWord(updatedWordForGen)
@@ -354,6 +379,7 @@ class SearchViewModel(
             } finally {
                 activeStreamJobs.remove(currentWordId)
                 activeStreamTexts.remove(currentWordId)
+                notifyBackgroundStatus()
             }
         }
     }
@@ -464,6 +490,7 @@ class SearchViewModel(
                 activeStreamJobs[currentWordId] = it
             }
             activeStreamTexts[currentWordId] = ""
+            notifyBackgroundStatus("Regenerating response for \"${word.term}\"")
 
             val updatedWordForGen = word.copy(generationCount = word.generationCount + 1)
             database.appDao().updateWord(updatedWordForGen)
@@ -545,6 +572,7 @@ class SearchViewModel(
                 if (_uiState.value.word?.id == currentWordId) {
                     _uiState.value = _uiState.value.copy(isLoading = false)
                 }
+                notifyBackgroundStatus()
             }
         }
     }
@@ -589,6 +617,7 @@ class SearchViewModel(
                     activeStreamJobs[currentWordId] = it
                 }
                 activeStreamTexts[currentWordId] = ""
+                notifyBackgroundStatus("Translating \"${cleanText.take(20)}\"")
 
                 val initialMsg = com.aidict.app.data.entities.ChatMessage(wordId = currentWordId, role = "assistant", content = "Generating...")
                 val msgId = database.appDao().insertChatMessage(initialMsg).toInt()
@@ -634,6 +663,7 @@ class SearchViewModel(
                     activeStreamJobs.remove(it)
                     activeStreamTexts.remove(it)
                 }
+                notifyBackgroundStatus()
             }
         }
     }
@@ -677,6 +707,7 @@ class SearchViewModel(
                     activeStreamJobs[currentWordId] = it
                 }
                 activeStreamTexts[currentWordId] = ""
+                notifyBackgroundStatus("Explaining text")
 
                 val initialMsg = com.aidict.app.data.entities.ChatMessage(wordId = currentWordId, role = "assistant", content = "Generating...")
                 val msgId = database.appDao().insertChatMessage(initialMsg).toInt()
@@ -722,6 +753,7 @@ class SearchViewModel(
                     activeStreamJobs.remove(it)
                     activeStreamTexts.remove(it)
                 }
+                notifyBackgroundStatus()
             }
         }
     }
@@ -765,6 +797,7 @@ class SearchViewModel(
                     activeStreamJobs[currentWordId] = it
                 }
                 activeStreamTexts[currentWordId] = ""
+                notifyBackgroundStatus("Comparing \"${cleanWords.take(20)}\"")
 
                 val initialMsg = com.aidict.app.data.entities.ChatMessage(wordId = currentWordId, role = "assistant", content = "Generating...")
                 val msgId = database.appDao().insertChatMessage(initialMsg).toInt()
@@ -810,6 +843,7 @@ class SearchViewModel(
                     activeStreamJobs.remove(it)
                     activeStreamTexts.remove(it)
                 }
+                notifyBackgroundStatus()
             }
         }
     }

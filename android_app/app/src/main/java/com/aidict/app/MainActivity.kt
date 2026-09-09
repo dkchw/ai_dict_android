@@ -14,7 +14,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import com.aidict.app.data.AppDatabase
 import com.aidict.app.data.LlmRepository
 import com.aidict.app.ui.AppNavigation
@@ -43,6 +46,14 @@ class MainActivity : ComponentActivity() {
                     modelClass.isAssignableFrom(NotesViewModel::class.java) -> NotesViewModel(database) as T
                     else -> throw IllegalArgumentException("Unknown ViewModel class")
                 }
+            }
+        }
+
+        // Auto-start 24/7 background service if activated
+        lifecycleScope.launch(Dispatchers.IO) {
+            val enabled = database.appDao().getSetting("PERSISTENT_BACKGROUND_SERVICE")?.value
+            if (enabled == "true") {
+                com.aidict.app.services.BackgroundSyncService.start(this@MainActivity)
             }
         }
 

@@ -26,7 +26,8 @@ class LlmRepository(private val database: AppDatabase) {
     private val client = OkHttpClient.Builder()
         .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
         .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-        .readTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(180, java.util.concurrent.TimeUnit.SECONDS)
+        .callTimeout(240, java.util.concurrent.TimeUnit.SECONDS)
         .pingInterval(15, java.util.concurrent.TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
         .connectionPool(okhttp3.ConnectionPool(10, 5, java.util.concurrent.TimeUnit.MINUTES))
@@ -38,6 +39,16 @@ class LlmRepository(private val database: AppDatabase) {
     private val json = Json {
         ignoreUnknownKeys = true
         explicitNulls = false
+    }
+
+    private suspend fun waitForNetwork(maxWaitMs: Long = 15_000L) {
+        val start = System.currentTimeMillis()
+        while (!com.aidict.app.services.BackgroundSyncService.isNetworkOnline.value) {
+            if (System.currentTimeMillis() - start >= maxWaitMs) {
+                break
+            }
+            delay(1000)
+        }
     }
 
     private fun buildReasoning(effort: String?): com.aidict.app.api.ReasoningDto? {
@@ -61,110 +72,124 @@ class LlmRepository(private val database: AppDatabase) {
             throw Exception("API Key is missing. Please set it in Settings.")
         }
 
-        val request = Request.Builder()
-            .url("https://openrouter.ai/api/v1/chat/completions")
-            .post(jsonBody.toRequestBody("application/json".toMediaType()))
-            .addHeader("Authorization", "Bearer $apiKey")
-            .addHeader("HTTP-Referer", "https://github.com/aidict")
-            .addHeader("X-Title", "AI Dict")
-            .build()
+        // Keep CPU awake and network connection alive during full LLM streaming/waiting
+        com.aidict.app.services.BackgroundSyncService.acquireWakeLock(
+            com.aidict.app.AiDictApplication.instance,
+            240_000L
+        )
 
-        var lastException: Exception? = null
+        try {
+            val request = Request.Builder()
+                .url("https://openrouter.ai/api/v1/chat/completions")
+                .post(jsonBody.toRequestBody("application/json".toMediaType()))
+                .addHeader("Authorization", "Bearer $apiKey")
+                .addHeader("HTTP-Referer", "https://github.com/aidict")
+                .addHeader("X-Title", "AI Dict")
+                .build()
 
-        for (attempt in 1..2) {
-            val call = client.newCall(request)
-            try {
-                val response = suspendCancellableCoroutine { continuation ->
-                    continuation.invokeOnCancellation {
-                        try {
-                            call.cancel()
-                        } catch (ignored: Throwable) {}
-                    }
-                    call.enqueue(object : okhttp3.Callback {
-                        override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
-                            continuation.resumeWith(Result.success(response))
+            var lastException: Exception? = null
+
+            for (attempt in 1..4) {
+                val call = client.newCall(request)
+                try {
+                    val response = suspendCancellableCoroutine { continuation ->
+                        continuation.invokeOnCancellation {
+                            try {
+                                call.cancel()
+                            } catch (ignored: Throwable) {}
                         }
-                        override fun onFailure(call: okhttp3.Call, e: java.io.IOException) {
-                            continuation.resumeWith(Result.failure(e))
-                        }
-                    })
-                }
-
-                val bodyStr = response.body?.string()
-
-                if (response.isSuccessful && bodyStr != null) {
-                    val obj = try {
-                        json.decodeFromString<JsonObject>(bodyStr)
-                    } catch (e: Exception) {
-                        throw Exception("Failed to parse response: ${e.localizedMessage ?: e.message}")
+                        call.enqueue(object : okhttp3.Callback {
+                            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                                continuation.resumeWith(Result.success(response))
+                            }
+                            override fun onFailure(call: okhttp3.Call, e: java.io.IOException) {
+                                continuation.resumeWith(Result.failure(e))
+                            }
+                        })
                     }
-                    val message = obj["choices"]?.jsonArray?.firstOrNull()?.jsonObject?.get("message")?.jsonObject
-                    val content = message?.get("content")?.jsonPrimitive?.content
 
-                    if (!content.isNullOrBlank()) {
-                        return@withContext content
+                    val bodyStr = response.body?.string()
+
+                    if (response.isSuccessful && bodyStr != null) {
+                        val obj = try {
+                            json.decodeFromString<JsonObject>(bodyStr)
+                        } catch (e: Exception) {
+                            throw Exception("Failed to parse response: ${e.localizedMessage ?: e.message}")
+                        }
+                        val message = obj["choices"]?.jsonArray?.firstOrNull()?.jsonObject?.get("message")?.jsonObject
+                        val content = message?.get("content")?.jsonPrimitive?.content
+
+                        if (!content.isNullOrBlank()) {
+                            return@withContext content
+                        } else {
+                            val reasoningContent = message?.get("reasoning_content")?.jsonPrimitive?.content
+                                ?: message?.get("reasoning")?.jsonPrimitive?.content
+                            if (!reasoningContent.isNullOrBlank()) {
+                                return@withContext reasoningContent
+                            }
+                            val errorElement = obj["error"]
+                            val errMsg = when (errorElement) {
+                                is JsonObject -> errorElement["message"]?.jsonPrimitive?.content ?: errorElement.toString()
+                                is kotlinx.serialization.json.JsonPrimitive -> errorElement.content
+                                else -> errorElement?.toString()
+                            }
+                            throw Exception("Model returned empty content: ${errMsg ?: "Check model selection"}")
+                        }
                     } else {
-                        val reasoningContent = message?.get("reasoning_content")?.jsonPrimitive?.content
-                            ?: message?.get("reasoning")?.jsonPrimitive?.content
-                        if (!reasoningContent.isNullOrBlank()) {
-                            return@withContext reasoningContent
+                        // Transient server or rate-limit errors: retry with backoff
+                        if (attempt < 4 && response.code in listOf(429, 500, 502, 503, 504, 520, 521, 522, 523, 524)) {
+                            waitForNetwork(15_000L)
+                            delay(1500L * attempt)
+                            continue
                         }
-                        val errorElement = obj["error"]
-                        val errMsg = when (errorElement) {
-                            is JsonObject -> errorElement["message"]?.jsonPrimitive?.content ?: errorElement.toString()
-                            is kotlinx.serialization.json.JsonPrimitive -> errorElement.content
-                            else -> errorElement?.toString()
+
+                        var errMessage: String? = null
+                        if (bodyStr != null) {
+                            try {
+                                val obj = json.decodeFromString<JsonObject>(bodyStr)
+                                val errorElement = obj["error"]
+                                if (errorElement != null) {
+                                    if (errorElement is JsonObject) {
+                                        errMessage = errorElement["message"]?.jsonPrimitive?.content ?: errorElement.toString()
+                                    } else if (errorElement is kotlinx.serialization.json.JsonPrimitive) {
+                                        errMessage = errorElement.content
+                                    } else {
+                                        errMessage = errorElement.toString()
+                                    }
+                                } else {
+                                    errMessage = obj["message"]?.jsonPrimitive?.content
+                                }
+                            } catch (e: Exception) {}
                         }
-                        throw Exception("Model returned empty content: ${errMsg ?: "Check model selection"}")
+                        val finalMessage = errMessage ?: bodyStr?.take(200) ?: "${response.code} ${response.message}"
+                        throw Exception("API Error (${response.code}): $finalMessage")
                     }
-                } else {
-                    if (attempt == 1 && response.code in listOf(429, 500, 502, 503, 504)) {
-                        delay(1500)
+                } catch (e: Exception) {
+                    lastException = e
+                    if (e is kotlinx.coroutines.CancellationException) {
+                        throw e
+                    }
+                    if (attempt < 4 && (e is java.net.SocketTimeoutException || e is java.io.IOException || e is javax.net.ssl.SSLException)) {
+                        waitForNetwork(15_000L)
+                        delay(1200L * attempt)
                         continue
                     }
-
-                    var errMessage: String? = null
-                    if (bodyStr != null) {
-                        try {
-                            val obj = json.decodeFromString<JsonObject>(bodyStr)
-                            val errorElement = obj["error"]
-                            if (errorElement != null) {
-                                if (errorElement is JsonObject) {
-                                    errMessage = errorElement["message"]?.jsonPrimitive?.content ?: errorElement.toString()
-                                } else if (errorElement is kotlinx.serialization.json.JsonPrimitive) {
-                                    errMessage = errorElement.content
-                                } else {
-                                    errMessage = errorElement.toString()
-                                }
-                            } else {
-                                errMessage = obj["message"]?.jsonPrimitive?.content
-                            }
-                        } catch (e: Exception) {}
-                    }
-                    val finalMessage = errMessage ?: bodyStr?.take(200) ?: "${response.code} ${response.message}"
-                    throw Exception("API Error (${response.code}): $finalMessage")
+                    break
                 }
-            } catch (e: Exception) {
-                lastException = e
-                if (e is kotlinx.coroutines.CancellationException) {
-                    throw e
-                }
-                if (attempt == 1 && (e is java.net.SocketTimeoutException || e is java.io.IOException)) {
-                    delay(1000)
-                    continue
-                }
-                break
             }
-        }
 
-        val finalEx = lastException ?: Exception("Network request failed")
-        val friendlyMessage = when (finalEx) {
-            is java.net.SocketTimeoutException -> "Request timed out waiting for AI response."
-            is java.net.UnknownHostException -> "Cannot connect to server. Check internet connection."
-            is java.io.IOException -> "Network interrupted (${finalEx.localizedMessage ?: "I/O connection closed"})."
-            else -> finalEx.localizedMessage?.takeIf { it.isNotBlank() } ?: finalEx.message?.takeIf { it.isNotBlank() } ?: "Request failed (${finalEx.javaClass.simpleName})"
+            val finalEx = lastException ?: Exception("Network request failed")
+            val friendlyMessage = when (finalEx) {
+                is java.net.SocketTimeoutException -> "Request timed out waiting for AI response (server took too long)."
+                is java.net.UnknownHostException -> "Cannot connect to server. Check your internet connection."
+                is javax.net.ssl.SSLException -> "SSL / Connection handshake interrupted (${finalEx.localizedMessage ?: "SSL error"})."
+                is java.io.IOException -> "Network connection interrupted (${finalEx.localizedMessage ?: "I/O closed"})."
+                else -> finalEx.localizedMessage?.takeIf { it.isNotBlank() } ?: finalEx.message?.takeIf { it.isNotBlank() } ?: "Request failed (${finalEx.javaClass.simpleName})"
+            }
+            throw Exception(friendlyMessage, finalEx)
+        } finally {
+            com.aidict.app.services.BackgroundSyncService.releaseWakeLock()
         }
-        throw Exception(friendlyMessage, finalEx)
     }
 
     private suspend fun getProfileOrGlobalSetting(profileId: Int, key: String, default: String): String {

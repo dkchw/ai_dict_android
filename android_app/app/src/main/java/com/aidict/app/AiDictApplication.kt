@@ -11,6 +11,7 @@ class AiDictApplication : Application() {
             private set
 
         const val BUBBLE_CHANNEL_ID = "ai_dict_bubble_channel"
+        const val BACKGROUND_CHANNEL_ID = "ai_dict_background_channel"
     }
 
     override fun onCreate() {
@@ -33,7 +34,18 @@ class AiDictApplication : Application() {
                 setShowBadge(false)
             }
 
+            // Background 24/7 channel: low importance (silent, persistent)
+            val backgroundChannel = NotificationChannel(
+                BACKGROUND_CHANNEL_ID,
+                "24/7 Background Service",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Keeps AI Dict active 24/7 for background searches and uninterrupted API calls"
+                setShowBadge(false)
+            }
+
             notificationManager?.createNotificationChannel(bubbleChannel)
+            notificationManager?.createNotificationChannel(backgroundChannel)
         }
     }
 }
