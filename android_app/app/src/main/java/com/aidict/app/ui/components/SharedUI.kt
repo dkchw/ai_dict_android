@@ -244,7 +244,7 @@ fun ChatInputBar(
                         imeAction = if (enterToSend) androidx.compose.ui.text.input.ImeAction.Send else androidx.compose.ui.text.input.ImeAction.Default
                     ),
                     keyboardActions = androidx.compose.foundation.text.KeyboardActions(
-                        onSend = { if (inputTerm.isNotBlank() && !isLoading) onSend() }
+                        onSend = { if (inputTerm.isNotBlank()) onSend() }
                     ),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Color.Transparent,
@@ -256,16 +256,28 @@ fun ChatInputBar(
                 Spacer(modifier = Modifier.width(8.dp))
                 IconButton(
                     onClick = onSend,
-                    enabled = inputTerm.isNotBlank() && !isLoading,
+                    enabled = inputTerm.isNotBlank(),
                     modifier = Modifier
                         .padding(bottom = 8.dp)
-                        .background(MaterialTheme.colorScheme.primary, CircleShape)
+                        .background(
+                            if (inputTerm.isNotBlank()) MaterialTheme.colorScheme.primary 
+                            else MaterialTheme.colorScheme.primary.copy(alpha = 0.38f), 
+                            CircleShape
+                        )
                 ) {
-                    Icon(
-                        if (isFollowUp && !autoNewSearch) Icons.AutoMirrored.Filled.Send else Icons.Default.Search, 
-                        contentDescription = "Send",
-                        tint = MaterialTheme.colorScheme.onPrimary
-                    )
+                    if (isLoading && inputTerm.isBlank()) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    } else {
+                        Icon(
+                            if (isFollowUp && !autoNewSearch) Icons.AutoMirrored.Filled.Send else Icons.Default.Search, 
+                            contentDescription = "Send",
+                            tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = if (inputTerm.isNotBlank()) 1f else 0.5f)
+                        )
+                    }
                 }
             }
         }

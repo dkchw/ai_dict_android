@@ -215,7 +215,7 @@ fun ExplainScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     com.aidict.app.ui.components.PulsingDots()
                                     Spacer(Modifier.width(8.dp))
-                                    Text("Working on it...", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                    Text(if (state.isLoading) "Working on it..." else "Generation interrupted", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
                                 }
                             } else {
                                 if (isEditing) {
@@ -244,9 +244,9 @@ fun ExplainScreen(
                                             Spacer(Modifier.height(8.dp))
                                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                                 Button(
-                                                    onClick = {
+                                                    onClick = { 
                                                         Toast.makeText(context, "Restarting with Current Model...", Toast.LENGTH_SHORT).show()
-                                                        viewModel.retryMessage(msg, false, "explain", state.word)
+                                                        viewModel.retryMessage(msg, false, "explain", state.word) 
                                                     },
                                                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
@@ -257,9 +257,9 @@ fun ExplainScreen(
                                                     Text("Retry", style = MaterialTheme.typography.labelSmall)
                                                 }
                                                 OutlinedButton(
-                                                    onClick = {
+                                                    onClick = { 
                                                         Toast.makeText(context, "Restarting with Fallback Model...", Toast.LENGTH_SHORT).show()
-                                                        viewModel.retryMessage(msg, true, "explain", state.word)
+                                                        viewModel.retryMessage(msg, true, "explain", state.word) 
                                                     },
                                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                                                     modifier = Modifier.height(30.dp)
@@ -274,7 +274,7 @@ fun ExplainScreen(
                                 }
                             }
                         }
-                        if (!isUser && !isEditing && !isGenerating) {
+                        if (!isUser && !isEditing && (!isGenerating || !state.isLoading)) {
                             Row(modifier = Modifier.fillMaxWidth(0.85f), horizontalArrangement = Arrangement.Start) {
                                 IconButton(onClick = {
                                     val clip = ClipData.newPlainText("AI Dict", msg.content)
@@ -339,20 +339,17 @@ fun ExplainScreen(
             }
         }
 
+        val isFollowUp = state.word != null && !state.isLoading
         com.aidict.app.ui.components.ChatInputBar(
             availableLanguages = viewModel.orderedLanguages.collectAsState().value,
             inputTerm = viewModel.explainInput,
             onValueChange = { viewModel.explainInput = it },
             onSend = {
                 val query = viewModel.explainInput
-                if (autoNewSearch && state.word != null) {
-                    viewModel.clearCurrentSearch()
-                    viewModel.explainInput = query
+                if (autoNewSearch || !isFollowUp) {
                     viewModel.streamExplain(query, sourceLang, targetLang, profileId)
-                } else if (state.word != null) {
-                    viewModel.sendFollowUpMessage(query, "explain")
                 } else {
-                    viewModel.streamExplain(query, sourceLang, targetLang, profileId)
+                    viewModel.sendFollowUpMessage(query, "explain")
                 }
                 viewModel.explainInput = ""
             },
@@ -360,19 +357,19 @@ fun ExplainScreen(
             autoNewSearch = autoNewSearch,
             onToggleAutoNewSearch = onToggleAutoNewSearch,
             enterToSend = enterToSend,
-            isFollowUp = state.word != null,
-            sourceLang = if (state.word == null) sourceLang else null,
-            targetLang = if (state.word == null) targetLang else null,
-            onSourceLangChange = if (state.word == null) { { sourceLang = it; viewModel.saveProfileSetting(profileId, "EXPLAIN_SOURCE", it) } } else null,
-            onTargetLangChange = if (state.word == null) { { targetLang = it; viewModel.saveProfileSetting(profileId, "EXPLAIN_TARGET", it) } } else null,
-            onClear = { viewModel.clearCurrentSearch() },
+            isFollowUp = isFollowUp,
+            sourceLang = if (!isFollowUp || autoNewSearch) sourceLang else null,
+            targetLang = if (!isFollowUp || autoNewSearch) targetLang else null,
+            onSourceLangChange = if (!isFollowUp || autoNewSearch) { { sourceLang = it; viewModel.saveProfileSetting(profileId, "EXPLAIN_SOURCE", it) } } else null,
+            onTargetLangChange = if (!isFollowUp || autoNewSearch) { { targetLang = it; viewModel.saveProfileSetting(profileId, "EXPLAIN_TARGET", it) } } else null,
+            onClear = { viewModel.clearCurrentSearch("explain") },
             suggestions = suggestions,
             onSuggestionClick = { word -> 
                 viewModel.loadWord(word)
                 viewModel.explainInput = ""
                 viewModel.clearSuggestions()
             },
-            placeholder = if (state.word != null && !autoNewSearch) "Enter your question..." else "Paste sentence/paragraph to explain..."
+            placeholder = if (isFollowUp && !autoNewSearch) "Enter your question..." else "Paste sentence/paragraph to explain..."
         )
     }
 }

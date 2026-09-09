@@ -217,7 +217,7 @@ fun TranslateScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     com.aidict.app.ui.components.PulsingDots()
                                     Spacer(Modifier.width(8.dp))
-                                    Text("Working on it...", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                    Text(if (state.isLoading) "Working on it..." else "Generation interrupted", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
                                 }
                             } else {
                                 if (isEditing) {
@@ -276,7 +276,7 @@ fun TranslateScreen(
                                 }
                             }
                         }
-                        if (!isUser && !isEditing && !isGenerating) {
+                        if (!isUser && !isEditing && (!isGenerating || !state.isLoading)) {
                             Row(modifier = Modifier.fillMaxWidth(0.85f), horizontalArrangement = Arrangement.Start) {
                                 IconButton(onClick = {
                                     clipboardManager.setPrimaryClip(ClipData.newPlainText("AI Dict", msg.content))
@@ -343,20 +343,17 @@ fun TranslateScreen(
         }
 
         // Bottom Input Bar
+        val isFollowUp = state.word != null && !state.isLoading
 
         com.aidict.app.ui.components.ChatInputBar(availableLanguages = viewModel.orderedLanguages.collectAsState().value, 
             inputTerm = viewModel.translateInput,
             onValueChange = { viewModel.translateInput = it },
             onSend = {
                 val query = viewModel.translateInput
-                if (autoNewSearch && state.word != null) {
-                    viewModel.clearCurrentSearch()
-                    viewModel.translateInput = query
+                if (autoNewSearch || !isFollowUp) {
                     viewModel.streamTranslation(query, sourceLang, targetLang, profileId)
-                } else if (state.word != null) {
-                    viewModel.sendFollowUpMessage(query, "translate")
                 } else {
-                    viewModel.streamTranslation(query, sourceLang, targetLang, profileId)
+                    viewModel.sendFollowUpMessage(query, "translate")
                 }
                 viewModel.translateInput = ""
             },
@@ -364,15 +361,15 @@ fun TranslateScreen(
             autoNewSearch = autoNewSearch,
             onToggleAutoNewSearch = onToggleAutoNewSearch,
             enterToSend = enterToSend,
-            isFollowUp = state.word != null,
-            onClear = { viewModel.clearCurrentSearch() },
+            isFollowUp = isFollowUp,
+            onClear = { viewModel.clearCurrentSearch("translate") },
             suggestions = suggestions,
             onSuggestionClick = { word -> 
                 viewModel.loadWord(word)
                 viewModel.translateInput = ""
                 viewModel.clearSuggestions()
             },
-            placeholder = if (state.word != null && !autoNewSearch) "Enter your question..." else "Text to translate...",
+            placeholder = if (isFollowUp && !autoNewSearch) "Enter your question..." else "Text to translate...",
             sourceLang = sourceLang,
             targetLang = targetLang,
             onSourceLangChange = { sourceLang = it; viewModel.saveProfileSetting(profileId, "TRANSLATE_SOURCE", it) },

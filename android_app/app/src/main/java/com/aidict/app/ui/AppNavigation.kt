@@ -134,7 +134,14 @@ fun AppNavigation(
         } else if (currentMode != 0) {
             coroutineScope.launch { pagerState.animateScrollToPage(0) }
         } else if (currentSearchState.word != null) {
-            searchViewModel.clearCurrentSearch()
+            val currentModeStr = when (currentMode) {
+                0 -> "dict"
+                1 -> "compare"
+                2 -> "translate"
+                3 -> "explain"
+                else -> "dict"
+            }
+            searchViewModel.clearCurrentSearch(currentModeStr)
         }
     }
     
@@ -340,7 +347,6 @@ fun AppNavigation(
                                 .clickable {
                                     if (currentMode != index) {
                                         coroutineScope.launch { pagerState.animateScrollToPage(index) }
-                                        searchViewModel.clearCurrentSearch()
                                     }
                                 }
                                 .padding(horizontal = 16.dp, vertical = 4.dp)

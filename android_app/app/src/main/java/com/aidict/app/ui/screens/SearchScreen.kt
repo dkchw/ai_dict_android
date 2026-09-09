@@ -277,7 +277,7 @@ fun SearchScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     com.aidict.app.ui.components.PulsingDots()
                                     Spacer(Modifier.width(8.dp))
-                                    Text("Working on it...", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                    Text(if (state.isLoading) "Working on it..." else "Generation interrupted", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
                                 }
                             } else {
                                 if (isEditing) {
@@ -303,32 +303,28 @@ fun SearchScreen(
                                             searchQuery = chatSearchQuery
                                         )
                                         if (isError) {
-                                            Spacer(Modifier.height(8.dp))
+                                            Spacer(modifier = Modifier.height(8.dp))
                                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                                 Button(
-                                                    onClick = {
+                                                    onClick = { 
                                                         Toast.makeText(context, "Restarting with Current Model...", Toast.LENGTH_SHORT).show()
-                                                        viewModel.retryMessage(msg, false, "dict", state.word)
+                                                        viewModel.retryMessage(msg, false, "dict", state.word) 
                                                     },
                                                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                                                     modifier = Modifier.height(30.dp)
                                                 ) {
-                                                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(14.dp))
-                                                    Spacer(Modifier.width(4.dp))
                                                     Text("Retry", style = MaterialTheme.typography.labelSmall)
                                                 }
                                                 OutlinedButton(
-                                                    onClick = {
+                                                    onClick = { 
                                                         Toast.makeText(context, "Restarting with Fallback Model...", Toast.LENGTH_SHORT).show()
-                                                        viewModel.retryMessage(msg, true, "dict", state.word)
+                                                        viewModel.retryMessage(msg, true, "dict", state.word) 
                                                     },
                                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                                                     modifier = Modifier.height(30.dp)
                                                 ) {
-                                                    Icon(Icons.Default.Autorenew, contentDescription = null, modifier = Modifier.size(14.dp))
-                                                    Spacer(Modifier.width(4.dp))
-                                                    Text("Fallback", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                                                    Text("Retry (Fallback)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
                                                 }
                                             }
                                         }
@@ -336,7 +332,7 @@ fun SearchScreen(
                                 }
                             }
                         }
-                        if (!isUser && !isEditing && !isGenerating) {
+                        if (!isUser && !isEditing && (!isGenerating || !state.isLoading)) {
                             Row(modifier = Modifier.fillMaxWidth(0.85f), horizontalArrangement = Arrangement.Start) {
                                 IconButton(onClick = {
                                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -404,7 +400,7 @@ fun SearchScreen(
         }
 
         // Unified Input Bar (Search or Follow Up)
-        val isFollowUp = state.word != null
+        val isFollowUp = state.word != null && !state.isLoading
 
 
         com.aidict.app.ui.components.ChatInputBar(availableLanguages = viewModel.orderedLanguages.collectAsState().value, 
@@ -412,13 +408,10 @@ fun SearchScreen(
             onValueChange = { viewModel.searchInput = it },
             onSend = {
                 val query = viewModel.searchInput
-                if (autoNewSearch && isFollowUp) {
-                    viewModel.clearCurrentSearch()
+                if (autoNewSearch || !isFollowUp) {
                     viewModel.searchWord(query, sourceLang, targetLang, profileId)
-                } else if (isFollowUp) {
-                    viewModel.sendFollowUpMessage(query, "dict")
                 } else {
-                    viewModel.searchWord(query, sourceLang, targetLang, profileId)
+                    viewModel.sendFollowUpMessage(query, "dict")
                 }
                 viewModel.searchInput = ""
             },
@@ -434,11 +427,11 @@ fun SearchScreen(
             },
             placeholder = if (isFollowUp && !autoNewSearch) "Enter your question..." else "Search word...",
             isFollowUp = isFollowUp,
-            sourceLang = if (!isFollowUp) sourceLang else null,
-            targetLang = if (!isFollowUp) targetLang else null,
-            onSourceLangChange = if (!isFollowUp) { { sourceLang = it; viewModel.saveProfileSetting(profileId, "SEARCH_SOURCE", it) } } else null,
-            onTargetLangChange = if (!isFollowUp) { { targetLang = it; viewModel.saveProfileSetting(profileId, "SEARCH_TARGET", it) } } else null,
-            onClear = { viewModel.clearCurrentSearch(); viewModel.searchInput = "" }
+            sourceLang = if (!isFollowUp || autoNewSearch) sourceLang else null,
+            targetLang = if (!isFollowUp || autoNewSearch) targetLang else null,
+            onSourceLangChange = if (!isFollowUp || autoNewSearch) { { sourceLang = it; viewModel.saveProfileSetting(profileId, "SEARCH_SOURCE", it) } } else null,
+            onTargetLangChange = if (!isFollowUp || autoNewSearch) { { targetLang = it; viewModel.saveProfileSetting(profileId, "SEARCH_TARGET", it) } } else null,
+            onClear = { viewModel.clearCurrentSearch("dict") }
         )
     }
 }

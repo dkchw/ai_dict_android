@@ -211,7 +211,7 @@ fun CompareScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     com.aidict.app.ui.components.PulsingDots()
                                     Spacer(Modifier.width(8.dp))
-                                    Text("Working on it...", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                    Text(if (state.isLoading) "Working on it..." else "Generation interrupted", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
                                 }
                             } else {
                                 if (isEditing) {
@@ -240,9 +240,9 @@ fun CompareScreen(
                                             Spacer(Modifier.height(8.dp))
                                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                                 Button(
-                                                    onClick = {
+                                                    onClick = { 
                                                         Toast.makeText(context, "Restarting with Current Model...", Toast.LENGTH_SHORT).show()
-                                                        viewModel.retryMessage(msg, false, "compare", state.word)
+                                                        viewModel.retryMessage(msg, false, "compare", state.word) 
                                                     },
                                                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
@@ -253,9 +253,9 @@ fun CompareScreen(
                                                     Text("Retry", style = MaterialTheme.typography.labelSmall)
                                                 }
                                                 OutlinedButton(
-                                                    onClick = {
+                                                    onClick = { 
                                                         Toast.makeText(context, "Restarting with Fallback Model...", Toast.LENGTH_SHORT).show()
-                                                        viewModel.retryMessage(msg, true, "compare", state.word)
+                                                        viewModel.retryMessage(msg, true, "compare", state.word) 
                                                     },
                                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                                                     modifier = Modifier.height(30.dp)
@@ -270,7 +270,7 @@ fun CompareScreen(
                                 }
                             }
                         }
-                        if (!isUser && !isEditing && !isGenerating) {
+                        if (!isUser && !isEditing && (!isGenerating || !state.isLoading)) {
                             Row(modifier = Modifier.fillMaxWidth(0.85f), horizontalArrangement = Arrangement.Start) {
                                 IconButton(onClick = {
                                     clipboardManager.setPrimaryClip(ClipData.newPlainText("AI Dict", msg.content))
@@ -336,19 +336,17 @@ fun CompareScreen(
             }
         }
 
+        val isFollowUp = state.word != null && !state.isLoading
         com.aidict.app.ui.components.ChatInputBar(
             availableLanguages = viewModel.orderedLanguages.collectAsState().value,
             inputTerm = viewModel.compareInput,
             onValueChange = { viewModel.compareInput = it },
             onSend = { 
                 val query = viewModel.compareInput
-                if (autoNewSearch && state.word != null) { 
-                    viewModel.clearCurrentSearch()
+                if (autoNewSearch || !isFollowUp) { 
                     viewModel.streamCompare(query, sourceLang, targetLang, profileId) 
-                } else if (state.word != null) {
-                    viewModel.sendFollowUpMessage(query, "compare") 
                 } else {
-                    viewModel.streamCompare(query, sourceLang, targetLang, profileId)
+                    viewModel.sendFollowUpMessage(query, "compare") 
                 }
                 viewModel.compareInput = "" 
             },
@@ -356,19 +354,19 @@ fun CompareScreen(
             autoNewSearch = autoNewSearch,
             onToggleAutoNewSearch = onToggleAutoNewSearch,
             enterToSend = enterToSend,
-            isFollowUp = state.word != null,
-            sourceLang = if (state.word == null) sourceLang else null,
-            targetLang = if (state.word == null) targetLang else null,
-            onSourceLangChange = if (state.word == null) { { sourceLang = it; viewModel.saveProfileSetting(profileId, "COMPARE_SOURCE", it) } } else null,
-            onTargetLangChange = if (state.word == null) { { targetLang = it; viewModel.saveProfileSetting(profileId, "COMPARE_TARGET", it) } } else null,
-            onClear = { viewModel.clearCurrentSearch() },
+            isFollowUp = isFollowUp,
+            sourceLang = if (!isFollowUp || autoNewSearch) sourceLang else null,
+            targetLang = if (!isFollowUp || autoNewSearch) targetLang else null,
+            onSourceLangChange = if (!isFollowUp || autoNewSearch) { { sourceLang = it; viewModel.saveProfileSetting(profileId, "COMPARE_SOURCE", it) } } else null,
+            onTargetLangChange = if (!isFollowUp || autoNewSearch) { { targetLang = it; viewModel.saveProfileSetting(profileId, "COMPARE_TARGET", it) } } else null,
+            onClear = { viewModel.clearCurrentSearch("compare") },
             suggestions = suggestions,
             onSuggestionClick = { word -> 
                 viewModel.loadWord(word)
                 viewModel.compareInput = ""
                 viewModel.clearSuggestions()
             },
-            placeholder = if (state.word != null && !autoNewSearch) "Enter your question..." else "Words to compare (comma separated)..."
+            placeholder = if (isFollowUp && !autoNewSearch) "Enter your question..." else "Words to compare (comma separated)..."
         )
     }
 }
