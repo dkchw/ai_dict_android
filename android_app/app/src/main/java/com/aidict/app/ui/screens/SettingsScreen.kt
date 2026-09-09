@@ -1482,25 +1482,6 @@ fun BackgroundSyncSettings(viewModel: SettingsViewModel) {
         }
     }
 
-    fun requestDirectBatteryExemption() {
-        var succeeded = false
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            try {
-                val intent = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                    data = Uri.parse("package:${context.packageName}")
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                context.startActivity(intent)
-                succeeded = true
-            } catch (e: Exception) {
-                android.util.Log.w("SettingsScreen", "Direct exemption request failed", e)
-            }
-        }
-        if (!succeeded) {
-            openBatteryOptimizationList()
-        }
-    }
-
     SettingsGroup("24/7 Background & Network Resilience") {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -1528,7 +1509,7 @@ fun BackgroundSyncSettings(viewModel: SettingsViewModel) {
                             }
                         }
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !isIgnoringBattery) {
-                            requestDirectBatteryExemption()
+                            openBatteryOptimizationList()
                         }
                     } else {
                         com.aidict.app.services.BackgroundSyncService.stop(context)
@@ -1664,10 +1645,10 @@ fun BackgroundSyncSettings(viewModel: SettingsViewModel) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
-                            onClick = { requestDirectBatteryExemption() },
+                            onClick = { openBatteryOptimizationList() },
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                         ) {
-                            Text("Request Whitelist")
+                            Text("Battery Whitelist")
                         }
                         OutlinedButton(
                             onClick = { openAppDetailsSettings() },
