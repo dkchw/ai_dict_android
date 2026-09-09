@@ -51,6 +51,10 @@ import android.widget.Toast
 import android.os.Build
 import android.os.PowerManager
 import android.content.Context
+import androidx.core.app.NotificationManagerCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.compose.ui.platform.LocalLifecycleOwner
 
 @OptIn(ExperimentalMaterial3Api::class)
 
@@ -1401,11 +1405,100 @@ fun BackgroundSyncSettings(viewModel: SettingsViewModel) {
         )
     }
 
-    DisposableEffect(Unit) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            isIgnoringBattery = powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true
+    val notificationManager = remember(context) { NotificationManagerCompat.from(context) }
+    var hasNotificationPermission by remember(context) {
+        mutableStateOf(notificationManager.areNotificationsEnabled())
+    }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasNotificationPermission = granted
+        if (granted) {
+            Toast.makeText(context, "Notification permission granted", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "Permission denied. Enable notifications in App Settings.", Toast.LENGTH_LONG).show()
         }
-        onDispose {}
+    }
+
+    // Refresh permission and battery status whenever user returns from system Settings
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    isIgnoringBattery = powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true
+                }
+                hasNotificationPermission = notificationManager.areNotificationsEnabled()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    fun openAppDetailsSettings() {
+        try {
+            val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:${context.packageName}")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(context, "Could not open App Settings", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun openNotificationSettings() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val intent = Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                    putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(intent)
+            } else {
+                openAppDetailsSettings()
+            }
+        } catch (e: Exception) {
+            openAppDetailsSettings()
+        }
+    }
+
+    fun openBatteryOptimizationList() {
+        var opened = false
+        try {
+            val listIntent = Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(listIntent)
+            opened = true
+        } catch (e: Exception) {
+            android.util.Log.w("SettingsScreen", "Battery optimization list failed", e)
+        }
+        if (!opened) {
+            openAppDetailsSettings()
+        }
+    }
+
+    fun requestDirectBatteryExemption() {
+        var succeeded = false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                val intent = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                    data = Uri.parse("package:${context.packageName}")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(intent)
+                succeeded = true
+            } catch (e: Exception) {
+                android.util.Log.w("SettingsScreen", "Direct exemption request failed", e)
+            }
+        }
+        if (!succeeded) {
+            openBatteryOptimizationList()
+        }
     }
 
     SettingsGroup("24/7 Background & Network Resilience") {
@@ -1427,18 +1520,15 @@ fun BackgroundSyncSettings(viewModel: SettingsViewModel) {
                     viewModel.saveSetting("PERSISTENT_BACKGROUND_SERVICE", enable.toString())
                     if (enable) {
                         com.aidict.app.services.BackgroundSyncService.start(context)
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !isIgnoringBattery) {
-                            try {
-                                val intent = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                                    data = Uri.parse("package:${context.packageName}")
-                                }
-                                context.startActivity(intent)
-                            } catch (e: Exception) {
-                                try {
-                                    val fallback = Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                                    context.startActivity(fallback)
-                                } catch (ignored: Exception) {}
+                        if (!hasNotificationPermission) {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                            } else {
+                                openNotificationSettings()
                             }
+                        }
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !isIgnoringBattery) {
+                            requestDirectBatteryExemption()
                         }
                     } else {
                         com.aidict.app.services.BackgroundSyncService.stop(context)
@@ -1449,7 +1539,7 @@ fun BackgroundSyncSettings(viewModel: SettingsViewModel) {
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // Status Card
+        // Live Service Status Card
         Card(
             colors = CardDefaults.cardColors(
                 containerColor = if (isRunning) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
@@ -1485,46 +1575,113 @@ fun BackgroundSyncSettings(viewModel: SettingsViewModel) {
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
-        // Battery Optimization Exemption
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        // Notification Permission Section
+        if (!hasNotificationPermission) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f)),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        "⚠️ Notification Permission Required",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        "Android requires notification permission to display the persistent 24/7 background status in the notification shade.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            Button(
+                                onClick = { notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS) },
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Text("Grant Permission")
+                            }
+                        }
+                        OutlinedButton(
+                            onClick = { openNotificationSettings() },
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text("Notification Settings")
+                        }
+                    }
+                }
+            }
+        } else {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Battery Optimization Exemption", style = MaterialTheme.typography.titleMedium)
+                    Text("Notification Permission", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        if (isIgnoringBattery) "Whitelisted: Android Doze mode will never throttle network connections or freeze AI Dict."
-                        else "Recommended: Whitelist app from battery optimizations so Android never sleeps network sockets.",
+                        "Allowed. Persistent background service notification is enabled.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                if (isIgnoringBattery) {
-                    AssistChip(
-                        onClick = {},
-                        label = { Text("Protected ✓", color = MaterialTheme.colorScheme.primary) },
-                        colors = AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
-                    )
-                } else {
-                    Button(
-                        onClick = {
-                            val intent = Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                                data = Uri.parse("package:${context.packageName}")
-                            }
-                            try {
-                                context.startActivity(intent)
-                            } catch (e: Exception) {
-                                val fallback = Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                                try { context.startActivity(fallback) } catch (ignored: Exception) {}
-                            }
-                        },
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Text("Whitelist", style = MaterialTheme.typography.labelMedium)
+                AssistChip(
+                    onClick = { openNotificationSettings() },
+                    label = { Text("Enabled ✓", color = MaterialTheme.colorScheme.primary) },
+                    colors = AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // Battery Optimization Exemption Section
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Battery Optimization Exemption", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            if (isIgnoringBattery) "Whitelisted: Android Doze mode will never throttle network connections or freeze AI Dict."
+                            else "Action required: Whitelist app from battery optimizations so Android never sleeps network sockets.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
+                    if (isIgnoringBattery) {
+                        AssistChip(
+                            onClick = { openBatteryOptimizationList() },
+                            label = { Text("Protected ✓", color = MaterialTheme.colorScheme.primary) },
+                            colors = AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
+                        )
+                    }
+                }
+                if (!isIgnoringBattery) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = { requestDirectBatteryExemption() },
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text("Request Whitelist")
+                        }
+                        OutlinedButton(
+                            onClick = { openAppDetailsSettings() },
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text("App Info (Set Unrestricted)")
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        "Tip: In App Info, tap 'Battery' and select 'Unrestricted' for uninterrupted 24/7 background operation.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
                 }
             }
         }
