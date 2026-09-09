@@ -1421,6 +1421,13 @@ fun BackgroundSyncSettings(viewModel: SettingsViewModel) {
         }
     }
 
+    // Synchronize DB setting if stopped externally (e.g. from notification "Stop 24/7 Mode")
+    LaunchedEffect(isRunning) {
+        if (!isRunning && isPersistentBg) {
+            viewModel.saveSetting("PERSISTENT_BACKGROUND_SERVICE", "false")
+        }
+    }
+
     // Refresh permission and battery status whenever user returns from system Settings
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -1535,7 +1542,7 @@ fun BackgroundSyncSettings(viewModel: SettingsViewModel) {
                 }
                 Spacer(Modifier.width(8.dp))
                 Switch(
-                    checked = isPersistentBg,
+                    checked = isRunning,
                     onCheckedChange = { enable ->
                         viewModel.saveSetting("PERSISTENT_BACKGROUND_SERVICE", enable.toString())
                         if (enable) {

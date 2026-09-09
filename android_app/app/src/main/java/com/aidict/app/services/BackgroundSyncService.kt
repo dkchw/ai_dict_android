@@ -23,6 +23,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.*
 import java.util.concurrent.atomic.AtomicInteger
+import com.aidict.app.data.AppDatabase
+import com.aidict.app.data.entities.AppSetting
 
 class BackgroundSyncService : Service() {
 
@@ -81,6 +83,12 @@ class BackgroundSyncService : Service() {
                 action = ACTION_START
             }
             try {
+                CoroutineScope(Dispatchers.IO).launch {
+                    val db = AppDatabase.getDatabase(context.applicationContext)
+                    db.appDao().insertSetting(AppSetting("PERSISTENT_BACKGROUND_SERVICE", "true"))
+                }
+            } catch (ignored: Exception) {}
+            try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     context.startForegroundService(intent)
                 } else {
@@ -95,6 +103,12 @@ class BackgroundSyncService : Service() {
             val intent = Intent(context, BackgroundSyncService::class.java).apply {
                 action = ACTION_STOP
             }
+            try {
+                CoroutineScope(Dispatchers.IO).launch {
+                    val db = AppDatabase.getDatabase(context.applicationContext)
+                    db.appDao().insertSetting(AppSetting("PERSISTENT_BACKGROUND_SERVICE", "false"))
+                }
+            } catch (ignored: Exception) {}
             try {
                 context.startService(intent)
             } catch (e: Exception) {
@@ -195,6 +209,12 @@ class BackgroundSyncService : Service() {
         if (intent?.action == ACTION_STOP) {
             _isRunning.value = false
             watchdogJob?.cancel()
+            try {
+                CoroutineScope(Dispatchers.IO).launch {
+                    val db = AppDatabase.getDatabase(applicationContext)
+                    db.appDao().insertSetting(AppSetting("PERSISTENT_BACKGROUND_SERVICE", "false"))
+                }
+            } catch (ignored: Exception) {}
             stopForeground(STOP_FOREGROUND_REMOVE)
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
             manager?.cancel(NOTIFICATION_ID)
@@ -267,6 +287,12 @@ class BackgroundSyncService : Service() {
         _isRunning.value = false
         watchdogJob?.cancel()
         serviceScope.cancel()
+        try {
+            CoroutineScope(Dispatchers.IO).launch {
+                val db = AppDatabase.getDatabase(applicationContext)
+                db.appDao().insertSetting(AppSetting("PERSISTENT_BACKGROUND_SERVICE", "false"))
+            }
+        } catch (ignored: Exception) {}
         try {
             networkCallback?.let { connectivityManager?.unregisterNetworkCallback(it) }
         } catch (ignored: Exception) {}
