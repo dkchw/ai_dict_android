@@ -22,21 +22,45 @@ class HistoryViewModel(private val database: AppDatabase) : ViewModel() {
     fun toggleSearchInOutput() { searchInOutput.value = !searchInOutput.value }
     private val selectedColor = MutableStateFlow<String?>(null)
     private val selectedStars = MutableStateFlow<Int?>(null)
-    val currentMode = MutableStateFlow("dict")
+    val currentMode = MutableStateFlow("all")
     
     val colorFilter: StateFlow<String?> = selectedColor
     val starsFilter: StateFlow<Int?> = selectedStars
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private val activeProfileId = kotlinx.coroutines.flow.MutableStateFlow(1)
-    fun setActiveProfileId(id: Int) { activeProfileId.value = id }
+    private val manualProfileId = MutableStateFlow<Int?>(null)
+    fun setActiveProfileId(id: Int) { manualProfileId.value = id }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val allHistory = kotlinx.coroutines.flow.combine(currentMode, activeProfileId) { m, p -> Pair(m, p) }.flatMapLatest { (mode, pid) ->
-        database.appDao().getWordsByMode(pid, mode)
+    val effectiveProfileId: StateFlow<Int> = combine(
+        database.appDao().getSettingsFlow().map { settings ->
+            settings.find { it.key == "ACTIVE_PROFILE_ID" }?.value?.toIntOrNull() ?: 1
+        },
+        manualProfileId
+    ) { dbId, manual -> manual ?: dbId }.stateIn(viewModelScope, SharingStarted.Eagerly, 1)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val allProfileWords: StateFlow<List<Word>> = effectiveProfileId.flatMapLatest { pid ->
+        database.appDao().getWordsByProfile(pid)
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    val modeCounts: StateFlow<Map<String, Int>> = allProfileWords.map { words ->
+        mapOf(
+            "all" to words.size,
+            "dict" to words.count { it.mode.equals("dict", ignoreCase = true) },
+            "compare" to words.count { it.mode.equals("compare", ignoreCase = true) },
+            "translate" to words.count { it.mode.equals("translate", ignoreCase = true) },
+            "explain" to words.count { it.mode.equals("explain", ignoreCase = true) }
+        )
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val allHistory: StateFlow<List<Word>> = combine(allProfileWords, currentMode) { words, mode ->
+        if (mode == "all" || mode.isBlank()) words
+        else words.filter { it.mode.equals(mode, ignoreCase = true) }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         
-    val sessions = activeProfileId.flatMapLatest { pid -> database.appDao().getSessions(pid.toLong()) }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val sessions = effectiveProfileId.flatMapLatest { pid -> database.appDao().getSessions(pid.toLong()) }
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     
     val activeSessionId = database.appDao().getSettingsFlow().map { settings ->
@@ -96,7 +120,7 @@ class HistoryViewModel(private val database: AppDatabase) : ViewModel() {
     
     fun createSession(name: String) {
         viewModelScope.launch {
-            val s = Session(name = name, profileId = activeProfileId.value.toLong())
+            val s = Session(name = name, profileId = effectiveProfileId.value.toLong())
             database.appDao().insertSession(s)
             setActiveSession(s.id)
         }
@@ -130,6 +154,12 @@ class HistoryViewModel(private val database: AppDatabase) : ViewModel() {
         }
     }
 
+    fun moveWordMode(word: com.aidict.app.data.entities.Word, targetMode: String) {
+        viewModelScope.launch {
+            database.appDao().updateWordMode(word.id, targetMode.lowercase())
+        }
+    }
+
     fun moveSelected(sessionIds: Set<String>, wordIds: Set<Int>, targetProfileId: Int) {
         viewModelScope.launch {
             if (sessionIds.isNotEmpty()) {
@@ -139,6 +169,14 @@ class HistoryViewModel(private val database: AppDatabase) : ViewModel() {
             }
             if (wordIds.isNotEmpty()) {
                 database.appDao().moveWordsByIds(wordIds.toList(), targetProfileId)
+            }
+        }
+    }
+
+    fun moveSelectedWordsMode(wordIds: Set<Int>, targetMode: String) {
+        viewModelScope.launch {
+            if (wordIds.isNotEmpty()) {
+                database.appDao().updateWordsMode(wordIds.toList(), targetMode.lowercase())
             }
         }
     }

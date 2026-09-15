@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface AppDao {
 
-    @Query("SELECT * FROM word WHERE profileId = :profileId AND mode = :mode AND term = :term AND (language = :language OR (language IS NULL AND :language IS NULL)) ORDER BY createdAt DESC LIMIT 1")
+    @Query("SELECT * FROM word WHERE profileId = :profileId AND mode = :mode AND term = :term AND (:language IS NULL OR language = :language) ORDER BY createdAt DESC LIMIT 1")
     suspend fun findWordExact(profileId: Int, mode: String, term: String, language: String?): com.aidict.app.data.entities.Word?
     
     @Query("UPDATE word SET searchCount = searchCount + 1 WHERE id = :wordId")
@@ -52,6 +52,18 @@ interface AppDao {
 
     @Query("SELECT * FROM word WHERE profileId = :profileId AND mode = :mode ORDER BY createdAt DESC")
     fun getWordsByMode(profileId: Int, mode: String): Flow<List<Word>>
+
+    @Query("SELECT * FROM word WHERE profileId = :profileId ORDER BY createdAt DESC")
+    fun getWordsByProfile(profileId: Int): Flow<List<Word>>
+
+    @Query("UPDATE word SET mode = :targetMode WHERE id = :wordId")
+    suspend fun updateWordMode(wordId: Int, targetMode: String)
+
+    @Query("UPDATE word SET mode = :targetMode WHERE id IN (:wordIds)")
+    suspend fun updateWordsMode(wordIds: List<Int>, targetMode: String)
+
+    @Query("DELETE FROM chat_message WHERE wordId = :wordId")
+    suspend fun deleteChatMessagesByWordId(wordId: Int)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertWord(word: Word): Long

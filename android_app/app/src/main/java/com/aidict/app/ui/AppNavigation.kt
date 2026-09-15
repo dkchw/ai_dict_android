@@ -74,6 +74,7 @@ fun AppNavigation(
     historyViewModel: HistoryViewModel,
     settingsViewModel: SettingsViewModel,
     notesViewModel: NotesViewModel,
+    initialMode: Int = 0,
     onColorExtracted: (androidx.compose.ui.graphics.Color?) -> Unit
 ) {
     val isExpanded = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Expanded
@@ -113,7 +114,7 @@ fun AppNavigation(
     }
 
     val coroutineScope = rememberCoroutineScope()
-    val pagerState = androidx.compose.foundation.pager.rememberPagerState(initialPage = 0, pageCount = { 4 })
+    val pagerState = androidx.compose.foundation.pager.rememberPagerState(initialPage = initialMode, pageCount = { 4 })
     val currentMode = pagerState.targetPage
 
 
@@ -368,20 +369,10 @@ fun AppNavigation(
                                 Screen.SETTINGS -> SettingsScreen(settingsViewModel)
                 Screen.NOTES -> NotesScreen(notesViewModel)
                 Screen.HISTORY -> {
-                    val modeStr = when (currentMode) {
-                        0 -> "dict"
-                        1 -> "compare"
-                        2 -> "translate"
-                        3 -> "explain"
-                        else -> "dict"
-                    }
-                    LaunchedEffect(currentMode) {
-                        historyViewModel.setMode(modeStr)
-                    }
                     LaunchedEffect(appState.activeProfile?.id) {
                         historyViewModel.setActiveProfileId(appState.activeProfile?.id ?: 1)
                     }
-                                        HistoryScreen(
+                    HistoryScreen(
                         appViewModel = appViewModel,
                         onNavigateToChat = { word ->
                             searchViewModel.loadWord(word)
@@ -517,16 +508,27 @@ fun AppNavigation(
                     }
                     
                     Box(modifier = Modifier.fillMaxSize().nestedScroll(pullRefreshState.nestedScrollConnection).nestedScroll(bottomOverscrollConnection).nestedScroll(leftOverscrollConnection)) {
+                        val onMoveWordToMode: (com.aidict.app.data.entities.Word, String) -> Unit = { word, targetMode ->
+                            searchViewModel.moveWordToModeAndRegenerate(word, targetMode)
+                            val pageIndex = when (targetMode) {
+                                "dict" -> 0
+                                "compare" -> 1
+                                "translate" -> 2
+                                "explain" -> 3
+                                else -> 0
+                            }
+                            coroutineScope.launch { pagerState.animateScrollToPage(pageIndex) }
+                        }
                         androidx.compose.foundation.pager.HorizontalPager(
                             state = pagerState,
                             modifier = Modifier.fillMaxSize().graphicsLayer { translationX = leftOverscroll * 0.3f },
                             beyondBoundsPageCount = 1
                         ) { page ->
                             when (page) {
-                                0 -> SearchScreen(searchViewModel, pid, autoNewSearch = autoNewSearch, onToggleAutoNewSearch = toggleAutoNewSearch, enterToSend = enterToSend)
-                                1 -> CompareScreen(searchViewModel, pid, autoNewSearch = autoNewSearch, onToggleAutoNewSearch = toggleAutoNewSearch, enterToSend = enterToSend)
-                                2 -> TranslateScreen(searchViewModel, pid, autoNewSearch = autoNewSearch, onToggleAutoNewSearch = toggleAutoNewSearch, enterToSend = enterToSend)
-                                3 -> ExplainScreen(searchViewModel, pid, autoNewSearch = autoNewSearch, onToggleAutoNewSearch = toggleAutoNewSearch, enterToSend = enterToSend)
+                                0 -> SearchScreen(searchViewModel, pid, autoNewSearch = autoNewSearch, onToggleAutoNewSearch = toggleAutoNewSearch, enterToSend = enterToSend, onMoveToMode = onMoveWordToMode)
+                                1 -> CompareScreen(searchViewModel, pid, autoNewSearch = autoNewSearch, onToggleAutoNewSearch = toggleAutoNewSearch, enterToSend = enterToSend, onMoveToMode = onMoveWordToMode)
+                                2 -> TranslateScreen(searchViewModel, pid, autoNewSearch = autoNewSearch, onToggleAutoNewSearch = toggleAutoNewSearch, enterToSend = enterToSend, onMoveToMode = onMoveWordToMode)
+                                3 -> ExplainScreen(searchViewModel, pid, autoNewSearch = autoNewSearch, onToggleAutoNewSearch = toggleAutoNewSearch, enterToSend = enterToSend, onMoveToMode = onMoveWordToMode)
                             }
                         }
                         

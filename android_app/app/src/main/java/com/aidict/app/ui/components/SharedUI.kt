@@ -376,3 +376,56 @@ fun PulsingDots(modifier: Modifier = Modifier) {
         }
     }
 }
+
+@Composable
+fun MoveModeDialog(
+    currentMode: String,
+    titleText: String = "Move to Mode & Regenerate",
+    onDismiss: () -> Unit,
+    onSelectMode: (String) -> Unit
+) {
+    val modes = listOf(
+        Triple("dict", "📚 Dictionary", "Comprehensive definitions, phonetics & etymology"),
+        Triple("compare", "⚖️ Compare", "Exhaustive synonym & nuance comparison"),
+        Triple("translate", "🗣️ Translate", "Contextual translation & natural idioms"),
+        Triple("explain", "🧠 Explain", "Grammatical analysis & semantic breakdown")
+    ).filter { !it.first.equals(currentMode, ignoreCase = true) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(titleText) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "Choose destination agent to analyze this entry:",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(2.dp))
+                modes.forEach { (modeKey, title, desc) ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                onSelectMode(modeKey)
+                                onDismiss()
+                            },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            Spacer(Modifier.height(2.dp))
+                            Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+

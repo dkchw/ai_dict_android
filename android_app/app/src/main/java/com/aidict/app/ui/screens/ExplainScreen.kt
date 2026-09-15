@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Autorenew
+import androidx.compose.material.icons.automirrored.filled.CompareArrows
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
@@ -43,6 +44,7 @@ fun ExplainScreen(
     autoNewSearch: Boolean = false,
     onToggleAutoNewSearch: () -> Unit = {},
     enterToSend: Boolean = false,
+    onMoveToMode: (com.aidict.app.data.entities.Word, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.explainState.collectAsState()
@@ -58,6 +60,7 @@ fun ExplainScreen(
     val context = LocalContext.current
     var isChatSearching by remember { mutableStateOf(false) }
     var chatSearchQuery by remember { mutableStateOf("") }
+    var showMoveToModeDialog by remember { mutableStateOf(false) }
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
 
     Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
@@ -158,10 +161,22 @@ fun ExplainScreen(
                         Icon(Icons.Default.Autorenew, contentDescription = "Restart with Fallback Model", tint = MaterialTheme.colorScheme.error)
                     }
                 }
+                IconButton(onClick = { showMoveToModeDialog = true }) {
+                    Icon(Icons.AutoMirrored.Filled.CompareArrows, contentDescription = "Move Mode & Regenerate", tint = MaterialTheme.colorScheme.primary)
+                }
                 IconButton(onClick = { viewModel.deleteCurrentWord("explain") }) {
                     Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
                 }
             }
+        }
+        if (showMoveToModeDialog && state.word != null) {
+            com.aidict.app.ui.components.MoveModeDialog(
+                currentMode = "explain",
+                onDismiss = { showMoveToModeDialog = false },
+                onSelectMode = { targetMode ->
+                    onMoveToMode(state.word!!, targetMode)
+                }
+            )
         }
         if (isChatSearching) {
             OutlinedTextField(

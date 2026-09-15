@@ -75,7 +75,12 @@ class SearchViewModel(
     private val activeStreamJobs = java.util.concurrent.ConcurrentHashMap<Int, kotlinx.coroutines.Job>()
     private val activeStreamTexts = java.util.concurrent.ConcurrentHashMap<Int, String>()
 
+    val activeStreamJobIds = kotlinx.coroutines.flow.MutableStateFlow<Set<Int>>(emptySet())
+    fun isWordGenerating(wordId: Int): Boolean = activeStreamJobs[wordId]?.isActive == true
+    fun getWordStream(wordId: Int): String = activeStreamTexts[wordId] ?: ""
+
     private fun notifyBackgroundStatus(activeTitle: String? = null) {
+        activeStreamJobIds.value = activeStreamJobs.keys().toList().toSet()
         try {
             val count = activeStreamJobs.size
             if (count > 1) {
@@ -248,7 +253,8 @@ class SearchViewModel(
                 database.appDao().insertChatMessage(finalMsg)
                 
                 if (_uiState.value.word?.id == currentWordId) {
-                    _uiState.value = SearchState(isLoading = false, word = finalWord, chatMessages = listOf(finalMsg), currentStream = "")
+                    val updatedMsgs = database.appDao().getChatMessagesSync(currentWordId)
+                    _uiState.value = SearchState(isLoading = false, word = finalWord, chatMessages = updatedMsgs, currentStream = "")
                 }
             } catch (e: Exception) {
                 val errorDetail = e.localizedMessage?.takeIf { it.isNotBlank() }
@@ -637,7 +643,8 @@ class SearchViewModel(
                 val finalMsg = savedMsg.copy(content = currentText)
                 database.appDao().insertChatMessage(finalMsg)
                 if (_uiState.value.word?.id == currentWordId) {
-                    _uiState.value = SearchState(isLoading = false, word = savedWord, chatMessages = listOf(finalMsg), currentStream = "")
+                    val updatedMsgs = database.appDao().getChatMessagesSync(currentWordId)
+                    _uiState.value = SearchState(isLoading = false, word = savedWord, chatMessages = updatedMsgs, currentStream = "")
                 }
             } catch (e: Exception) {
                 val errorDetail = e.localizedMessage?.takeIf { it.isNotBlank() }
@@ -727,7 +734,8 @@ class SearchViewModel(
                 val finalMsg = savedMsg.copy(content = currentText)
                 database.appDao().insertChatMessage(finalMsg)
                 if (_uiState.value.word?.id == currentWordId) {
-                    _uiState.value = SearchState(isLoading = false, word = savedWord, chatMessages = listOf(finalMsg), currentStream = "")
+                    val updatedMsgs = database.appDao().getChatMessagesSync(currentWordId)
+                    _uiState.value = SearchState(isLoading = false, word = savedWord, chatMessages = updatedMsgs, currentStream = "")
                 }
             } catch (e: Exception) {
                 val errorDetail = e.localizedMessage?.takeIf { it.isNotBlank() }
@@ -817,7 +825,8 @@ class SearchViewModel(
                 val finalMsg = savedMsg.copy(content = currentText)
                 database.appDao().insertChatMessage(finalMsg)
                 if (_uiState.value.word?.id == currentWordId) {
-                    _uiState.value = SearchState(isLoading = false, word = savedWord, chatMessages = listOf(finalMsg), currentStream = "")
+                    val updatedMsgs = database.appDao().getChatMessagesSync(currentWordId)
+                    _uiState.value = SearchState(isLoading = false, word = savedWord, chatMessages = updatedMsgs, currentStream = "")
                 }
             } catch (e: Exception) {
                 val errorDetail = e.localizedMessage?.takeIf { it.isNotBlank() }
@@ -852,6 +861,52 @@ class SearchViewModel(
 
 
 
+
+    fun moveWordToModeAndRegenerate(word: com.aidict.app.data.entities.Word, targetMode: String) {
+        val cleanMode = targetMode.lowercase()
+        bgScope.launch {
+            val targetWordId = word.id
+            activeStreamJobs[targetWordId]?.cancel()
+            activeStreamJobs.remove(targetWordId)
+            activeStreamTexts.remove(targetWordId)
+            notifyBackgroundStatus()
+
+            database.appDao().updateWordMode(targetWordId, cleanMode)
+            database.appDao().deleteChatMessagesByWordId(targetWordId)
+
+            val updatedWord = word.copy(mode = cleanMode, language = null, lemma = null)
+            database.appDao().updateWord(updatedWord)
+
+            val oldUiState = getUiState(word.mode)
+            if (oldUiState.value.word?.id == targetWordId) {
+                oldUiState.value = SearchState()
+            }
+
+            val profileId = word.profileId
+            when (cleanMode) {
+                "dict" -> {
+                    val sourceLang = getProfileSetting(profileId, "DICT_SOURCE") ?: "Auto Detect"
+                    val targetLang = getProfileSetting(profileId, "DICT_TARGET") ?: "English"
+                    searchWord(word.term, sourceLang, targetLang, profileId)
+                }
+                "compare" -> {
+                    val sourceLang = getProfileSetting(profileId, "COMPARE_SOURCE") ?: "Auto Detect"
+                    val targetLang = getProfileSetting(profileId, "COMPARE_TARGET") ?: "English"
+                    streamCompare(word.term, sourceLang, targetLang, profileId)
+                }
+                "translate" -> {
+                    val sourceLang = getProfileSetting(profileId, "TRANSLATE_SOURCE") ?: "Auto Detect"
+                    val targetLang = getProfileSetting(profileId, "TRANSLATE_TARGET") ?: "English"
+                    streamTranslation(word.term, sourceLang, targetLang, profileId)
+                }
+                "explain" -> {
+                    val sourceLang = getProfileSetting(profileId, "EXPLAIN_SOURCE") ?: "Auto Detect"
+                    val targetLang = getProfileSetting(profileId, "EXPLAIN_TARGET") ?: "English"
+                    streamExplain(word.term, sourceLang, targetLang, profileId)
+                }
+            }
+        }
+    }
 
     private suspend fun getOrCreateActiveSessionId(profileId: Int): String {
         val activeSessionId = database.appDao().getSetting("ACTIVE_SESSION_ID")?.value

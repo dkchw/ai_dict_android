@@ -100,17 +100,31 @@ class PopupActivity : ComponentActivity() {
             val settingsViewModel: SettingsViewModel = viewModel(factory = factory)
             val notesViewModel: NotesViewModel = viewModel(factory = factory)
             
+            val words = textExtra.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+            val isMultiWordExplain = words.size > 3
+            val initialMode = if (isMultiWordExplain) 3 else 0
+
             LaunchedEffect(Unit) {
-                if (textExtra.isNotBlank() && searchViewModel.searchInput.isBlank()) {
-                    searchViewModel.clearCurrentSearch()
-                    searchViewModel.searchInput = textExtra
-                    
+                if (textExtra.isNotBlank()) {
                     kotlinx.coroutines.delay(100) // Brief delay to ensure UI and AppViewModel are ready
                     val profileId = appViewModel.uiState.value.activeProfile?.id ?: 1
-                    val sourceLang = searchViewModel.getProfileSetting(profileId, "DICT_SOURCE") ?: "Auto Detect"
-                    val targetLang = searchViewModel.getProfileSetting(profileId, "DICT_TARGET") ?: "English"
-                    
-                    searchViewModel.searchWord(textExtra, sourceLang, targetLang, profileId)
+                    if (isMultiWordExplain) {
+                        if (searchViewModel.explainInput.isBlank()) {
+                            searchViewModel.clearCurrentSearch()
+                            searchViewModel.explainInput = textExtra
+                            val sourceLang = searchViewModel.getProfileSetting(profileId, "EXPLAIN_SOURCE") ?: "Auto Detect"
+                            val targetLang = searchViewModel.getProfileSetting(profileId, "EXPLAIN_TARGET") ?: "English"
+                            searchViewModel.streamExplain(textExtra, sourceLang, targetLang, profileId)
+                        }
+                    } else {
+                        if (searchViewModel.searchInput.isBlank()) {
+                            searchViewModel.clearCurrentSearch()
+                            searchViewModel.searchInput = textExtra
+                            val sourceLang = searchViewModel.getProfileSetting(profileId, "DICT_SOURCE") ?: "Auto Detect"
+                            val targetLang = searchViewModel.getProfileSetting(profileId, "DICT_TARGET") ?: "English"
+                            searchViewModel.searchWord(textExtra, sourceLang, targetLang, profileId)
+                        }
+                    }
                 }
             }
             
@@ -212,6 +226,7 @@ class PopupActivity : ComponentActivity() {
                                 historyViewModel = historyViewModel,
                                 settingsViewModel = settingsViewModel,
                                 notesViewModel = notesViewModel,
+                                initialMode = initialMode,
                                 onColorExtracted = { dynamicColorState.value = it }
                             )
                         }

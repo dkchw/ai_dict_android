@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Autorenew
+import androidx.compose.material.icons.automirrored.filled.CompareArrows
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
@@ -46,6 +47,7 @@ fun SearchScreen(
     autoNewSearch: Boolean = false,
     onToggleAutoNewSearch: () -> Unit = {},
     enterToSend: Boolean = false,
+    onMoveToMode: (com.aidict.app.data.entities.Word, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.dictState.collectAsState()
@@ -53,6 +55,7 @@ fun SearchScreen(
     val context = LocalContext.current
     var isChatSearching by remember { mutableStateOf(false) }
     var chatSearchQuery by remember { mutableStateOf("") }
+    var showMoveToModeDialog by remember { mutableStateOf(false) }
 
     val colors = listOf(
         "Red" to Color(0xFFEF4444),
@@ -182,9 +185,23 @@ fun SearchScreen(
                         }
                     }
                     
+                    IconButton(onClick = { showMoveToModeDialog = true }) {
+                        Icon(Icons.AutoMirrored.Filled.CompareArrows, contentDescription = "Move Mode & Regenerate", tint = MaterialTheme.colorScheme.primary)
+                    }
+
                     IconButton(onClick = { viewModel.deleteCurrentWord("dict") }) {
                         Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
                     }
+                }
+                
+                if (showMoveToModeDialog && state.word != null) {
+                    com.aidict.app.ui.components.MoveModeDialog(
+                        currentMode = "dict",
+                        onDismiss = { showMoveToModeDialog = false },
+                        onSelectMode = { targetMode ->
+                            onMoveToMode(state.word!!, targetMode)
+                        }
+                    )
                 }
                 
                 if (isChatSearching) {

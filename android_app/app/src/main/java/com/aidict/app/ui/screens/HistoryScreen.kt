@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.CompareArrows
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Autorenew
@@ -68,6 +69,9 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
     val colorFilter by viewModel.colorFilter.collectAsState()
     val starsFilter by viewModel.starsFilter.collectAsState()
     val searchInOutput by viewModel.searchInOutput.collectAsState()
+    val modeCounts by viewModel.modeCounts.collectAsState()
+    val currentModeFilter by viewModel.currentMode.collectAsState()
+    val activeStreamJobIds by (searchViewModel?.activeStreamJobIds ?: kotlinx.coroutines.flow.MutableStateFlow(emptySet())).collectAsState()
     var query by remember { mutableStateOf("") }
     
     var selectedWord by remember { mutableStateOf<Word?>(null) }
@@ -108,6 +112,8 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
     var showRenameWord by remember { mutableStateOf<com.aidict.app.data.entities.Word?>(null) }
     var showMoveToProfile by remember { mutableStateOf(false) }
     var moveTargetWord by remember { mutableStateOf<com.aidict.app.data.entities.Word?>(null) }
+    var showMoveTargetWordToMode by remember { mutableStateOf<com.aidict.app.data.entities.Word?>(null) }
+    var showMoveSelectedToMode by remember { mutableStateOf(false) }
     var wordNameInput by remember { mutableStateOf("") }
     var sessionNameInput by remember { mutableStateOf("") }
 
@@ -128,33 +134,62 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
     val listContent = @Composable {
         val listPadding = if (isLandscape) PaddingValues(horizontal = 6.dp, vertical = 4.dp) else PaddingValues(horizontal = 12.dp, vertical = 8.dp)
         Column(modifier = Modifier.fillMaxSize().padding(listPadding)) {
-            // Mode & Profile tag header
+            // Mode Filter Tab Bar & Profile
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = if (isLandscape) 4.dp else 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .horizontalScroll(rememberScrollState()),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    val modeTabs = listOf(
+                        "all" to "All",
+                        "dict" to "Dict",
+                        "compare" to "Compare",
+                        "translate" to "Translate",
+                        "explain" to "Explain"
+                    )
+                    modeTabs.forEach { (modeKey, label) ->
+                        val isSelected = currentModeFilter.equals(modeKey, ignoreCase = true)
+                        val count = modeCounts[modeKey] ?: 0
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { viewModel.setMode(modeKey) },
+                            label = {
+                                Text(
+                                    "$label ($count)",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                )
+                            },
+                            leadingIcon = if (isSelected) {
+                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(12.dp)) }
+                            } else null,
+                            modifier = Modifier.heightIn(max = if (isLandscape) 28.dp else 32.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(6.dp))
                 Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
                 ) {
                     Text(
-                        text = viewModel.currentMode.collectAsState().value.uppercase(),
+                        text = "👤 ${appState.activeProfile?.name ?: "Default"}",
                         style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
-                Text(
-                    text = "Profile: ${appState.activeProfile?.name ?: "Default"}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
             }
 
             // Compact Search Bar
@@ -274,6 +309,14 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Move to Profile", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                     }
+                    if (selectedWordIds.isNotEmpty()) {
+                        IconButton(
+                            onClick = { showMoveSelectedToMode = true },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.CompareArrows, contentDescription = "Move to Mode", tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(18.dp))
+                        }
+                    }
                     IconButton(
                         onClick = {
                             viewModel.deleteSelectedSessions(selectedSessionIds)
@@ -351,6 +394,20 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
             // LazyColumn of sessions & history items
             @OptIn(ExperimentalFoundationApi::class)
             LazyColumn(modifier = Modifier.weight(1f)) {
+                if (history.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(top = 40.dp, bottom = 24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(40.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
+                                Spacer(Modifier.height(8.dp))
+                                Text("No words found in this mode", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
                 // Known Sessions
                 sessions.forEach { session ->
                     val wordsInSession = grouped[session.id] ?: emptyList()
@@ -483,6 +540,8 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                                 isSelectionMode = isSelectionMode,
                                 isChecked = selectedWordIds.contains(word.id),
                                 colors = colors,
+                                isGenerating = activeStreamJobIds.contains(word.id) || (searchViewModel?.isWordGenerating(word.id) == true),
+                                showModeBadge = currentModeFilter.equals("all", ignoreCase = true),
                                 onClick = {
                                     if (isSelectionMode) {
                                         selectedWordIds = if (selectedWordIds.contains(word.id)) selectedWordIds - word.id else selectedWordIds + word.id
@@ -507,6 +566,9 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                                 onMoveToProfile = {
                                     moveTargetWord = word
                                     showMoveToProfile = true
+                                },
+                                onMoveToMode = {
+                                    showMoveTargetWordToMode = word
                                 },
                                 onDelete = { viewModel.deleteWord(word) }
                             )
@@ -584,6 +646,8 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                                 isSelectionMode = isSelectionMode,
                                 isChecked = selectedWordIds.contains(word.id),
                                 colors = colors,
+                                isGenerating = activeStreamJobIds.contains(word.id) || (searchViewModel?.isWordGenerating(word.id) == true),
+                                showModeBadge = currentModeFilter.equals("all", ignoreCase = true),
                                 onClick = {
                                     if (isSelectionMode) {
                                         selectedWordIds = if (selectedWordIds.contains(word.id)) selectedWordIds - word.id else selectedWordIds + word.id
@@ -608,6 +672,9 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                                 onMoveToProfile = {
                                     moveTargetWord = word
                                     showMoveToProfile = true
+                                },
+                                onMoveToMode = {
+                                    showMoveTargetWordToMode = word
                                 },
                                 onDelete = { viewModel.deleteWord(word) }
                             )
@@ -721,6 +788,13 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                                     Icon(Icons.Default.Autorenew, contentDescription = "Restart with Fallback Model", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
                                 }
                             }
+
+                            IconButton(
+                                onClick = { showMoveTargetWordToMode = selectedWord }, 
+                                modifier = Modifier.size(if (isLandscape) 30.dp else 36.dp).background(MaterialTheme.colorScheme.tertiaryContainer, CircleShape)
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.CompareArrows, contentDescription = "Move Mode & Regenerate", tint = MaterialTheme.colorScheme.onTertiaryContainer, modifier = Modifier.size(16.dp))
+                            }
                         }
                     }
                 }
@@ -766,10 +840,26 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                                         .padding(if (isLandscape) 8.dp else 12.dp)
                                 ) {
                                     if (isGenerating) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            com.aidict.app.ui.components.PulsingDots()
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text("Working on it...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                                        val liveStream = searchViewModel?.getWordStream(selectedWord!!.id) ?: ""
+                                        if (liveStream.isNotBlank()) {
+                                            Column {
+                                                com.aidict.app.ui.components.MarkdownText(
+                                                    text = liveStream,
+                                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                                )
+                                                Spacer(Modifier.height(8.dp))
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.5.dp, color = MaterialTheme.colorScheme.primary)
+                                                    Spacer(modifier = Modifier.width(6.dp))
+                                                    Text("Generating response...", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                                                }
+                                            }
+                                        } else {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                com.aidict.app.ui.components.PulsingDots()
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text("Working on it...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                                            }
                                         }
                                     } else {
                                         Column {
@@ -1049,6 +1139,36 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
             }
         )
     }
+
+    if (showMoveTargetWordToMode != null) {
+        com.aidict.app.ui.components.MoveModeDialog(
+            currentMode = showMoveTargetWordToMode!!.mode,
+            onDismiss = { showMoveTargetWordToMode = null },
+            onSelectMode = { targetMode ->
+                val wordToMove = showMoveTargetWordToMode!!
+                searchViewModel?.moveWordToModeAndRegenerate(wordToMove, targetMode)
+                if (selectedWord?.id == wordToMove.id) {
+                    selectedWord = selectedWord?.copy(mode = targetMode)
+                }
+                showMoveTargetWordToMode = null
+            }
+        )
+    }
+
+    if (showMoveSelectedToMode) {
+        com.aidict.app.ui.components.MoveModeDialog(
+            currentMode = "",
+            titleText = "Move Selected Words to Mode",
+            onDismiss = { showMoveSelectedToMode = false },
+            onSelectMode = { targetMode ->
+                viewModel.moveSelectedWordsMode(selectedWordIds, targetMode)
+                isSelectionMode = false
+                selectedSessionIds = emptySet()
+                selectedWordIds = emptySet()
+                showMoveSelectedToMode = false
+            }
+        )
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -1059,11 +1179,14 @@ fun HistoryWordCard(
     isSelectionMode: Boolean,
     isChecked: Boolean,
     colors: List<Pair<String, Color>>,
+    isGenerating: Boolean = false,
+    showModeBadge: Boolean = false,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onCheckChanged: (Boolean) -> Unit,
     onRename: () -> Unit,
     onMoveToProfile: () -> Unit,
+    onMoveToMode: () -> Unit = {},
     onDelete: () -> Unit
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
@@ -1110,19 +1233,67 @@ fun HistoryWordCard(
 
             // Word term & language/stars
             Column(modifier = Modifier.weight(1f)) {
-                androidx.compose.foundation.text.selection.SelectionContainer {
-                    Text(
-                        text = word.term,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    androidx.compose.foundation.text.selection.SelectionContainer(modifier = Modifier.weight(1f, fill = false)) {
+                        Text(
+                            text = word.term,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    if (isGenerating) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(10.dp),
+                                    strokeWidth = 1.5.dp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(
+                                    text = "Generating...",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
                 }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
+                    if (showModeBadge) {
+                        val modeColor = when (word.mode.lowercase()) {
+                            "dict" -> MaterialTheme.colorScheme.primary
+                            "compare" -> MaterialTheme.colorScheme.tertiary
+                            "translate" -> MaterialTheme.colorScheme.secondary
+                            "explain" -> Color(0xFFF59E0B)
+                            else -> MaterialTheme.colorScheme.outline
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = modeColor.copy(alpha = 0.2f)
+                        ) {
+                            Text(
+                                text = word.mode.uppercase(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = modeColor,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                            )
+                        }
+                    }
                     if (!word.language.isNullOrBlank()) {
                         Text(
                             text = word.language,
@@ -1183,6 +1354,14 @@ fun HistoryWordCard(
                             onClick = {
                                 menuExpanded = false
                                 onMoveToProfile()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Move Mode & Regenerate") },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.CompareArrows, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                            onClick = {
+                                menuExpanded = false
+                                onMoveToMode()
                             }
                         )
                         HorizontalDivider()
