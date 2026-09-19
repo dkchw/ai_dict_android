@@ -32,7 +32,6 @@ class BackgroundSyncService : Service() {
         private const val NOTIFICATION_ID = 2002
         const val ACTION_START = "com.aidict.app.action.START_BACKGROUND_SERVICE"
         const val ACTION_STOP = "com.aidict.app.action.STOP_BACKGROUND_SERVICE"
-        const val ACTION_NOTIFICATION_DISMISSED = "com.aidict.app.action.NOTIFICATION_DISMISSED"
 
         private val _isRunning = MutableStateFlow(false)
         val isRunning: StateFlow<Boolean> = _isRunning.asStateFlow()
@@ -40,42 +39,12 @@ class BackgroundSyncService : Service() {
         private val _isNetworkOnline = MutableStateFlow(true)
         val isNetworkOnline: StateFlow<Boolean> = _isNetworkOnline.asStateFlow()
 
-        private var wakeLock: PowerManager.WakeLock? = null
-        private val wakeLockCounter = AtomicInteger(0)
-
-        @Synchronized
         fun acquireWakeLock(context: Context, timeoutMs: Long = 180_000L) {
-            try {
-                wakeLockCounter.incrementAndGet()
-                if (wakeLock == null || !wakeLock!!.isHeld) {
-                    val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
-                    wakeLock = powerManager?.newWakeLock(
-                        PowerManager.PARTIAL_WAKE_LOCK,
-                        "AIDict:BackgroundApiWakeLock"
-                    )?.apply {
-                        setReferenceCounted(false)
-                        acquire(timeoutMs)
-                    }
-                }
-            } catch (e: Exception) {
-                android.util.Log.e("BackgroundSyncService", "Failed to acquire wake lock", e)
-            }
+            // ForegroundService dataSync natively holds execution priority without WakeLock
         }
 
-        @Synchronized
         fun releaseWakeLock() {
-            try {
-                val remaining = wakeLockCounter.decrementAndGet()
-                if (remaining <= 0) {
-                    wakeLockCounter.set(0)
-                    if (wakeLock != null && wakeLock!!.isHeld) {
-                        wakeLock?.release()
-                    }
-                    wakeLock = null
-                }
-            } catch (e: Exception) {
-                android.util.Log.e("BackgroundSyncService", "Failed to release wake lock", e)
-            }
+            // No-op
         }
 
         fun start(context: Context) {
@@ -138,16 +107,6 @@ class BackgroundSyncService : Service() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
-            val dismissIntent = Intent(context, BackgroundSyncService::class.java).apply {
-                action = ACTION_NOTIFICATION_DISMISSED
-            }
-            val pendingDismiss = PendingIntent.getService(
-                context,
-                2,
-                dismissIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-
             return NotificationCompat.Builder(context, AiDictApplication.BACKGROUND_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle("AI Dict 24/7 Engine")
@@ -156,7 +115,6 @@ class BackgroundSyncService : Service() {
                 .setAutoCancel(false)
                 .setSilent(true)
                 .setContentIntent(pendingOpen)
-                .setDeleteIntent(pendingDismiss)
                 .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Stop 24/7 Mode", pendingStop)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .build()
@@ -175,7 +133,6 @@ class BackgroundSyncService : Service() {
     private var connectivityManager: ConnectivityManager? = null
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
-    private var watchdogJob: Job? = null
     private var currentStatusText = "Running 24/7 in background. API calls & searches active."
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -185,30 +142,11 @@ class BackgroundSyncService : Service() {
         _isRunning.value = true
         setupNetworkMonitoring()
         startInForeground()
-
-        // Persistent Watchdog: If notification is swiped or cleared on Android 14+, resurrect it immediately
-        watchdogJob = serviceScope.launch {
-            while (isActive && _isRunning.value) {
-                delay(5_000L)
-                if (_isRunning.value) {
-                    try {
-                        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-                        val isShown = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                            manager?.activeNotifications?.any { it.id == NOTIFICATION_ID } == true
-                        } else true
-                        if (!isShown) {
-                            startInForeground()
-                        }
-                    } catch (ignored: Exception) {}
-                }
-            }
-        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
             _isRunning.value = false
-            watchdogJob?.cancel()
             try {
                 CoroutineScope(Dispatchers.IO).launch {
                     val db = AppDatabase.getDatabase(applicationContext)
@@ -220,14 +158,6 @@ class BackgroundSyncService : Service() {
             manager?.cancel(NOTIFICATION_ID)
             stopSelf()
             return START_NOT_STICKY
-        }
-
-        if (intent?.action == ACTION_NOTIFICATION_DISMISSED) {
-            // User cleared or swiped the notification away; resurrect it immediately if 24/7 is enabled
-            if (_isRunning.value) {
-                startInForeground()
-            }
-            return START_STICKY
         }
 
         startInForeground()
@@ -285,7 +215,6 @@ class BackgroundSyncService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         _isRunning.value = false
-        watchdogJob?.cancel()
         serviceScope.cancel()
         try {
             CoroutineScope(Dispatchers.IO).launch {
@@ -295,13 +224,6 @@ class BackgroundSyncService : Service() {
         } catch (ignored: Exception) {}
         try {
             networkCallback?.let { connectivityManager?.unregisterNetworkCallback(it) }
-        } catch (ignored: Exception) {}
-        try {
-            if (wakeLock != null && wakeLock!!.isHeld) {
-                wakeLock?.release()
-            }
-            wakeLock = null
-            wakeLockCounter.set(0)
         } catch (ignored: Exception) {}
     }
 }
