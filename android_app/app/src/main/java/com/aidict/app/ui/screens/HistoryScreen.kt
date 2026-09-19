@@ -89,6 +89,13 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
             isDetailMaximized = false
         }
     }
+
+    LaunchedEffect(currentModeFilter) {
+        if (selectedWord != null && !selectedWord!!.mode.equals(currentModeFilter, ignoreCase = true)) {
+            selectedWord = null
+            viewModel.setSelectedWordId(null)
+        }
+    }
     
     if (isSelectionMode) {
         BackHandler {
@@ -149,7 +156,6 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     val modeTabs = listOf(
-                        "all" to "All",
                         "dict" to "Dict",
                         "compare" to "Compare",
                         "translate" to "Translate",
@@ -541,7 +547,7 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                                 isChecked = selectedWordIds.contains(word.id),
                                 colors = colors,
                                 isGenerating = activeStreamJobIds.contains(word.id) || (searchViewModel?.isWordGenerating(word.id) == true),
-                                showModeBadge = currentModeFilter.equals("all", ignoreCase = true),
+                                showModeBadge = false,
                                 onClick = {
                                     if (isSelectionMode) {
                                         selectedWordIds = if (selectedWordIds.contains(word.id)) selectedWordIds - word.id else selectedWordIds + word.id
@@ -647,7 +653,7 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                                 isChecked = selectedWordIds.contains(word.id),
                                 colors = colors,
                                 isGenerating = activeStreamJobIds.contains(word.id) || (searchViewModel?.isWordGenerating(word.id) == true),
-                                showModeBadge = currentModeFilter.equals("all", ignoreCase = true),
+                                showModeBadge = false,
                                 onClick = {
                                     if (isSelectionMode) {
                                         selectedWordIds = if (selectedWordIds.contains(word.id)) selectedWordIds - word.id else selectedWordIds + word.id

@@ -75,6 +75,7 @@ fun AppNavigation(
     settingsViewModel: SettingsViewModel,
     notesViewModel: NotesViewModel,
     initialMode: Int = 0,
+    navigationTrigger: Long = 0L,
     onColorExtracted: (androidx.compose.ui.graphics.Color?) -> Unit
 ) {
     val isExpanded = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Expanded
@@ -116,6 +117,15 @@ fun AppNavigation(
     val coroutineScope = rememberCoroutineScope()
     val pagerState = androidx.compose.foundation.pager.rememberPagerState(initialPage = initialMode, pageCount = { 4 })
     val currentMode = pagerState.targetPage
+
+    LaunchedEffect(initialMode, navigationTrigger) {
+        if (navigationTrigger > 0L) {
+            currentScreen = Screen.MAIN
+            if (pagerState.currentPage != initialMode) {
+                pagerState.scrollToPage(initialMode)
+            }
+        }
+    }
 
 
     val currentSearchState = when (currentMode) {
@@ -258,6 +268,14 @@ fun AppNavigation(
                     if (currentScreen == Screen.MAIN) {
                         IconButton(onClick = { 
                             appViewModel.clearHistoryUnseen()
+                            val modeStr = when (currentMode) {
+                                0 -> "dict"
+                                1 -> "compare"
+                                2 -> "translate"
+                                3 -> "explain"
+                                else -> "dict"
+                            }
+                            historyViewModel.setMode(modeStr)
                             currentScreen = Screen.HISTORY 
                         }) {
                             if (appState.unseenHistoryItems > 0) {
@@ -469,6 +487,14 @@ fun AppNavigation(
                     if (pullRefreshState.isRefreshing) {
                         LaunchedEffect(Unit) {
                             appViewModel.clearHistoryUnseen()
+                            val modeStr = when (currentMode) {
+                                0 -> "dict"
+                                1 -> "compare"
+                                2 -> "translate"
+                                3 -> "explain"
+                                else -> "dict"
+                            }
+                            historyViewModel.setMode(modeStr)
                             currentScreen = Screen.HISTORY
                             pullRefreshState.endRefresh()
                         }

@@ -22,7 +22,7 @@ class HistoryViewModel(private val database: AppDatabase) : ViewModel() {
     fun toggleSearchInOutput() { searchInOutput.value = !searchInOutput.value }
     private val selectedColor = MutableStateFlow<String?>(null)
     private val selectedStars = MutableStateFlow<Int?>(null)
-    val currentMode = MutableStateFlow("all")
+    val currentMode = MutableStateFlow("dict")
     
     val colorFilter: StateFlow<String?> = selectedColor
     val starsFilter: StateFlow<Int?> = selectedStars
@@ -45,8 +45,7 @@ class HistoryViewModel(private val database: AppDatabase) : ViewModel() {
 
     val modeCounts: StateFlow<Map<String, Int>> = allProfileWords.map { words ->
         mapOf(
-            "all" to words.size,
-            "dict" to words.count { it.mode.equals("dict", ignoreCase = true) },
+            "dict" to words.count { (it.mode.ifBlank { "dict" }).equals("dict", ignoreCase = true) },
             "compare" to words.count { it.mode.equals("compare", ignoreCase = true) },
             "translate" to words.count { it.mode.equals("translate", ignoreCase = true) },
             "explain" to words.count { it.mode.equals("explain", ignoreCase = true) }
@@ -55,8 +54,7 @@ class HistoryViewModel(private val database: AppDatabase) : ViewModel() {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val allHistory: StateFlow<List<Word>> = combine(allProfileWords, currentMode) { words, mode ->
-        if (mode == "all" || mode.isBlank()) words
-        else words.filter { it.mode.equals(mode, ignoreCase = true) }
+        words.filter { (it.mode.ifBlank { "dict" }).equals(mode, ignoreCase = true) }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -103,7 +101,7 @@ class HistoryViewModel(private val database: AppDatabase) : ViewModel() {
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     
     fun setMode(mode: String) {
-        currentMode.value = mode
+        currentMode.value = if (mode.isBlank() || mode.equals("all", ignoreCase = true)) "dict" else mode.lowercase()
     }
 
     fun updateSearchQuery(query: String) {

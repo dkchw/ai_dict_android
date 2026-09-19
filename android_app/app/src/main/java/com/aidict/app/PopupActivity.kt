@@ -47,6 +47,9 @@ class PopupActivity : ComponentActivity() {
         var isVisible = false
     }
 
+    private data class SearchTrigger(val text: String, val timestamp: Long = System.currentTimeMillis())
+    private val pendingTrigger = androidx.compose.runtime.mutableStateOf<SearchTrigger?>(null)
+
     override fun onStart() {
         super.onStart()
         isVisible = true
@@ -59,21 +62,34 @@ class PopupActivity : ComponentActivity() {
     
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         if (intent.action == "CLOSE_POPUP") {
             finish()
+            return
         }
+        val textExtra = extractText(intent)
+        if (textExtra.isNotBlank()) {
+            pendingTrigger.value = SearchTrigger(textExtra)
+        }
+    }
+
+    private fun extractText(intent: Intent?): String {
+        if (intent == null) return ""
+        return intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString()
+            ?: intent.getStringExtra(Intent.EXTRA_TEXT)
+            ?: intent.getStringExtra("EXTRA_QUERY")
+            ?: intent.getStringExtra(android.app.SearchManager.QUERY)
+            ?: ""
     }
 
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        val textExtra = intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString()
-            ?: intent.getStringExtra(Intent.EXTRA_TEXT)
-            ?: intent.getStringExtra("EXTRA_QUERY")
-            ?: intent.getStringExtra(android.app.SearchManager.QUERY)
-            ?: ""
-
+        val initialText = extractText(intent)
+        if (initialText.isNotBlank()) {
+            pendingTrigger.value = SearchTrigger(initialText)
+        }
         
         val database = AppDatabase.getDatabase(this)
         val repository = LlmRepository(database)
@@ -100,30 +116,32 @@ class PopupActivity : ComponentActivity() {
             val settingsViewModel: SettingsViewModel = viewModel(factory = factory)
             val notesViewModel: NotesViewModel = viewModel(factory = factory)
             
-            val words = textExtra.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+            val currentTrigger = pendingTrigger.value
+            val targetQuery = currentTrigger?.text?.trim() ?: ""
+            val words = if (targetQuery.isNotBlank()) targetQuery.split(Regex("\\s+")).filter { it.isNotBlank() } else emptyList()
             val isMultiWordExplain = words.size > 3
-            val initialMode = if (isMultiWordExplain) 3 else 0
+            val targetMode = if (isMultiWordExplain) 3 else 0
 
-            LaunchedEffect(Unit) {
-                if (textExtra.isNotBlank()) {
+            LaunchedEffect(currentTrigger) {
+                if (currentTrigger != null && currentTrigger.text.isNotBlank()) {
+                    val text = currentTrigger.text.trim()
+                    val queryWords = text.split(Regex("\\s+")).filter { it.isNotBlank() }
+                    val explainMode = queryWords.size > 3
+
                     kotlinx.coroutines.delay(100) // Brief delay to ensure UI and AppViewModel are ready
                     val profileId = appViewModel.uiState.value.activeProfile?.id ?: 1
-                    if (isMultiWordExplain) {
-                        if (searchViewModel.explainInput.isBlank()) {
-                            searchViewModel.clearCurrentSearch()
-                            searchViewModel.explainInput = textExtra
-                            val sourceLang = searchViewModel.getProfileSetting(profileId, "EXPLAIN_SOURCE") ?: "Auto Detect"
-                            val targetLang = searchViewModel.getProfileSetting(profileId, "EXPLAIN_TARGET") ?: "English"
-                            searchViewModel.streamExplain(textExtra, sourceLang, targetLang, profileId)
-                        }
+                    if (explainMode) {
+                        searchViewModel.clearCurrentSearch("explain")
+                        searchViewModel.explainInput = text
+                        val sourceLang = searchViewModel.getProfileSetting(profileId, "EXPLAIN_SOURCE") ?: "Auto Detect"
+                        val targetLang = searchViewModel.getProfileSetting(profileId, "EXPLAIN_TARGET") ?: "English"
+                        searchViewModel.streamExplain(text, sourceLang, targetLang, profileId)
                     } else {
-                        if (searchViewModel.searchInput.isBlank()) {
-                            searchViewModel.clearCurrentSearch()
-                            searchViewModel.searchInput = textExtra
-                            val sourceLang = searchViewModel.getProfileSetting(profileId, "DICT_SOURCE") ?: "Auto Detect"
-                            val targetLang = searchViewModel.getProfileSetting(profileId, "DICT_TARGET") ?: "English"
-                            searchViewModel.searchWord(textExtra, sourceLang, targetLang, profileId)
-                        }
+                        searchViewModel.clearCurrentSearch("dict")
+                        searchViewModel.searchInput = text
+                        val sourceLang = searchViewModel.getProfileSetting(profileId, "DICT_SOURCE") ?: "Auto Detect"
+                        val targetLang = searchViewModel.getProfileSetting(profileId, "DICT_TARGET") ?: "English"
+                        searchViewModel.searchWord(text, sourceLang, targetLang, profileId)
                     }
                 }
             }
@@ -226,7 +244,8 @@ class PopupActivity : ComponentActivity() {
                                 historyViewModel = historyViewModel,
                                 settingsViewModel = settingsViewModel,
                                 notesViewModel = notesViewModel,
-                                initialMode = initialMode,
+                                initialMode = targetMode,
+                                navigationTrigger = currentTrigger?.timestamp ?: 0L,
                                 onColorExtracted = { dynamicColorState.value = it }
                             )
                         }
