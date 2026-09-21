@@ -11,8 +11,8 @@ Furthermore, this application itself was extensively developed, refactored, and 
 When you use AI Dict, you aren't just talking to a generic chatbot. The app dynamically swaps out System Prompts, Models, and strict instructional guardrails to spawn specialized "Agents" for the task at hand.
 
 ### 📚 The Lexicographer (Dictionary Agent)
-* **Goal:** Act as a comprehensive dictionary assistant.
-* **Mechanism:** Strictly outputs definitions, phonetics, synonyms, and etymology in the *Target* language while structurally analyzing the word from the *Source* language. 
+* **Goal:** Comprehensive dictionary and active language production assistant.
+* **Mechanism:** Anchored on the principle of *Production Over Recognition*, it structurally analyzes source inputs (words, phrases, collocations) while strictly delivering explanations, definitions, etymology, chunks/collocations, verb patterns/prepositions, phrasal verbs, circumlocutions/paraphrases, and active retrieval production drills in the *Target* language. 
 
 ### ⚖️ The Nuance Analyst (Compare Agent)
 * **Goal:** Exhaustive and practical comparison of synonyms.
@@ -54,6 +54,7 @@ The architecture, Jetpack Compose layouts, Room Database integrations, LLM strea
 * **Resilient 24/7 Background Engine & Robust WakeLock Architecture:** Re-architected the 24/7 background foreground service with non-leaking, synchronized `PARTIAL_WAKE_LOCK` management for uninterrupted LLM network streaming during sleep. Restored notification dismissal resurrection (`ACTION_NOTIFICATION_DISMISSED`) and a lightweight 15-second watchdog to keep the 24/7 foreground service alive across aggressive OEM task killers, while fully aligning `FOREGROUND_SERVICE_SPECIAL_USE`, `WAKE_LOCK`, and `REQUEST_INSTALL_PACKAGES` permissions.
 * **The Fifth Agent ("Correct" Mode) & Persistent Multi-Mode Engine:** Architected and integrated the fifth specialized agent ("Correct") combining dual-phase grammar correction and contextual translation according to `Fifth_Mode.md`. Implemented seamless in-place switching between "Correction and Translation" and "Correction-Only" modes with remembered profile preferences, 300ms debounced draft persistence (`CORRECT_DRAFT`), isolated `SearchState` streams, independent history counters and filters, custom profile AI model/reasoning/prompt configurations, and universal cross-mode regeneration.
 * **Chat Header Ellipsis, Full-Text Inspector & In-Place Rename Engine:** Resolved chat header UI bleeding and layout truncation caused by multi-line paragraph queries. Implemented single-line ellipsis (`maxLines = 1, overflow = TextOverflow.Ellipsis`) headers with visual edit pencil indicators (`ChatHeaderTitle`) across Dictionary, Compare, Translate, Explain, and Correct modes, as well as the History inspection pane. Integrated a comprehensive dialog (`RenameWordDialog`) enabling users to inspect the complete, untruncated original query in a scrollable container and immediately rename chats in-place with real-time SQLite and reactive StateFlow synchronization, bypassing the need to navigate to History.
+* **Production-Centric Dictionary Engine & Global Prompt Overhaul:** Upgraded the default global Lexicographer prompt according to `Update_Dict_Prompt.md`. Enforces mandatory target explanation language compliance without English fallbacks when non-English target languages are selected, embeds natural multi-word chunks and collocations, verb-preposition patterns, common phrasal verbs, circumlocution/paraphrase fallbacks, and active retrieval production drills (idea → source language) to foster active spoken and written language production over passive recognition.
 
 
 
