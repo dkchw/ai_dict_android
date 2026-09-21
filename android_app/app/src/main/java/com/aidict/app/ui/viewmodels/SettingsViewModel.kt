@@ -65,11 +65,11 @@ class SettingsViewModel(
     val appTheme = getSettingFlow("APP_THEME", "tokyonight")
 
 
-    val dictModel = getSettingFlow("DICT_MODEL", "~deepseek/deepseek-v4-flash-latest")
-    val compareModel = getSettingFlow("COMPARE_MODEL", "~deepseek/deepseek-v4-flash-latest")
-    val explainModel = getSettingFlow("EXPLAIN_MODEL", "~deepseek/deepseek-v4-flash-latest")
-    val translateModel = getSettingFlow("TRANSLATE_MODEL", "~deepseek/deepseek-v4-flash-latest")
-    val correctModel = getSettingFlow("CORRECT_MODEL", "~deepseek/deepseek-v4-flash-latest")
+    val dictModel = getSettingFlow("DICT_MODEL", "deepseek/deepseek-v4-flash-0731")
+    val compareModel = getSettingFlow("COMPARE_MODEL", "deepseek/deepseek-v4-flash-0731")
+    val explainModel = getSettingFlow("EXPLAIN_MODEL", "deepseek/deepseek-v4-flash-0731")
+    val translateModel = getSettingFlow("TRANSLATE_MODEL", "deepseek/deepseek-v4-flash-0731")
+    val correctModel = getSettingFlow("CORRECT_MODEL", "deepseek/deepseek-v4-flash-0731")
     
     val dictReasoning = getSettingFlow("DICT_REASONING", "default")
     val compareReasoning = getSettingFlow("COMPARE_REASONING", "default")
@@ -84,7 +84,7 @@ class SettingsViewModel(
     val persistentBackground = getSettingFlow("PERSISTENT_BACKGROUND_SERVICE", "false")
     
     val fallbackModels = getSettingFlow("FALLBACK_MODELS", "google/gemini-3.8-flash")
-    val chatModel = getSettingFlow("CHAT_MODEL", "~deepseek/deepseek-v4-flash-latest")
+    val chatModel = getSettingFlow("CHAT_MODEL", "deepseek/deepseek-v4-flash-0731")
 
     val dictPrompt = getSettingFlow("DICT_PROMPT", DefaultPrompts.DICT_PROMPT)
     val explainPrompt = getSettingFlow("EXPLAIN_PROMPT", DefaultPrompts.EXPLAIN_PROMPT)
@@ -141,13 +141,13 @@ class SettingsViewModel(
             }
         }
 
-        val dModel = resolveItem("DICT_MODEL", "~deepseek/deepseek-v4-flash-latest")
-        val cModel = resolveItem("COMPARE_MODEL", "~deepseek/deepseek-v4-flash-latest")
-        val eModel = resolveItem("EXPLAIN_MODEL", "~deepseek/deepseek-v4-flash-latest")
-        val tModel = resolveItem("TRANSLATE_MODEL", "~deepseek/deepseek-v4-flash-latest")
-        val crModel = resolveItem("CORRECT_MODEL", "~deepseek/deepseek-v4-flash-latest")
+        val dModel = resolveItem("DICT_MODEL", "deepseek/deepseek-v4-flash-0731")
+        val cModel = resolveItem("COMPARE_MODEL", "deepseek/deepseek-v4-flash-0731")
+        val eModel = resolveItem("EXPLAIN_MODEL", "deepseek/deepseek-v4-flash-0731")
+        val tModel = resolveItem("TRANSLATE_MODEL", "deepseek/deepseek-v4-flash-0731")
+        val crModel = resolveItem("CORRECT_MODEL", "deepseek/deepseek-v4-flash-0731")
         val fModel = resolveItem("FALLBACK_MODELS", "google/gemini-3.8-flash")
-        val chModel = resolveItem("CHAT_MODEL", "~deepseek/deepseek-v4-flash-latest")
+        val chModel = resolveItem("CHAT_MODEL", "deepseek/deepseek-v4-flash-0731")
 
         val dReasoning = resolveItem("DICT_REASONING", "default")
         val cReasoning = resolveItem("COMPARE_REASONING", "default")
@@ -201,13 +201,13 @@ class SettingsViewModel(
         ProfileAiConfig(
             selectedProfileId = null,
             selectedProfileName = "Global Defaults",
-            dictModel = ProfileSettingItem("DICT_MODEL", "~deepseek/deepseek-v4-flash-latest", false, "~deepseek/deepseek-v4-flash-latest", "~deepseek/deepseek-v4-flash-latest"),
-            compareModel = ProfileSettingItem("COMPARE_MODEL", "~deepseek/deepseek-v4-flash-latest", false, "~deepseek/deepseek-v4-flash-latest", "~deepseek/deepseek-v4-flash-latest"),
-            explainModel = ProfileSettingItem("EXPLAIN_MODEL", "~deepseek/deepseek-v4-flash-latest", false, "~deepseek/deepseek-v4-flash-latest", "~deepseek/deepseek-v4-flash-latest"),
-            translateModel = ProfileSettingItem("TRANSLATE_MODEL", "~deepseek/deepseek-v4-flash-latest", false, "~deepseek/deepseek-v4-flash-latest", "~deepseek/deepseek-v4-flash-latest"),
-            correctModel = ProfileSettingItem("CORRECT_MODEL", "~deepseek/deepseek-v4-flash-latest", false, "~deepseek/deepseek-v4-flash-latest", "~deepseek/deepseek-v4-flash-latest"),
+            dictModel = ProfileSettingItem("DICT_MODEL", "deepseek/deepseek-v4-flash-0731", false, "deepseek/deepseek-v4-flash-0731", "deepseek/deepseek-v4-flash-0731"),
+            compareModel = ProfileSettingItem("COMPARE_MODEL", "deepseek/deepseek-v4-flash-0731", false, "deepseek/deepseek-v4-flash-0731", "deepseek/deepseek-v4-flash-0731"),
+            explainModel = ProfileSettingItem("EXPLAIN_MODEL", "deepseek/deepseek-v4-flash-0731", false, "deepseek/deepseek-v4-flash-0731", "deepseek/deepseek-v4-flash-0731"),
+            translateModel = ProfileSettingItem("TRANSLATE_MODEL", "deepseek/deepseek-v4-flash-0731", false, "deepseek/deepseek-v4-flash-0731", "deepseek/deepseek-v4-flash-0731"),
+            correctModel = ProfileSettingItem("CORRECT_MODEL", "deepseek/deepseek-v4-flash-0731", false, "deepseek/deepseek-v4-flash-0731", "deepseek/deepseek-v4-flash-0731"),
             fallbackModels = ProfileSettingItem("FALLBACK_MODELS", "google/gemini-3.8-flash", false, "google/gemini-3.8-flash", "google/gemini-3.8-flash"),
-            chatModel = ProfileSettingItem("CHAT_MODEL", "~deepseek/deepseek-v4-flash-latest", false, "~deepseek/deepseek-v4-flash-latest", "~deepseek/deepseek-v4-flash-latest"),
+            chatModel = ProfileSettingItem("CHAT_MODEL", "deepseek/deepseek-v4-flash-0731", false, "deepseek/deepseek-v4-flash-0731", "deepseek/deepseek-v4-flash-0731"),
             dictReasoning = ProfileSettingItem("DICT_REASONING", "default", false, "default", "default"),
             compareReasoning = ProfileSettingItem("COMPARE_REASONING", "default", false, "default", "default"),
             explainReasoning = ProfileSettingItem("EXPLAIN_REASONING", "default", false, "default", "default"),
@@ -282,14 +282,14 @@ class SettingsViewModel(
     init {
         viewModelScope.launch {
             try {
-                val oldModel = "inclusionai/ling-3.0-flash"
-                val newDefaultModel = "~deepseek/deepseek-v4-flash-latest"
+                val oldModels = setOf("inclusionai/ling-3.0-flash", "~deepseek/deepseek-v4-flash-latest")
+                val newDefaultModel = "deepseek/deepseek-v4-flash-0731"
                 val newFallbackModel = "google/gemini-3.8-flash"
                 val allSettings = database.appDao().getAllSettings()
                 for (setting in allSettings) {
-                    if (setting.value == oldModel) {
+                    if (setting.value in oldModels) {
                         database.appDao().insertSetting(setting.copy(value = newDefaultModel))
-                    } else if (setting.key.endsWith("FALLBACK_MODELS") && (setting.value == oldModel || setting.value == newDefaultModel)) {
+                    } else if (setting.key.endsWith("FALLBACK_MODELS") && (setting.value in oldModels || setting.value == newDefaultModel)) {
                         database.appDao().insertSetting(setting.copy(value = newFallbackModel))
                     }
                 }

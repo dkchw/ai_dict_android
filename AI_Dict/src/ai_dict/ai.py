@@ -316,7 +316,7 @@ async def chat_conversation(topic: str, session: Session, explicit_model: str = 
     if conv and conv.system_prompt:
         prompt = conv.system_prompt
         
-    model = explicit_model or get_model(session, "CONVERSATION_MODEL") or get_model(session, "MAIN_MODEL") or "~deepseek/deepseek-v4-flash-latest"
+    model = explicit_model or get_model(session, "CONVERSATION_MODEL") or get_model(session, "MAIN_MODEL") or "deepseek/deepseek-v4-flash-0731"
     if conv and conv.model:
         model = conv.model
         
@@ -359,7 +359,7 @@ async def correct_text(text: str, session: Session, explicit_model: str = None, 
     )
     
     prompt = system_prompt if system_prompt else get_correction_prompt(session)
-    model = explicit_model or get_model(session, "CORRECTION_MODEL") or get_model(session, "MAIN_MODEL") or "~deepseek/deepseek-v4-flash-latest"
+    model = explicit_model or get_model(session, "CORRECTION_MODEL") or get_model(session, "MAIN_MODEL") or "deepseek/deepseek-v4-flash-0731"
     
     kwargs = {"model": model, "messages": [
                 {"role": "system", "content": prompt},
@@ -380,7 +380,7 @@ async def generate_title(text: str, session: Session) -> str:
     prompt = "You are a helpful assistant. Generate a very short, concise title (max 5 words) that summarizes the core topic of the following text. Do not use quotes, punctuation, or generic prefixes like 'Title:'."
     try:
         response = await client.chat.completions.create(
-            model="~deepseek/deepseek-v4-flash-latest",
+            model="deepseek/deepseek-v4-flash-0731",
             messages=[{"role": "system", "content": prompt}, {"role": "user", "content": text}]
         )
         title = response.choices[0].message.content.strip(' "''\n')

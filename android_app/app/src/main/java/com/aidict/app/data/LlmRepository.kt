@@ -201,7 +201,7 @@ class LlmRepository(private val database: AppDatabase) {
     }
 
     fun streamExplanation(term: String, sourceLang: String, targetLang: String, profileId: Int = 1): Flow<String> = flow {
-        val model = getProfileOrGlobalSetting(profileId, "DICT_MODEL", "~deepseek/deepseek-v4-flash-latest")
+        val model = getProfileOrGlobalSetting(profileId, "DICT_MODEL", "deepseek/deepseek-v4-flash-0731")
         val promptTemplate = getProfileOrGlobalSetting(profileId, "DICT_PROMPT", com.aidict.app.utils.DefaultPrompts.DICT_PROMPT)
         val fallbackModel = getProfileOrGlobalSetting(profileId, "FALLBACK_MODELS", "google/gemini-3.8-flash")
         val modelsList = if (fallbackModel.isNotBlank() && fallbackModel != model) listOf(model, fallbackModel) else null
@@ -224,7 +224,7 @@ class LlmRepository(private val database: AppDatabase) {
     }.flowOn(Dispatchers.IO)
 
     fun streamExplain(text: String, sourceLang: String, targetLang: String, profileId: Int = 1): Flow<String> = flow {
-        val model = getProfileOrGlobalSetting(profileId, "EXPLAIN_MODEL", "~deepseek/deepseek-v4-flash-latest")
+        val model = getProfileOrGlobalSetting(profileId, "EXPLAIN_MODEL", "deepseek/deepseek-v4-flash-0731")
         val promptTemplate = getProfileOrGlobalSetting(profileId, "EXPLAIN_PROMPT", com.aidict.app.utils.DefaultPrompts.EXPLAIN_PROMPT)
         val fallbackModel = getProfileOrGlobalSetting(profileId, "FALLBACK_MODELS", "google/gemini-3.8-flash")
         val modelsList = if (fallbackModel.isNotBlank() && fallbackModel != model) listOf(model, fallbackModel) else null
@@ -246,7 +246,7 @@ class LlmRepository(private val database: AppDatabase) {
     }.flowOn(Dispatchers.IO)
 
     fun streamTranslation(sourceText: String, sourceLang: String, targetLang: String, profileId: Int = 1): Flow<String> = flow {
-        val model = getProfileOrGlobalSetting(profileId, "TRANSLATE_MODEL", "~deepseek/deepseek-v4-flash-latest")
+        val model = getProfileOrGlobalSetting(profileId, "TRANSLATE_MODEL", "deepseek/deepseek-v4-flash-0731")
         val promptTemplate = getProfileOrGlobalSetting(profileId, "TRANSLATE_PROMPT", com.aidict.app.utils.DefaultPrompts.TRANSLATE_PROMPT)
         val fallbackModel = getProfileOrGlobalSetting(profileId, "FALLBACK_MODELS", "google/gemini-3.8-flash")
         val modelsList = if (fallbackModel.isNotBlank() && fallbackModel != model) listOf(model, fallbackModel) else null
@@ -269,7 +269,7 @@ class LlmRepository(private val database: AppDatabase) {
     }.flowOn(Dispatchers.IO)
 
     fun streamCompare(words: String, sourceLang: String, targetLang: String, profileId: Int = 1): Flow<String> = flow {
-        val model = getProfileOrGlobalSetting(profileId, "COMPARE_MODEL", "~deepseek/deepseek-v4-flash-latest")
+        val model = getProfileOrGlobalSetting(profileId, "COMPARE_MODEL", "deepseek/deepseek-v4-flash-0731")
         val promptTemplate = getProfileOrGlobalSetting(profileId, "COMPARE_PROMPT", com.aidict.app.utils.DefaultPrompts.COMPARE_PROMPT)
         val fallbackModel = getProfileOrGlobalSetting(profileId, "FALLBACK_MODELS", "google/gemini-3.8-flash")
         val modelsList = if (fallbackModel.isNotBlank() && fallbackModel != model) listOf(model, fallbackModel) else null
@@ -291,7 +291,7 @@ class LlmRepository(private val database: AppDatabase) {
     }.flowOn(Dispatchers.IO)
 
     fun streamCorrect(text: String, sourceLang: String, targetLang: String, isCorrectionOnly: Boolean, profileId: Int = 1): Flow<String> = flow {
-        val model = getProfileOrGlobalSetting(profileId, "CORRECT_MODEL", "~deepseek/deepseek-v4-flash-latest")
+        val model = getProfileOrGlobalSetting(profileId, "CORRECT_MODEL", "deepseek/deepseek-v4-flash-0731")
         val promptTemplate = getProfileOrGlobalSetting(profileId, "CORRECT_PROMPT", com.aidict.app.utils.DefaultPrompts.CORRECT_PROMPT)
         val fallbackModel = getProfileOrGlobalSetting(profileId, "FALLBACK_MODELS", "google/gemini-3.8-flash")
         val modelsList = if (fallbackModel.isNotBlank() && fallbackModel != model) listOf(model, fallbackModel) else null
@@ -344,7 +344,7 @@ class LlmRepository(private val database: AppDatabase) {
         } else {
             "CHAT_REASONING"
         }
-        val configuredModel = getProfileOrGlobalSetting(profileId, defaultModelKey, getProfileOrGlobalSetting(profileId, "CHAT_MODEL", "~deepseek/deepseek-v4-flash-latest"))
+        val configuredModel = getProfileOrGlobalSetting(profileId, defaultModelKey, getProfileOrGlobalSetting(profileId, "CHAT_MODEL", "deepseek/deepseek-v4-flash-0731"))
         val fallbackModel = getProfileOrGlobalSetting(profileId, "FALLBACK_MODELS", "google/gemini-3.8-flash")
         val model = if (forceFallback && fallbackModel.isNotBlank()) fallbackModel else configuredModel
         val modelsList = if (!forceFallback && fallbackModel.isNotBlank() && fallbackModel != model) listOf(model, fallbackModel) else null

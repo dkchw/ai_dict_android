@@ -16,9 +16,9 @@ if os.path.exists(local_db) and not os.path.exists(db_path):
 
 class Settings(BaseSettings):
     openrouter_api_key: str = ""
-    default_model: str = "~deepseek/deepseek-v4-flash-latest"
-    chat_model: str = "~deepseek/deepseek-v4-flash-latest"
-    compare_model: str = "~deepseek/deepseek-v4-flash-latest"
+    default_model: str = "deepseek/deepseek-v4-flash-0731"
+    chat_model: str = "deepseek/deepseek-v4-flash-0731"
+    compare_model: str = "deepseek/deepseek-v4-flash-0731"
     fallback_models: str = "google/gemini-3.8-flash"
     database_url: str = f"sqlite:///{db_path}"
 
