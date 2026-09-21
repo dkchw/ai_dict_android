@@ -26,6 +26,10 @@ When you use AI Dict, you aren't just talking to a generic chatbot. The app dyna
 * **Goal:** Deep semantic and grammatical analysis of large text blocks.
 * **Mechanism:** Breaks down long sentences or paragraphs to highlight vocabulary, syntax structure, cultural references, and overall semantic nuance.
 
+### ✍️ The Stylist & Interpreter (Correct Agent)
+* **Goal:** Dual-phase grammar refinement and contextual interpretation.
+* **Mechanism:** Orchestrates a strict pipeline consisting of a **Corrector Phase** (detects errors, crafts an Improved Natural Edition in the source language, and explains linguistic choices) followed optionally by a **Translator Phase** (generates the Best Translation with vocabulary and sentence structure analysis). Supports user-toggled "Correction and Translation" vs "Correction-Only" modes, persistent language preferences per profile, and language-code marker heuristics (e.g. `de-`, `-deu`).
+
 ---
 
 ## 2. The AI Engineering Ledger (Development)
@@ -48,6 +52,7 @@ The architecture, Jetpack Compose layouts, Room Database integrations, LLM strea
 * **Resilient Reactive History & Live Streaming Dashboard:** Completely redesigned History architecture by decoupling mode queries from Pager indices, preventing history zeroing/disappearance during background generation. Engineered a reactive Mode Filter Bar (`Dict`, `Compare`, `Translate`, `Explain`), live "Generating..." card indicators, and in-place real-time Markdown streaming within the History inspection panel.
 * **Instant Intent Search & Strict Mode-Independent History Segregation:** Eliminated text selection popup stale input locks by enforcing fresh intent overrides and multi-intent triggers across `onCreate` and `onNewIntent`. Re-engineered the History architecture into strictly isolated, independent streams per mode (`Dict`, `Compare`, `Translate`, `Explain`), eliminating mode mixing while synchronizing active mode context directly from navigation entry points.
 * **Resilient 24/7 Background Engine & Robust WakeLock Architecture:** Re-architected the 24/7 background foreground service with non-leaking, synchronized `PARTIAL_WAKE_LOCK` management for uninterrupted LLM network streaming during sleep. Restored notification dismissal resurrection (`ACTION_NOTIFICATION_DISMISSED`) and a lightweight 15-second watchdog to keep the 24/7 foreground service alive across aggressive OEM task killers, while fully aligning `FOREGROUND_SERVICE_SPECIAL_USE`, `WAKE_LOCK`, and `REQUEST_INSTALL_PACKAGES` permissions.
+* **The Fifth Agent ("Correct" Mode) & Persistent Multi-Mode Engine:** Architected and integrated the fifth specialized agent ("Correct") combining dual-phase grammar correction and contextual translation according to `Fifth_Mode.md`. Implemented seamless in-place switching between "Correction and Translation" and "Correction-Only" modes with remembered profile preferences, 300ms debounced draft persistence (`CORRECT_DRAFT`), isolated `SearchState` streams, independent history counters and filters, custom profile AI model/reasoning/prompt configurations, and universal cross-mode regeneration.
 
 
 

@@ -36,6 +36,7 @@ import com.aidict.app.ui.screens.SearchScreen
 import com.aidict.app.ui.screens.SettingsScreen
 import com.aidict.app.ui.screens.TranslateScreen
 import com.aidict.app.ui.screens.NotesScreen
+import com.aidict.app.ui.screens.CorrectScreen
 import com.aidict.app.ui.viewmodels.HistoryViewModel
 import com.aidict.app.ui.viewmodels.SearchViewModel
 import com.aidict.app.ui.viewmodels.SettingsViewModel
@@ -51,6 +52,7 @@ import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.Spellcheck
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.platform.LocalDensity
@@ -115,7 +117,7 @@ fun AppNavigation(
     }
 
     val coroutineScope = rememberCoroutineScope()
-    val pagerState = androidx.compose.foundation.pager.rememberPagerState(initialPage = initialMode, pageCount = { 4 })
+    val pagerState = androidx.compose.foundation.pager.rememberPagerState(initialPage = initialMode, pageCount = { 5 })
     val currentMode = pagerState.targetPage
 
     LaunchedEffect(initialMode, navigationTrigger) {
@@ -133,6 +135,7 @@ fun AppNavigation(
         1 -> searchViewModel.compareState.collectAsState().value
         2 -> searchViewModel.translateState.collectAsState().value
         3 -> searchViewModel.explainState.collectAsState().value
+        4 -> searchViewModel.correctState.collectAsState().value
         else -> searchViewModel.dictState.collectAsState().value
     }
 
@@ -150,6 +153,7 @@ fun AppNavigation(
                 1 -> "compare"
                 2 -> "translate"
                 3 -> "explain"
+                4 -> "correct"
                 else -> "dict"
             }
             searchViewModel.clearCurrentSearch(currentModeStr)
@@ -172,6 +176,7 @@ fun AppNavigation(
     val bgCompare by settingsViewModel.bgCompare.collectAsState()
     val bgTranslate by settingsViewModel.bgTranslate.collectAsState()
     val bgExplain by settingsViewModel.bgExplain.collectAsState()
+    val bgCorrect by settingsViewModel.bgCorrect.collectAsState()
     val bgBlur by settingsViewModel.bgBlurRadius.collectAsState()
         val bgUniversal by settingsViewModel.bgUniversal.collectAsState()
     val bgOpacity by settingsViewModel.bgOpacity.collectAsState()
@@ -182,6 +187,7 @@ fun AppNavigation(
         currentMode == 1 -> bgCompare ?: bgUniversal
         currentMode == 2 -> bgTranslate ?: bgUniversal
         currentMode == 3 -> bgExplain ?: bgUniversal
+        currentMode == 4 -> bgCorrect ?: bgUniversal
         else -> null
     }
 
@@ -212,7 +218,8 @@ fun AppNavigation(
         TabItem("Dict", Icons.Default.Search),
         TabItem("Compare", Icons.AutoMirrored.Filled.CompareArrows),
         TabItem("Translate", Icons.Default.Translate),
-        TabItem("Explain", Icons.Default.Description)
+        TabItem("Explain", Icons.Default.Description),
+        TabItem("Correct", Icons.Default.Spellcheck)
     )
 
         val quoteMode by settingsViewModel.quoteMode.collectAsState()
@@ -273,6 +280,7 @@ fun AppNavigation(
                                 1 -> "compare"
                                 2 -> "translate"
                                 3 -> "explain"
+                                4 -> "correct"
                                 else -> "dict"
                             }
                             historyViewModel.setMode(modeStr)
@@ -333,6 +341,7 @@ fun AppNavigation(
                             ?: searchViewModel.translateState.collectAsState().value.word?.term 
                             ?: searchViewModel.explainState.collectAsState().value.word?.term 
                             ?: searchViewModel.compareState.collectAsState().value.word?.term
+                            ?: searchViewModel.correctState.collectAsState().value.word?.term
                             ?: searchViewModel.searchInput
 
                         ExternalDictButton(settingsViewModel, currentWord)
@@ -399,6 +408,7 @@ fun AppNavigation(
                                 "compare" -> 1
                                 "translate" -> 2
                                 "explain" -> 3
+                                "correct" -> 4
                                 else -> 0
                             }
                             coroutineScope.launch { pagerState.scrollToPage(modeInt) }
@@ -492,6 +502,7 @@ fun AppNavigation(
                                 1 -> "compare"
                                 2 -> "translate"
                                 3 -> "explain"
+                                4 -> "correct"
                                 else -> "dict"
                             }
                             historyViewModel.setMode(modeStr)
@@ -541,6 +552,7 @@ fun AppNavigation(
                                 "compare" -> 1
                                 "translate" -> 2
                                 "explain" -> 3
+                                "correct" -> 4
                                 else -> 0
                             }
                             coroutineScope.launch { pagerState.animateScrollToPage(pageIndex) }
@@ -555,6 +567,7 @@ fun AppNavigation(
                                 1 -> CompareScreen(searchViewModel, pid, autoNewSearch = autoNewSearch, onToggleAutoNewSearch = toggleAutoNewSearch, enterToSend = enterToSend, onMoveToMode = onMoveWordToMode)
                                 2 -> TranslateScreen(searchViewModel, pid, autoNewSearch = autoNewSearch, onToggleAutoNewSearch = toggleAutoNewSearch, enterToSend = enterToSend, onMoveToMode = onMoveWordToMode)
                                 3 -> ExplainScreen(searchViewModel, pid, autoNewSearch = autoNewSearch, onToggleAutoNewSearch = toggleAutoNewSearch, enterToSend = enterToSend, onMoveToMode = onMoveWordToMode)
+                                4 -> CorrectScreen(searchViewModel, pid, autoNewSearch = autoNewSearch, onToggleAutoNewSearch = toggleAutoNewSearch, enterToSend = enterToSend, onMoveToMode = onMoveWordToMode)
                             }
                         }
                         

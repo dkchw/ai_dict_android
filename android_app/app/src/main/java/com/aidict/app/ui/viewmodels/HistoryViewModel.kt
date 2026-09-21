@@ -48,7 +48,8 @@ class HistoryViewModel(private val database: AppDatabase) : ViewModel() {
             "dict" to words.count { (it.mode.ifBlank { "dict" }).equals("dict", ignoreCase = true) },
             "compare" to words.count { it.mode.equals("compare", ignoreCase = true) },
             "translate" to words.count { it.mode.equals("translate", ignoreCase = true) },
-            "explain" to words.count { it.mode.equals("explain", ignoreCase = true) }
+            "explain" to words.count { it.mode.equals("explain", ignoreCase = true) },
+            "correct" to words.count { it.mode.equals("correct", ignoreCase = true) }
         )
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
 

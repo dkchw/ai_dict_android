@@ -290,6 +290,34 @@ class LlmRepository(private val database: AppDatabase) {
         emit(content)
     }.flowOn(Dispatchers.IO)
 
+    fun streamCorrect(text: String, sourceLang: String, targetLang: String, isCorrectionOnly: Boolean, profileId: Int = 1): Flow<String> = flow {
+        val model = getProfileOrGlobalSetting(profileId, "CORRECT_MODEL", "~deepseek/deepseek-v4-flash-latest")
+        val promptTemplate = getProfileOrGlobalSetting(profileId, "CORRECT_PROMPT", com.aidict.app.utils.DefaultPrompts.CORRECT_PROMPT)
+        val fallbackModel = getProfileOrGlobalSetting(profileId, "FALLBACK_MODELS", "google/gemini-3.8-flash")
+        val modelsList = if (fallbackModel.isNotBlank() && fallbackModel != model) listOf(model, fallbackModel) else null
+        val singleModel = if (modelsList == null) model else null
+        val reasoningEffort = getProfileOrGlobalSetting(profileId, "CORRECT_REASONING", "default")
+
+        val userContent = if (isCorrectionOnly) {
+            "Source language: $sourceLang\nMode: Correction-Only (Do not translate; provide only corrected source text, improved natural edition and explanations)\nText to correct:\n$text"
+        } else {
+            "Source language: $sourceLang\nTarget language: $targetLang\nMode: Correction and Translation\nText to correct and translate:\n$text"
+        }
+
+        val requestBody = ChatRequest(
+            model = singleModel,
+            models = modelsList,
+            messages = listOf(
+                ChatMessageDto(role = "system", content = promptTemplate),
+                ChatMessageDto(role = "user", content = userContent)
+            ),
+            stream = false,
+            reasoning = buildReasoning(reasoningEffort)
+        )
+        val content = executeRequest(json.encodeToString(requestBody))
+        emit(content)
+    }.flowOn(Dispatchers.IO)
+
     fun streamChat(word: com.aidict.app.data.entities.Word, messages: List<com.aidict.app.data.entities.ChatMessage>, forceFallback: Boolean = false): Flow<String> = flow {
         val profileId = word.profileId
         val defaultModelKey = if (messages.isEmpty()) {
@@ -298,6 +326,7 @@ class LlmRepository(private val database: AppDatabase) {
                 "translate" -> "TRANSLATE_MODEL"
                 "explain" -> "EXPLAIN_MODEL"
                 "compare" -> "COMPARE_MODEL"
+                "correct" -> "CORRECT_MODEL"
                 else -> "CHAT_MODEL"
             }
         } else {
@@ -309,6 +338,7 @@ class LlmRepository(private val database: AppDatabase) {
                 "translate" -> "TRANSLATE_REASONING"
                 "explain" -> "EXPLAIN_REASONING"
                 "compare" -> "COMPARE_REASONING"
+                "correct" -> "CORRECT_REASONING"
                 else -> "CHAT_REASONING"
             }
         } else {
@@ -353,6 +383,20 @@ class LlmRepository(private val database: AppDatabase) {
                 val prompt = getProfileOrGlobalSetting(profileId, "COMPARE_PROMPT", com.aidict.app.utils.DefaultPrompts.COMPARE_PROMPT)
                 initialContext.add(ChatMessageDto(role = "system", content = prompt))
                 initialContext.add(ChatMessageDto(role = "user", content = "Please compare the following words:\n${word.term}"))
+            }
+            "correct" -> {
+                val prompt = getProfileOrGlobalSetting(profileId, "CORRECT_PROMPT", com.aidict.app.utils.DefaultPrompts.CORRECT_PROMPT)
+                initialContext.add(ChatMessageDto(role = "system", content = prompt))
+                val langs = word.language?.split(" -> ")
+                val src = langs?.getOrNull(0) ?: ""
+                val tgt = langs?.getOrNull(1) ?: ""
+                val isCorrectionOnly = tgt.equals("Correction-Only", ignoreCase = true) || tgt.isBlank()
+                val userContent = if (isCorrectionOnly) {
+                    "Source language: $src\nMode: Correction-Only\nText to correct:\n${word.term}"
+                } else {
+                    "Source language: $src\nTarget language: $tgt\nMode: Correction and Translation\nText to correct and translate:\n${word.term}"
+                }
+                initialContext.add(ChatMessageDto(role = "user", content = userContent))
             }
             else -> {}
         }

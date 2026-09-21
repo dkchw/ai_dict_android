@@ -156,6 +156,7 @@ fun ChatInputBar(
     enterToSend: Boolean = false,
     suggestions: List<com.aidict.app.data.entities.Word> = emptyList(),
     onSuggestionClick: ((com.aidict.app.data.entities.Word) -> Unit)? = null,
+    extraContent: @Composable (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -183,6 +184,10 @@ fun ChatInputBar(
                     }
                     SmallLanguageSelector(availableLanguages = availableLanguages, currentValue = targetLang, onSelected = onTargetLangChange)
                 }
+            }
+
+            if (extraContent != null) {
+                extraContent()
             }
 
             if (suggestions.isNotEmpty() && onSuggestionClick != null) {
@@ -388,7 +393,8 @@ fun MoveModeDialog(
         Triple("dict", "📚 Dictionary", "Comprehensive definitions, phonetics & etymology"),
         Triple("compare", "⚖️ Compare", "Exhaustive synonym & nuance comparison"),
         Triple("translate", "🗣️ Translate", "Contextual translation & natural idioms"),
-        Triple("explain", "🧠 Explain", "Grammatical analysis & semantic breakdown")
+        Triple("explain", "🧠 Explain", "Grammatical analysis & semantic breakdown"),
+        Triple("correct", "✍️ Correct", "Grammar correction & contextual translation")
     ).filter { !it.first.equals(currentMode, ignoreCase = true) }
 
     AlertDialog(

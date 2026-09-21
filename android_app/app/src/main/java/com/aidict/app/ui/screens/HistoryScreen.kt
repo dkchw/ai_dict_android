@@ -159,7 +159,8 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                         "dict" to "Dict",
                         "compare" to "Compare",
                         "translate" to "Translate",
-                        "explain" to "Explain"
+                        "explain" to "Explain",
+                        "correct" to "Correct"
                     )
                     modeTabs.forEach { (modeKey, label) ->
                         val isSelected = currentModeFilter.equals(modeKey, ignoreCase = true)
@@ -1285,6 +1286,7 @@ fun HistoryWordCard(
                             "compare" -> MaterialTheme.colorScheme.tertiary
                             "translate" -> MaterialTheme.colorScheme.secondary
                             "explain" -> Color(0xFFF59E0B)
+                            "correct" -> Color(0xFF10B981)
                             else -> MaterialTheme.colorScheme.outline
                         }
                         Surface(

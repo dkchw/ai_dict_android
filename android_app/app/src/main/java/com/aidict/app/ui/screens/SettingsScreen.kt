@@ -320,6 +320,10 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                 val bgExplain by viewModel.bgExplain.collectAsState()
                 val explainLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { context.contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION); viewModel.saveSetting("BG_EXPLAIN", it.toString()) } }
                 Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Text("Explain Mode BG"); Button(onClick = { explainLauncher.launch(arrayOf("image/*")) }) { Text(if (bgExplain == null) "Select" else "Change") }; if (bgExplain != null) IconButton(onClick = { viewModel.saveSetting("BG_EXPLAIN", "") }) { Icon(Icons.Default.Delete, "Clear") } }
+
+                val bgCorrect by viewModel.bgCorrect.collectAsState()
+                val correctLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { context.contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION); viewModel.saveSetting("BG_CORRECT", it.toString()) } }
+                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Text("Correct Mode BG"); Button(onClick = { correctLauncher.launch(arrayOf("image/*")) }) { Text(if (bgCorrect == null) "Select" else "Change") }; if (bgCorrect != null) IconButton(onClick = { viewModel.saveSetting("BG_CORRECT", "") }) { Icon(Icons.Default.Delete, "Clear") } }
             }
         }
 
@@ -838,6 +842,22 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                 )
                 Spacer(Modifier.height(4.dp))
                 AiModelSettingItem(
+                    label = "Correct Model",
+                    settingItem = aiConfig.correctModel,
+                    isProfileScope = aiConfig.selectedProfileId != null,
+                    availableModels = availableModels,
+                    onSave = { viewModel.saveAiSetting("CORRECT_MODEL", it) },
+                    onReset = { viewModel.resetAiSetting("CORRECT_MODEL") }
+                )
+                AiReasoningSettingItem(
+                    label = "Correct Reasoning Effort",
+                    settingItem = aiConfig.correctReasoning,
+                    isProfileScope = aiConfig.selectedProfileId != null,
+                    onSave = { viewModel.saveAiSetting("CORRECT_REASONING", it) },
+                    onReset = { viewModel.resetAiSetting("CORRECT_REASONING") }
+                )
+                Spacer(Modifier.height(4.dp))
+                AiModelSettingItem(
                     label = "Fallback Model",
                     settingItem = aiConfig.fallbackModels,
                     isProfileScope = aiConfig.selectedProfileId != null,
@@ -902,6 +922,13 @@ fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier) 
                     isProfileScope = aiConfig.selectedProfileId != null,
                     onSave = { viewModel.saveAiSetting("COMPARE_PROMPT", it) },
                     onReset = { viewModel.resetAiSetting("COMPARE_PROMPT") }
+                )
+                AiPromptSettingItem(
+                    label = "Correct Prompt",
+                    settingItem = aiConfig.correctPrompt,
+                    isProfileScope = aiConfig.selectedProfileId != null,
+                    onSave = { viewModel.saveAiSetting("CORRECT_PROMPT", it) },
+                    onReset = { viewModel.resetAiSetting("CORRECT_PROMPT") }
                 )
             }
         }
