@@ -63,6 +63,7 @@ fun CorrectScreen(
     var isChatSearching by remember { mutableStateOf(false) }
     var chatSearchQuery by remember { mutableStateOf("") }
     var showMoveToModeDialog by remember { mutableStateOf(false) }
+    var showRenameDialog by remember { mutableStateOf(false) }
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
 
     val colors = listOf(
@@ -135,17 +136,11 @@ fun CorrectScreen(
                     .padding(8.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "${word.term} ${word.language?.let { "($it)" } ?: ""}",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            text = "Searches: ${word.searchCount} | Views: ${word.viewCount}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    com.aidict.app.ui.components.ChatHeaderTitle(
+                        word = word,
+                        onClick = { showRenameDialog = true },
+                        modifier = Modifier.weight(1f)
+                    )
 
                     IconButton(onClick = {
                         val clip = ClipData.newPlainText("AI Dict", state.chatMessages.firstOrNull()?.content ?: "")
@@ -198,6 +193,16 @@ fun CorrectScreen(
                         onDismiss = { showMoveToModeDialog = false },
                         onSelectMode = { targetMode ->
                             onMoveToMode(state.word!!, targetMode)
+                        }
+                    )
+                }
+
+                if (showRenameDialog && state.word != null) {
+                    com.aidict.app.ui.components.RenameWordDialog(
+                        word = state.word!!,
+                        onDismiss = { showRenameDialog = false },
+                        onConfirm = { newName ->
+                            viewModel.renameWord(state.word!!, newName, "correct")
                         }
                     )
                 }

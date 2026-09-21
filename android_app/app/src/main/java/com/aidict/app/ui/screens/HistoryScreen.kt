@@ -718,6 +718,20 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                                 )
                             }
                             IconButton(
+                                onClick = {
+                                    wordNameInput = selectedWord!!.term
+                                    showRenameWord = selectedWord
+                                },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Edit,
+                                    contentDescription = "Rename",
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                            Spacer(Modifier.width(4.dp))
+                            IconButton(
                                 onClick = { isDetailMaximized = !isDetailMaximized },
                                 modifier = Modifier.size(28.dp)
                             ) {
