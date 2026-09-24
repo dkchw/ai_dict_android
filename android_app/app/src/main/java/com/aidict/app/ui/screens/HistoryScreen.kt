@@ -20,8 +20,10 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.MoreVert
@@ -37,6 +39,7 @@ import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.platform.LocalConfiguration
@@ -73,6 +76,7 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
     val currentModeFilter by viewModel.currentMode.collectAsState()
     val activeStreamJobIds by (searchViewModel?.activeStreamJobIds ?: kotlinx.coroutines.flow.MutableStateFlow(emptySet())).collectAsState()
     var query by remember { mutableStateOf("") }
+    var filterOnlyMt by remember { mutableStateOf(false) }
     
     var selectedWord by remember { mutableStateOf<Word?>(null) }
     val restartingWordId by (searchViewModel?.isRestartingWordId ?: kotlinx.coroutines.flow.MutableStateFlow(null)).collectAsState()
@@ -82,6 +86,7 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
     var selectedSessionIds by remember { mutableStateOf(setOf<String>()) }
     var selectedWordIds by remember { mutableStateOf(setOf<Int>()) }
     var collapsedSessionIds by remember { mutableStateOf(setOf<String>()) }
+    val coroutineScope = rememberCoroutineScope()
     
     LaunchedEffect(selectedWord) {
         viewModel.setSelectedWordId(selectedWord?.id)
@@ -236,7 +241,7 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
             )
 
             // Filter Chips Bar (Compact horizontal scroll)
-            val hasActiveFilters = searchInOutput || colorFilter != null || starsFilter != null
+            val hasActiveFilters = searchInOutput || colorFilter != null || starsFilter != null || filterOnlyMt
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -251,11 +256,25 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                             if (searchInOutput) viewModel.toggleSearchInOutput()
                             viewModel.setFilterColor(null)
                             viewModel.setFilterStars(null)
+                            filterOnlyMt = false
                         },
                         label = { Text("Reset ✕", style = MaterialTheme.typography.labelSmall) },
                         colors = AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f))
                     )
                 }
+
+                FilterChip(
+                    selected = filterOnlyMt,
+                    onClick = { filterOnlyMt = !filterOnlyMt },
+                    label = { Text("🌐 MT Only", style = MaterialTheme.typography.labelSmall) },
+                    leadingIcon = {
+                        if (filterOnlyMt) {
+                            Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp))
+                        } else {
+                            Icon(Icons.Default.Translate, contentDescription = null, modifier = Modifier.size(12.dp), tint = Color(0xFF06B6D4))
+                        }
+                    }
+                )
 
                 FilterChip(
                     selected = searchInOutput,
@@ -287,7 +306,14 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                 }
             }
 
-            val grouped = history.groupBy { it.sessionId }
+            val displayedHistory = remember(history, filterOnlyMt) {
+                if (filterOnlyMt) {
+                    history.filter { it.language?.contains("[MT:") == true }
+                } else {
+                    history
+                }
+            }
+            val grouped = displayedHistory.groupBy { it.sessionId }
 
             // Selection Mode Actions Bar OR Streamlined Session Chips Bar
             if (isSelectionMode) {
@@ -340,7 +366,7 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
             } else {
                 // Sleek, modern horizontally scrollable Session Chips Bar
                 // Replaces the clunky, squished "Default Session" & "New Session" buttons!
-                val defaultCount = history.count { it.sessionId.isNullOrBlank() }
+                val defaultCount = displayedHistory.count { it.sessionId.isNullOrBlank() }
 
                 Row(
                     modifier = Modifier
@@ -401,7 +427,7 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
             // LazyColumn of sessions & history items
             @OptIn(ExperimentalFoundationApi::class)
             LazyColumn(modifier = Modifier.weight(1f)) {
-                if (history.isEmpty()) {
+                if (displayedHistory.isEmpty()) {
                     item {
                         Box(
                             modifier = Modifier.fillMaxWidth().padding(top = 40.dp, bottom = 24.dp),
@@ -410,7 +436,11 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(40.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
                                 Spacer(Modifier.height(8.dp))
-                                Text("No words found in this mode", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(
+                                    if (filterOnlyMt) "No offline translations found" else "No words found in this mode",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     }
@@ -697,6 +727,8 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
     val detailContent = @Composable {
         val messages by viewModel.selectedChatMessages.collectAsState()
         if (selectedWord != null) {
+            val isDetailMt = selectedWord?.language?.contains("[MT:") == true
+            val mtColor = Color(0xFF06B6D4)
             val outerPadding = if (isLandscape) PaddingValues(horizontal = 8.dp, vertical = 4.dp) else PaddingValues(12.dp)
             val cardPadding = if (isLandscape) PaddingValues(horizontal = 10.dp, vertical = 6.dp) else PaddingValues(horizontal = 12.dp, vertical = 8.dp)
 
@@ -707,6 +739,14 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                 ) {
                     Column(modifier = Modifier.padding(cardPadding)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (isDetailMt) {
+                                Icon(
+                                    Icons.Default.Translate,
+                                    contentDescription = "Machine Translation",
+                                    tint = mtColor,
+                                    modifier = Modifier.size(20.dp).padding(end = 4.dp)
+                                )
+                            }
                             SelectionContainer(modifier = Modifier.weight(1f)) { 
                                 Text(
                                     text = selectedWord!!.term, 
@@ -752,23 +792,61 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                         }
                         
                         val dateFormatted = java.text.SimpleDateFormat("MMM dd, yyyy  HH:mm", java.util.Locale.getDefault()).format(java.util.Date(selectedWord!!.createdAt))
+                        val headerSubtitle = if (isDetailMt) {
+                            val tierStr = if (selectedWord!!.language?.contains("[MT:strong]") == true) "Strong Offline (NLLB-200)" else "Normal Offline (Opus-MT)"
+                            "🌐 $tierStr • $dateFormatted"
+                        } else {
+                            "$dateFormatted • 🔍 ${selectedWord!!.searchCount} • 👁 ${selectedWord!!.viewCount} • ⚡ ${selectedWord!!.generationCount}"
+                        }
                         Text(
-                            text = "$dateFormatted • 🔍 ${selectedWord!!.searchCount} • 👁 ${selectedWord!!.viewCount} • ⚡ ${selectedWord!!.generationCount}",
+                            text = headerSubtitle,
                             style = MaterialTheme.typography.labelSmall,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                            color = if (isDetailMt) mtColor else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                         )
                         
                         Spacer(modifier = Modifier.height(if (isLandscape) 4.dp else 8.dp))
                         
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Button(
-                                onClick = { onNavigateToChat(selectedWord!!) },
-                                modifier = Modifier.weight(1f).height(if (isLandscape) 30.dp else 36.dp),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
-                            ) {
-                                Text("Resume Chat", style = MaterialTheme.typography.labelMedium)
+                            if (isDetailMt) {
+                                Button(
+                                    onClick = { onNavigateToChat(selectedWord!!) },
+                                    modifier = Modifier.weight(1f).height(if (isLandscape) 30.dp else 36.dp),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                                ) {
+                                    Text("Open", style = MaterialTheme.typography.labelMedium)
+                                }
+                                Button(
+                                    onClick = {
+                                        val activeProfileId = appState.activeProfile?.id ?: 1
+                                        val wordToDeepen = selectedWord!!
+                                        coroutineScope.launch {
+                                            val srcLang = searchViewModel?.getProfileSetting(activeProfileId, "CORRECT_SOURCE") ?: "Auto Detect"
+                                            val tgtLang = searchViewModel?.getProfileSetting(activeProfileId, "CORRECT_TARGET") ?: "German"
+                                            searchViewModel?.saveProfileSetting(activeProfileId, "CORRECT_TYPE", "both")
+                                            searchViewModel?.streamCorrect(wordToDeepen.term, srcLang, tgtLang, activeProfileId, isCorrectionOnly = false)
+                                            onNavigateToChat(wordToDeepen)
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1.35f).height(if (isLandscape) 30.dp else 36.dp),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.tertiary
+                                    )
+                                ) {
+                                    Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(13.dp))
+                                    Spacer(Modifier.width(3.dp))
+                                    Text("✨ Deepen LLM", style = MaterialTheme.typography.labelMedium)
+                                }
+                            } else {
+                                Button(
+                                    onClick = { onNavigateToChat(selectedWord!!) },
+                                    modifier = Modifier.weight(1f).height(if (isLandscape) 30.dp else 36.dp),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
+                                ) {
+                                    Text("Resume Chat", style = MaterialTheme.typography.labelMedium)
+                                }
                             }
                             
                             IconButton(
@@ -778,35 +856,37 @@ fun HistoryScreen(appViewModel: com.aidict.app.ui.viewmodels.AppViewModel,
                                 Icon(Icons.Default.Search, contentDescription = "Search in Chat", tint = if (isDetailSearching) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(16.dp))
                             }
                             
-                            IconButton(
-                                onClick = {
-                                    val lastUserMsg = messages.findLast { it.role == "assistant" }
-                                    val targetMsg = lastUserMsg ?: messages.lastOrNull() ?: com.aidict.app.data.entities.ChatMessage(wordId = selectedWord!!.id, role = "assistant", content = "")
-                                    android.widget.Toast.makeText(context, "Restarting with Current Model...", android.widget.Toast.LENGTH_SHORT).show()
-                                    onRestartChat(selectedWord!!, targetMsg, false)
-                                }, 
-                                modifier = Modifier.size(if (isLandscape) 30.dp else 36.dp).background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)
-                            ) {
-                                if (isCurrentWordRestarting) {
-                                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.primary)
-                                } else {
-                                    Icon(Icons.Default.Refresh, contentDescription = "Restart with Current Model", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                            if (!isDetailMt) {
+                                IconButton(
+                                    onClick = {
+                                        val lastUserMsg = messages.findLast { it.role == "assistant" }
+                                        val targetMsg = lastUserMsg ?: messages.lastOrNull() ?: com.aidict.app.data.entities.ChatMessage(wordId = selectedWord!!.id, role = "assistant", content = "")
+                                        android.widget.Toast.makeText(context, "Restarting with Current Model...", android.widget.Toast.LENGTH_SHORT).show()
+                                        onRestartChat(selectedWord!!, targetMsg, false)
+                                    }, 
+                                    modifier = Modifier.size(if (isLandscape) 30.dp else 36.dp).background(MaterialTheme.colorScheme.secondaryContainer, CircleShape)
+                                ) {
+                                    if (isCurrentWordRestarting) {
+                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.primary)
+                                    } else {
+                                        Icon(Icons.Default.Refresh, contentDescription = "Restart with Current Model", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                    }
                                 }
-                            }
-                            
-                            IconButton(
-                                onClick = {
-                                    val lastUserMsg = messages.findLast { it.role == "assistant" }
-                                    val targetMsg = lastUserMsg ?: messages.lastOrNull() ?: com.aidict.app.data.entities.ChatMessage(wordId = selectedWord!!.id, role = "assistant", content = "")
-                                    android.widget.Toast.makeText(context, "Restarting with Fallback Model...", android.widget.Toast.LENGTH_SHORT).show()
-                                    onRestartChat(selectedWord!!, targetMsg, true)
-                                }, 
-                                modifier = Modifier.size(if (isLandscape) 30.dp else 36.dp).background(MaterialTheme.colorScheme.errorContainer, CircleShape)
-                            ) {
-                                if (isCurrentWordRestarting) {
-                                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.error)
-                                } else {
-                                    Icon(Icons.Default.Autorenew, contentDescription = "Restart with Fallback Model", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
+                                
+                                IconButton(
+                                    onClick = {
+                                        val lastUserMsg = messages.findLast { it.role == "assistant" }
+                                        val targetMsg = lastUserMsg ?: messages.lastOrNull() ?: com.aidict.app.data.entities.ChatMessage(wordId = selectedWord!!.id, role = "assistant", content = "")
+                                        android.widget.Toast.makeText(context, "Restarting with Fallback Model...", android.widget.Toast.LENGTH_SHORT).show()
+                                        onRestartChat(selectedWord!!, targetMsg, true)
+                                    }, 
+                                    modifier = Modifier.size(if (isLandscape) 30.dp else 36.dp).background(MaterialTheme.colorScheme.errorContainer, CircleShape)
+                                ) {
+                                    if (isCurrentWordRestarting) {
+                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.error)
+                                    } else {
+                                        Icon(Icons.Default.Autorenew, contentDescription = "Restart with Fallback Model", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
+                                    }
                                 }
                             }
 
@@ -1211,6 +1291,8 @@ fun HistoryWordCard(
     onDelete: () -> Unit
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
+    val isMt = word.language?.contains("[MT:") == true
+    val mtColor = Color(0xFF06B6D4)
 
     Card(
         modifier = Modifier
@@ -1221,10 +1303,12 @@ fun HistoryWordCard(
                 onLongClick = onLongClick
             ),
         shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+        border = if (isMt && !isSelected) androidx.compose.foundation.BorderStroke(1.dp, mtColor.copy(alpha = 0.35f)) else null,
         elevation = CardDefaults.cardElevation(if (isSelected) 4.dp else 1.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelectionMode && isChecked) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
             else if (isSelected) MaterialTheme.colorScheme.primaryContainer
+            else if (isMt) mtColor.copy(alpha = 0.08f)
             else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
         )
     ) {
@@ -1250,11 +1334,27 @@ fun HistoryWordCard(
                         .background(c, androidx.compose.foundation.shape.RoundedCornerShape(2.dp))
                 )
                 Spacer(modifier = Modifier.width(8.dp))
+            } else if (isMt) {
+                Box(
+                    modifier = Modifier
+                        .width(4.dp)
+                        .height(26.dp)
+                        .background(mtColor, androidx.compose.foundation.shape.RoundedCornerShape(2.dp))
+                )
+                Spacer(modifier = Modifier.width(8.dp))
             }
 
             // Word term & language/stars
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (isMt) {
+                        Icon(
+                            Icons.Default.Translate,
+                            contentDescription = "Machine Translation",
+                            tint = mtColor,
+                            modifier = Modifier.size(14.dp).padding(end = 3.dp)
+                        )
+                    }
                     androidx.compose.foundation.text.selection.SelectionContainer(modifier = Modifier.weight(1f, fill = false)) {
                         Text(
                             text = word.term,
@@ -1294,7 +1394,21 @@ fun HistoryWordCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    if (showModeBadge) {
+                    if (isMt) {
+                        val isStrong = word.language?.contains("[MT:strong]") == true
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = mtColor.copy(alpha = 0.2f)
+                        ) {
+                            Text(
+                                text = if (isStrong) "LOCAL MT • STRONG" else "LOCAL MT",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = mtColor,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                            )
+                        }
+                    } else if (showModeBadge) {
                         val modeColor = when (word.mode.lowercase()) {
                             "dict" -> MaterialTheme.colorScheme.primary
                             "compare" -> MaterialTheme.colorScheme.tertiary
@@ -1317,10 +1431,15 @@ fun HistoryWordCard(
                         }
                     }
                     if (!word.language.isNullOrBlank()) {
+                        val displayLang = if (isMt) {
+                            word.language.replace(Regex("\\[MT:[^]]+\\]"), "").trim() + " (Offline)"
+                        } else {
+                            word.language
+                        }
                         Text(
-                            text = word.language,
+                            text = displayLang,
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.secondary,
+                            color = if (isMt) mtColor.copy(alpha = 0.9f) else MaterialTheme.colorScheme.secondary,
                             maxLines = 1
                         )
                     }

@@ -22,6 +22,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -971,6 +974,114 @@ class SearchViewModel(
                     activeStreamTexts.remove(it)
                 }
                 notifyBackgroundStatus()
+            }
+        }
+    }
+
+    var mtSourceText by mutableStateOf("")
+    var mtTranslatedText by mutableStateOf("")
+    var mtDetectedSourceLang by mutableStateOf<String?>(null)
+    var mtIsLoading by mutableStateOf(false)
+    var mtIsDownloadingModel by mutableStateOf(false)
+    var mtErrorMessage by mutableStateOf<String?>(null)
+    var mtIsSaved by mutableStateOf(false)
+    private var mtTranslateJob: Job? = null
+
+    fun translateTransient(
+        text: String,
+        sourceLang: String,
+        targetLang: String,
+        tier: LocalTranslationEngine.Tier = LocalTranslationEngine.Tier.NORMAL
+    ) {
+        val clean = text.trim()
+        if (clean.isBlank()) {
+            mtTranslatedText = ""
+            mtErrorMessage = null
+            mtIsLoading = false
+            mtIsSaved = false
+            return
+        }
+
+        mtTranslateJob?.cancel()
+        mtTranslateJob = viewModelScope.launch {
+            mtIsLoading = true
+            mtErrorMessage = null
+            mtIsDownloadingModel = false
+            mtIsSaved = false
+
+            val result = LocalTranslationEngine.translate(
+                text = clean,
+                sourceLanguage = sourceLang,
+                targetLanguage = targetLang,
+                tier = tier,
+                onDownloadingModel = { isDownloading ->
+                    mtIsDownloadingModel = isDownloading
+                }
+            )
+
+            mtIsLoading = false
+            mtIsDownloadingModel = false
+
+            if (result.isSuccess) {
+                val res = result.getOrThrow()
+                mtTranslatedText = res.translatedText
+                mtDetectedSourceLang = res.sourceLanguageName
+                mtErrorMessage = null
+            } else {
+                mtTranslatedText = ""
+                mtErrorMessage = result.exceptionOrNull()?.localizedMessage ?: "Translation failed"
+            }
+        }
+    }
+
+    fun saveCurrentMtToHistory(
+        sourceLang: String,
+        targetLang: String,
+        profileId: Int,
+        tier: LocalTranslationEngine.Tier = LocalTranslationEngine.Tier.NORMAL,
+        onSaved: () -> Unit = {}
+    ) {
+        val cleanText = mtSourceText.trim()
+        val trans = mtTranslatedText.trim()
+        if (cleanText.isBlank() || trans.isBlank() || mtIsSaved) return
+
+        bgScope.launch {
+            try {
+                val sessionId = getOrCreateActiveSessionId(profileId)
+                val langKey = "$sourceLang -> $targetLang [MT:${tier.id}]"
+                val wordId = database.appDao().insertWord(
+                    com.aidict.app.data.entities.Word(
+                        profileId = profileId,
+                        term = cleanText,
+                        language = langKey,
+                        sessionId = sessionId,
+                        mode = "correct"
+                    )
+                ).toInt()
+
+                val markdownResult = buildString {
+                    append("### 🌐 Machine Translation (${tier.displayName})\n\n")
+                    append("> **Detected/Source:** ${mtDetectedSourceLang ?: sourceLang} ➔ **Target:** $targetLang\n\n")
+                    append("#### Translation:\n")
+                    append("$trans\n\n")
+                    append("---\n")
+                    append("💡 *Local on-device translation saved to history.*")
+                }
+
+                database.appDao().insertChatMessage(
+                    com.aidict.app.data.entities.ChatMessage(
+                        wordId = wordId,
+                        role = "assistant",
+                        content = markdownResult
+                    )
+                )
+
+                mtIsSaved = true
+                withContext(Dispatchers.Main) {
+                    onSaved()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }

@@ -162,6 +162,17 @@ object LocalTranslationEngine {
         }
     }
 
+    data class ModelLanguageInfo(
+        val name: String,
+        val tag: String,
+        val isDownloaded: Boolean,
+        val isDownloading: Boolean = false
+    )
+
+    fun getAllLanguagesWithTags(): List<Pair<String, String>> {
+        return LANGUAGE_NAME_TO_TAG.entries.map { it.key to it.value }.sortedBy { it.first }
+    }
+
     suspend fun getDownloadedModels(): Set<String> = withContext(Dispatchers.IO) {
         try {
             val modelManager = RemoteModelManager.getInstance()
@@ -170,6 +181,17 @@ object LocalTranslationEngine {
         } catch (e: Exception) {
             emptySet()
         }
+    }
+
+    suspend fun getModelStatuses(): List<ModelLanguageInfo> = withContext(Dispatchers.IO) {
+        val downloadedTags = getDownloadedModels()
+        LANGUAGE_NAME_TO_TAG.entries.map { (name, tag) ->
+            ModelLanguageInfo(
+                name = name,
+                tag = tag,
+                isDownloaded = downloadedTags.contains(tag)
+            )
+        }.sortedWith(compareByDescending<ModelLanguageInfo> { it.isDownloaded }.thenBy { it.name })
     }
 
     suspend fun deleteModel(languageTag: String): Boolean = withContext(Dispatchers.IO) {

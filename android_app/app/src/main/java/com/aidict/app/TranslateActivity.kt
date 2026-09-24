@@ -34,6 +34,7 @@ import androidx.lifecycle.lifecycleScope
 import com.aidict.app.data.AppDatabase
 import com.aidict.app.data.LocalTranslationEngine
 import com.aidict.app.data.entities.AppSetting
+import com.aidict.app.ui.components.ManageOfflineModelsDialog
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -140,6 +141,7 @@ fun TranslateScreenUI(
     var mtTier by remember { mutableStateOf(LocalTranslationEngine.Tier.NORMAL) }
     var profileId by remember { mutableIntStateOf(1) }
     var appTheme by remember { mutableStateOf("tokyonight") }
+    var showManageModelsDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         val savedProfileId = database.appDao().getSetting("ACTIVE_PROFILE_ID")?.value?.toIntOrNull()
@@ -300,11 +302,27 @@ fun TranslateScreenUI(
                             )
                         )
 
-                        Spacer(Modifier.width(4.dp))
+                        IconButton(
+                            onClick = { showManageModelsDialog = true },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.CloudDownload,
+                                contentDescription = "Manage Offline Models",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        Spacer(Modifier.width(2.dp))
 
                         IconButton(onClick = onClose, modifier = Modifier.size(32.dp)) {
                             Icon(Icons.Default.Close, contentDescription = "Close", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
+                    }
+
+                    if (showManageModelsDialog) {
+                        ManageOfflineModelsDialog(onDismiss = { showManageModelsDialog = false })
                     }
 
                     Spacer(Modifier.height(12.dp))
