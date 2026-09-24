@@ -47,6 +47,11 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.BorderStroke
+import kotlinx.coroutines.launch
 import com.aidict.app.ui.components.ManageOfflineModelsDialog
 import com.aidict.app.ui.components.MarkdownText
 import com.aidict.app.ui.components.PulsingDots
@@ -122,6 +127,18 @@ fun CorrectScreen(
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
 
+    LaunchedEffect(correctType) {
+        if (correctType == "machine_translate") {
+            if (viewModel.mtSourceText.isBlank() && viewModel.correctInput.isNotBlank()) {
+                viewModel.mtSourceText = viewModel.correctInput
+            }
+        } else {
+            if (viewModel.correctInput.isBlank() && viewModel.mtSourceText.isNotBlank()) {
+                viewModel.correctInput = viewModel.mtSourceText
+            }
+        }
+    }
+
     Column(modifier = modifier.fillMaxSize().padding(horizontal = if (isLandscape) 8.dp else 16.dp, vertical = if (isLandscape) 2.dp else 16.dp)) {
         if (correctType == "machine_translate") {
             NormalTranslatorView(
@@ -147,9 +164,10 @@ fun CorrectScreen(
                     viewModel.saveProfileSetting(profileId, "CORRECT_TYPE", newType)
                 },
                 onDeepenWithLlm = {
+                    val textToDeepen = viewModel.mtSourceText.ifBlank { viewModel.correctInput }
                     correctType = "both"
                     viewModel.saveProfileSetting(profileId, "CORRECT_TYPE", "both")
-                    viewModel.streamCorrect(viewModel.mtSourceText, sourceLang, targetLang, profileId, isCorrectionOnly = false)
+                    viewModel.streamCorrect(textToDeepen, sourceLang, targetLang, profileId, isCorrectionOnly = false)
                 },
                 onSpeak = { text, lang -> speakText(text, lang) }
             )
@@ -681,10 +699,18 @@ fun NormalTranslatorView(
 ) {
     val context = LocalContext.current
     val clipboardManager = remember { context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager }
+    val coroutineScope = rememberCoroutineScope()
     var showManageModelsDialog by remember { mutableStateOf(false) }
+
+    val downloadedModelTags by com.aidict.app.data.LocalTranslationEngine.downloadedModelsFlow.collectAsState()
+    var isDownloadingInlineTag by remember { mutableStateOf<String?>(null) }
 
     val supportedLanguages = remember { com.aidict.app.data.LocalTranslationEngine.getSupportedLanguages() }
     val sourceOptions = remember { listOf("Auto Detect") + supportedLanguages }
+
+    LaunchedEffect(Unit) {
+        com.aidict.app.data.LocalTranslationEngine.refreshDownloadedModels()
+    }
 
     LaunchedEffect(viewModel.mtSourceText, sourceLang, targetLang, mtTier) {
         kotlinx.coroutines.delay(300)
@@ -692,11 +718,22 @@ fun NormalTranslatorView(
     }
 
     if (showManageModelsDialog) {
-        ManageOfflineModelsDialog(onDismiss = { showManageModelsDialog = false })
+        ManageOfflineModelsDialog(onDismiss = {
+            showManageModelsDialog = false
+            coroutineScope.launch {
+                com.aidict.app.data.LocalTranslationEngine.refreshDownloadedModels()
+            }
+        })
     }
 
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+
+    val targetTag = remember(targetLang) { com.aidict.app.data.LocalTranslationEngine.getLanguageTag(targetLang) }
+    val isTargetDownloaded = targetTag != null && downloadedModelTags.contains(targetTag)
+
+    val sourceTag = remember(sourceLang) { com.aidict.app.data.LocalTranslationEngine.getLanguageTag(sourceLang) }
+    val isSourceDownloaded = sourceLang == "Auto Detect" || (sourceTag != null && downloadedModelTags.contains(sourceTag))
 
     Column(
         modifier = modifier.fillMaxSize()
@@ -746,7 +783,20 @@ fun NormalTranslatorView(
             )
             AssistChip(
                 onClick = { showManageModelsDialog = true },
-                label = { Text("Offline Packs 📥", style = MaterialTheme.typography.labelSmall) },
+                label = {
+                    Text(
+                        text = "📥 ${downloadedModelTags.size} Packs Ready (~${downloadedModelTags.size * 30} MB)",
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = if (downloadedModelTags.isNotEmpty()) Icons.Default.CheckCircle else Icons.Default.CloudDownload,
+                        contentDescription = null,
+                        tint = if (downloadedModelTags.isNotEmpty()) Color(0xFF10B981) else MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(14.dp)
+                    )
+                },
                 modifier = Modifier.padding(start = 4.dp)
             )
         }
@@ -774,24 +824,82 @@ fun NormalTranslatorView(
                         modifier = Modifier.fillMaxWidth(),
                         contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
                     ) {
-                        Text(
-                            text = if (sourceLang == "Auto Detect" && !viewModel.mtDetectedSourceLang.isNullOrBlank()) {
-                                "Auto (${viewModel.mtDetectedSourceLang})"
-                            } else {
-                                sourceLang
-                            },
-                            style = MaterialTheme.typography.labelMedium,
-                            maxLines = 1
-                        )
-                        Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = if (sourceLang == "Auto Detect" && !viewModel.mtDetectedSourceLang.isNullOrBlank()) {
+                                    "Auto (${viewModel.mtDetectedSourceLang})"
+                                } else {
+                                    sourceLang
+                                },
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            if (sourceLang != "Auto Detect") {
+                                if (isSourceDownloaded) {
+                                    Icon(Icons.Default.Check, contentDescription = "Ready", tint = Color(0xFF10B981), modifier = Modifier.size(13.dp))
+                                } else {
+                                    Icon(Icons.Default.CloudDownload, contentDescription = "Download required", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(13.dp))
+                                }
+                            }
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp))
+                        }
                     }
                     DropdownMenu(
                         expanded = srcExpanded,
                         onDismissRequest = { srcExpanded = false }
                     ) {
                         sourceOptions.forEach { lang ->
+                            val isDownloaded = remember(lang, downloadedModelTags) {
+                                if (lang == "Auto Detect") true
+                                else {
+                                    val tag = com.aidict.app.data.LocalTranslationEngine.getLanguageTag(lang)
+                                    tag != null && downloadedModelTags.contains(tag)
+                                }
+                            }
                             DropdownMenuItem(
-                                text = { Text(lang) },
+                                text = {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(lang, style = MaterialTheme.typography.bodyMedium)
+                                        Spacer(Modifier.width(16.dp))
+                                        if (lang != "Auto Detect") {
+                                            if (isDownloaded) {
+                                                Surface(
+                                                    shape = RoundedCornerShape(6.dp),
+                                                    color = Color(0xFF10B981).copy(alpha = 0.15f)
+                                                ) {
+                                                    Row(
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(11.dp))
+                                                        Spacer(Modifier.width(3.dp))
+                                                        Text("Ready", color = Color(0xFF10B981), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                                                    }
+                                                }
+                                            } else {
+                                                Surface(
+                                                    shape = RoundedCornerShape(6.dp),
+                                                    color = MaterialTheme.colorScheme.surfaceVariant
+                                                ) {
+                                                    Row(
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Icon(Icons.Default.CloudDownload, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(11.dp))
+                                                        Spacer(Modifier.width(3.dp))
+                                                        Text("~30MB", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
                                 onClick = {
                                     onSourceLangChange(lang)
                                     srcExpanded = false
@@ -832,25 +940,148 @@ fun NormalTranslatorView(
                         modifier = Modifier.fillMaxWidth(),
                         contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
                     ) {
-                        Text(
-                            text = targetLang,
-                            style = MaterialTheme.typography.labelMedium,
-                            maxLines = 1
-                        )
-                        Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = targetLang,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            if (isTargetDownloaded) {
+                                Icon(Icons.Default.Check, contentDescription = "Ready", tint = Color(0xFF10B981), modifier = Modifier.size(13.dp))
+                            } else {
+                                Icon(Icons.Default.CloudDownload, contentDescription = "Download required", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(13.dp))
+                            }
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp))
+                        }
                     }
                     DropdownMenu(
                         expanded = tgtExpanded,
                         onDismissRequest = { tgtExpanded = false }
                     ) {
                         supportedLanguages.forEach { lang ->
+                            val isDownloaded = remember(lang, downloadedModelTags) {
+                                val tag = com.aidict.app.data.LocalTranslationEngine.getLanguageTag(lang)
+                                tag != null && downloadedModelTags.contains(tag)
+                            }
                             DropdownMenuItem(
-                                text = { Text(lang) },
+                                text = {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(lang, style = MaterialTheme.typography.bodyMedium)
+                                        Spacer(Modifier.width(16.dp))
+                                        if (isDownloaded) {
+                                            Surface(
+                                                shape = RoundedCornerShape(6.dp),
+                                                color = Color(0xFF10B981).copy(alpha = 0.15f)
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(11.dp))
+                                                    Spacer(Modifier.width(3.dp))
+                                                    Text("Ready", color = Color(0xFF10B981), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                                                }
+                                            }
+                                        } else {
+                                            Surface(
+                                                shape = RoundedCornerShape(6.dp),
+                                                color = MaterialTheme.colorScheme.surfaceVariant
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Icon(Icons.Default.CloudDownload, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(11.dp))
+                                                    Spacer(Modifier.width(3.dp))
+                                                    Text("~30MB", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
                                 onClick = {
                                     onTargetLangChange(lang)
                                     tgtExpanded = false
                                 }
                             )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Inline Model Download Banner if language pack is needed
+        if (!isTargetDownloaded || !isSourceDownloaded) {
+            val missingLangName = if (!isTargetDownloaded) targetLang else sourceLang
+            val missingTag = com.aidict.app.data.LocalTranslationEngine.getLanguageTag(missingLangName) ?: ""
+            val isDownloadingThis = isDownloadingInlineTag == missingTag
+
+            Spacer(Modifier.height(8.dp))
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.4f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CloudDownload,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Offline Model Pack Needed",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Download $missingLangName pack (~30MB) for instant offline translation.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            if (missingTag.isNotBlank() && !isDownloadingThis) {
+                                isDownloadingInlineTag = missingTag
+                                coroutineScope.launch {
+                                    val success = com.aidict.app.data.LocalTranslationEngine.downloadModel(missingTag)
+                                    isDownloadingInlineTag = null
+                                    if (success) {
+                                        Toast.makeText(context, "$missingLangName model installed!", Toast.LENGTH_SHORT).show()
+                                        viewModel.translateTransient(viewModel.mtSourceText, sourceLang, targetLang, mtTier)
+                                    } else {
+                                        Toast.makeText(context, "Failed to download $missingLangName model. Check connection.", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        },
+                        enabled = !isDownloadingThis,
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        if (isDownloadingThis) {
+                            CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp, color = Color.White)
+                            Spacer(Modifier.width(6.dp))
+                            Text("Downloading...", style = MaterialTheme.typography.labelSmall)
+                        } else {
+                            Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Download", style = MaterialTheme.typography.labelSmall)
                         }
                     }
                 }
@@ -873,7 +1104,9 @@ fun NormalTranslatorView(
                     detectedLang = viewModel.mtDetectedSourceLang,
                     sourceLang = sourceLang,
                     onSpeak = onSpeak,
+                    onTranslate = { viewModel.translateTransient(viewModel.mtSourceText, sourceLang, targetLang, mtTier) },
                     clipboardManager = clipboardManager,
+                    isLandscape = true,
                     modifier = Modifier.weight(1f).fillMaxHeight()
                 )
 
@@ -884,6 +1117,7 @@ fun NormalTranslatorView(
                     translatedText = viewModel.mtTranslatedText,
                     isSaved = viewModel.mtIsSaved,
                     targetLang = targetLang,
+                    isTargetDownloaded = isTargetDownloaded,
                     onRetry = { viewModel.translateTransient(viewModel.mtSourceText, sourceLang, targetLang, mtTier) },
                     onSpeak = onSpeak,
                     onSaveToHistory = {
@@ -894,6 +1128,7 @@ fun NormalTranslatorView(
                     onDeepenWithLlm = onDeepenWithLlm,
                     clipboardManager = clipboardManager,
                     context = context,
+                    isLandscape = true,
                     modifier = Modifier.weight(1f).fillMaxHeight()
                 )
             }
@@ -911,8 +1146,10 @@ fun NormalTranslatorView(
                     detectedLang = viewModel.mtDetectedSourceLang,
                     sourceLang = sourceLang,
                     onSpeak = onSpeak,
+                    onTranslate = { viewModel.translateTransient(viewModel.mtSourceText, sourceLang, targetLang, mtTier) },
                     clipboardManager = clipboardManager,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp, max = 220.dp)
+                    isLandscape = false,
+                    modifier = Modifier.fillMaxWidth().wrapContentHeight()
                 )
 
                 Spacer(Modifier.height(14.dp))
@@ -924,6 +1161,7 @@ fun NormalTranslatorView(
                     translatedText = viewModel.mtTranslatedText,
                     isSaved = viewModel.mtIsSaved,
                     targetLang = targetLang,
+                    isTargetDownloaded = isTargetDownloaded,
                     onRetry = { viewModel.translateTransient(viewModel.mtSourceText, sourceLang, targetLang, mtTier) },
                     onSpeak = onSpeak,
                     onSaveToHistory = {
@@ -934,7 +1172,8 @@ fun NormalTranslatorView(
                     onDeepenWithLlm = onDeepenWithLlm,
                     clipboardManager = clipboardManager,
                     context = context,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 130.dp)
+                    isLandscape = false,
+                    modifier = Modifier.fillMaxWidth().wrapContentHeight()
                 )
             }
         }
@@ -948,31 +1187,76 @@ private fun MtSourceInputCard(
     detectedLang: String?,
     sourceLang: String,
     onSpeak: (String, String) -> Unit,
+    onTranslate: () -> Unit,
     clipboardManager: ClipboardManager,
+    isLandscape: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
         modifier = modifier
     ) {
-        Column(modifier = Modifier.fillMaxSize().padding(12.dp)) {
+        Column(
+            modifier = if (isLandscape) Modifier.fillMaxSize().padding(12.dp)
+                       else Modifier.fillMaxWidth().padding(12.dp)
+        ) {
+            // Header Row of Input Card
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Source Text",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (sourceLang == "Auto Detect" && !detectedLang.isNullOrBlank()) {
+                    Spacer(Modifier.width(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                    ) {
+                        Text(
+                            text = "Detected: $detectedLang",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+
+            // Input Field
             OutlinedTextField(
                 value = text,
                 onValueChange = onTextChange,
-                placeholder = { Text("Enter text to translate...", style = MaterialTheme.typography.bodyLarge) },
-                textStyle = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f, fill = false),
+                placeholder = {
+                    Text(
+                        "Enter or paste text to translate...",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                },
+                textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp),
+                modifier = if (isLandscape) Modifier.fillMaxWidth().weight(1f)
+                           else Modifier.fillMaxWidth().heightIn(min = 100.dp, max = 220.dp),
+                minLines = 3,
+                maxLines = if (isLandscape) 12 else 8,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Color.Transparent,
                     unfocusedBorderColor = Color.Transparent
                 )
             )
 
-            Spacer(Modifier.weight(1f))
+            if (isLandscape) {
+                Spacer(Modifier.weight(1f, fill = false))
+            } else {
+                Spacer(Modifier.height(8.dp))
+            }
 
+            // Action Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -1011,6 +1295,18 @@ private fun MtSourceInputCard(
                         Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = "Listen", modifier = Modifier.size(18.dp))
                     }
                 }
+
+                Spacer(Modifier.width(6.dp))
+
+                Button(
+                    onClick = onTranslate,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    modifier = Modifier.height(34.dp)
+                ) {
+                    Icon(Icons.Default.Translate, contentDescription = null, modifier = Modifier.size(15.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Translate", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
+                }
             }
         }
     }
@@ -1024,12 +1320,14 @@ private fun MtTargetTranslationCard(
     translatedText: String,
     isSaved: Boolean,
     targetLang: String,
+    isTargetDownloaded: Boolean,
     onRetry: () -> Unit,
     onSpeak: (String, String) -> Unit,
     onSaveToHistory: () -> Unit,
     onDeepenWithLlm: () -> Unit,
     clipboardManager: ClipboardManager,
     context: Context,
+    isLandscape: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -1038,16 +1336,69 @@ private fun MtTargetTranslationCard(
         modifier = modifier
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(14.dp)
+            modifier = if (isLandscape) Modifier.fillMaxSize().padding(14.dp)
+                       else Modifier.fillMaxWidth().padding(14.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
+            // Header Row of Result Card
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                Icon(
+                    imageVector = Icons.Default.Translate,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "Translation ($targetLang)",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+
+                Spacer(Modifier.weight(1f))
+
+                if (isTargetDownloaded) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFF10B981).copy(alpha = 0.15f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(12.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("OFFLINE READY", color = Color(0xFF10B981), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                } else {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.CloudDownload, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(12.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("PACK NEEDED", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            // Output Body: scrollable in landscape, wrapped in portrait
+            val contentModifier = if (isLandscape) {
+                Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())
+            } else {
+                Modifier.fillMaxWidth()
+            }
+
+            Box(modifier = contentModifier) {
                 if (isLoading) {
                     Row(
                         modifier = Modifier
@@ -1075,7 +1426,7 @@ private fun MtTargetTranslationCard(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.error
                         )
-                        Spacer(Modifier.height(6.dp))
+                        Spacer(Modifier.height(8.dp))
                         TextButton(
                             onClick = onRetry,
                             modifier = Modifier.align(Alignment.End)
@@ -1089,28 +1440,36 @@ private fun MtTargetTranslationCard(
                     SelectionContainer {
                         Text(
                             text = translatedText,
-                            style = MaterialTheme.typography.bodyLarge,
+                            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp, lineHeight = 26.sp),
+                            fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     }
                 } else {
-                    Box(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 24.dp),
-                        contentAlignment = Alignment.Center
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        Icon(
+                            imageVector = Icons.Default.Translate,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.4f),
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(Modifier.height(6.dp))
                         Text(
                             text = "Translation will appear here instantaneously...",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f)
+                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.75f)
                         )
                     }
                 }
             }
 
             if (translatedText.isNotBlank() && !isLoading) {
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(10.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),

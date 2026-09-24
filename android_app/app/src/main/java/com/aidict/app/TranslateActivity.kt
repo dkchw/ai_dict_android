@@ -30,6 +30,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.BorderStroke
 import androidx.lifecycle.lifecycleScope
 import com.aidict.app.data.AppDatabase
 import com.aidict.app.data.LocalTranslationEngine
@@ -143,7 +145,11 @@ fun TranslateScreenUI(
     var appTheme by remember { mutableStateOf("tokyonight") }
     var showManageModelsDialog by remember { mutableStateOf(false) }
 
+    val downloadedModelTags by LocalTranslationEngine.downloadedModelsFlow.collectAsState()
+    var isDownloadingInlineTag by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(Unit) {
+        LocalTranslationEngine.refreshDownloadedModels()
         val savedProfileId = database.appDao().getSetting("ACTIVE_PROFILE_ID")?.value?.toIntOrNull()
         val defaultProfile = database.appDao().getDefaultProfile()
         val pId = savedProfileId ?: defaultProfile?.id ?: 1
@@ -166,6 +172,12 @@ fun TranslateScreenUI(
 
     val supportedLanguages = remember { LocalTranslationEngine.getSupportedLanguages() }
     val sourceOptions = remember { listOf("Auto Detect") + supportedLanguages }
+
+    val targetTag = remember(targetLanguage) { LocalTranslationEngine.getLanguageTag(targetLanguage) }
+    val isTargetDownloaded = targetTag != null && downloadedModelTags.contains(targetTag)
+
+    val sourceTag = remember(sourceLanguage) { LocalTranslationEngine.getLanguageTag(sourceLanguage) }
+    val isSourceDownloaded = sourceLanguage == "Auto Detect" || (sourceTag != null && downloadedModelTags.contains(sourceTag))
 
     var translationJob by remember { mutableStateOf<Job?>(null) }
 
@@ -330,7 +342,12 @@ fun TranslateScreenUI(
                     }
 
                     if (showManageModelsDialog) {
-                        ManageOfflineModelsDialog(onDismiss = { showManageModelsDialog = false })
+                        ManageOfflineModelsDialog(onDismiss = {
+                            showManageModelsDialog = false
+                            coroutineScope.launch {
+                                LocalTranslationEngine.refreshDownloadedModels()
+                            }
+                        })
                     }
 
                     Spacer(Modifier.height(if (isLandscape) 4.dp else 12.dp))
@@ -352,24 +369,82 @@ fun TranslateScreenUI(
                                 modifier = Modifier.fillMaxWidth(),
                                 contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
                             ) {
-                                Text(
-                                    text = if (sourceLanguage == "Auto Detect" && !detectedSourceLang.isNullOrBlank()) {
-                                        "Auto (${detectedSourceLang})"
-                                    } else {
-                                        sourceLanguage
-                                    },
-                                    style = MaterialTheme.typography.labelMedium,
-                                    maxLines = 1
-                                )
-                                Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = if (sourceLanguage == "Auto Detect" && !detectedSourceLang.isNullOrBlank()) {
+                                            "Auto (${detectedSourceLang})"
+                                        } else {
+                                            sourceLanguage
+                                        },
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    if (sourceLanguage != "Auto Detect") {
+                                        if (isSourceDownloaded) {
+                                            Icon(Icons.Default.Check, contentDescription = "Ready", tint = Color(0xFF10B981), modifier = Modifier.size(13.dp))
+                                        } else {
+                                            Icon(Icons.Default.CloudDownload, contentDescription = "Download required", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(13.dp))
+                                        }
+                                    }
+                                    Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp))
+                                }
                             }
                             DropdownMenu(
                                 expanded = srcExpanded,
                                 onDismissRequest = { srcExpanded = false }
                             ) {
                                 sourceOptions.forEach { lang ->
+                                    val isDownloaded = remember(lang, downloadedModelTags) {
+                                        if (lang == "Auto Detect") true
+                                        else {
+                                            val tag = LocalTranslationEngine.getLanguageTag(lang)
+                                            tag != null && downloadedModelTags.contains(tag)
+                                        }
+                                    }
                                     DropdownMenuItem(
-                                        text = { Text(lang) },
+                                        text = {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Text(lang, style = MaterialTheme.typography.bodyMedium)
+                                                Spacer(Modifier.width(16.dp))
+                                                if (lang != "Auto Detect") {
+                                                    if (isDownloaded) {
+                                                        Surface(
+                                                            shape = RoundedCornerShape(6.dp),
+                                                            color = Color(0xFF10B981).copy(alpha = 0.15f)
+                                                        ) {
+                                                            Row(
+                                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                                verticalAlignment = Alignment.CenterVertically
+                                                            ) {
+                                                                Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(11.dp))
+                                                                Spacer(Modifier.width(3.dp))
+                                                                Text("Ready", color = Color(0xFF10B981), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                                                            }
+                                                        }
+                                                    } else {
+                                                        Surface(
+                                                            shape = RoundedCornerShape(6.dp),
+                                                            color = MaterialTheme.colorScheme.surfaceVariant
+                                                        ) {
+                                                            Row(
+                                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                                verticalAlignment = Alignment.CenterVertically
+                                                            ) {
+                                                                Icon(Icons.Default.CloudDownload, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(11.dp))
+                                                                Spacer(Modifier.width(3.dp))
+                                                                Text("~30MB", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
                                         onClick = {
                                             sourceLanguage = lang
                                             srcExpanded = false
@@ -420,20 +495,71 @@ fun TranslateScreenUI(
                                 modifier = Modifier.fillMaxWidth(),
                                 contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
                             ) {
-                                Text(
-                                    text = targetLanguage,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    maxLines = 1
-                                )
-                                Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = targetLanguage,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    if (isTargetDownloaded) {
+                                        Icon(Icons.Default.Check, contentDescription = "Ready", tint = Color(0xFF10B981), modifier = Modifier.size(13.dp))
+                                    } else {
+                                        Icon(Icons.Default.CloudDownload, contentDescription = "Download required", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(13.dp))
+                                    }
+                                    Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(18.dp))
+                                }
                             }
                             DropdownMenu(
                                 expanded = tgtExpanded,
                                 onDismissRequest = { tgtExpanded = false }
                             ) {
                                 supportedLanguages.forEach { lang ->
+                                    val isDownloaded = remember(lang, downloadedModelTags) {
+                                        val tag = LocalTranslationEngine.getLanguageTag(lang)
+                                        tag != null && downloadedModelTags.contains(tag)
+                                    }
                                     DropdownMenuItem(
-                                        text = { Text(lang) },
+                                        text = {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Text(lang, style = MaterialTheme.typography.bodyMedium)
+                                                Spacer(Modifier.width(16.dp))
+                                                if (isDownloaded) {
+                                                    Surface(
+                                                        shape = RoundedCornerShape(6.dp),
+                                                        color = Color(0xFF10B981).copy(alpha = 0.15f)
+                                                    ) {
+                                                        Row(
+                                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                            verticalAlignment = Alignment.CenterVertically
+                                                        ) {
+                                                            Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(11.dp))
+                                                            Spacer(Modifier.width(3.dp))
+                                                            Text("Ready", color = Color(0xFF10B981), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                                                        }
+                                                    }
+                                                } else {
+                                                    Surface(
+                                                        shape = RoundedCornerShape(6.dp),
+                                                        color = MaterialTheme.colorScheme.surfaceVariant
+                                                    ) {
+                                                        Row(
+                                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                            verticalAlignment = Alignment.CenterVertically
+                                                        ) {
+                                                            Icon(Icons.Default.CloudDownload, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(11.dp))
+                                                            Spacer(Modifier.width(3.dp))
+                                                            Text("~30MB", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
                                         onClick = {
                                             targetLanguage = lang
                                             tgtExpanded = false
@@ -442,6 +568,78 @@ fun TranslateScreenUI(
                                             }
                                         }
                                     )
+                                }
+                            }
+                        }
+                    }
+
+                    // Inline Model Download Banner if pack is needed
+                    if (!isTargetDownloaded || !isSourceDownloaded) {
+                        val missingLangName = if (!isTargetDownloaded) targetLanguage else sourceLanguage
+                        val missingTag = LocalTranslationEngine.getLanguageTag(missingLangName) ?: ""
+                        val isDownloadingThis = isDownloadingInlineTag == missingTag
+
+                        Spacer(Modifier.height(8.dp))
+                        Card(
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.4f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CloudDownload,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(Modifier.width(10.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Offline Model Pack Needed",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "Download $missingLangName pack (~30MB) for instant offline translation.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Spacer(Modifier.width(8.dp))
+                                Button(
+                                    onClick = {
+                                        if (missingTag.isNotBlank() && !isDownloadingThis) {
+                                            isDownloadingInlineTag = missingTag
+                                            coroutineScope.launch {
+                                                val success = LocalTranslationEngine.downloadModel(missingTag)
+                                                isDownloadingInlineTag = null
+                                                if (success) {
+                                                    Toast.makeText(context, "$missingLangName model installed!", Toast.LENGTH_SHORT).show()
+                                                    doTranslate(sourceText, sourceLanguage, targetLanguage, mtTier)
+                                                } else {
+                                                    Toast.makeText(context, "Failed to download $missingLangName model.", Toast.LENGTH_SHORT).show()
+                                                }
+                                            }
+                                        }
+                                    },
+                                    enabled = !isDownloadingThis,
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                                ) {
+                                    if (isDownloadingThis) {
+                                        CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp, color = Color.White)
+                                        Spacer(Modifier.width(6.dp))
+                                        Text("Downloading...", style = MaterialTheme.typography.labelSmall)
+                                    } else {
+                                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(14.dp))
+                                        Spacer(Modifier.width(4.dp))
+                                        Text("Download", style = MaterialTheme.typography.labelSmall)
+                                    }
                                 }
                             }
                         }
@@ -478,10 +676,12 @@ fun TranslateScreenUI(
                                     errorMessage = errorMessage,
                                     translatedText = translatedText,
                                     targetLanguage = targetLanguage,
+                                    isTargetDownloaded = isTargetDownloaded,
                                     onRetry = { doTranslate(sourceText, sourceLanguage, targetLanguage, mtTier) },
                                     onSpeak = onSpeak,
                                     clipboardManager = clipboardManager,
                                     context = context,
+                                    isLandscape = true,
                                     modifier = Modifier.fillMaxSize()
                                 )
                             }
@@ -523,13 +723,15 @@ fun TranslateScreenUI(
                                 errorMessage = errorMessage,
                                 translatedText = translatedText,
                                 targetLanguage = targetLanguage,
+                                isTargetDownloaded = isTargetDownloaded,
                                 onRetry = { doTranslate(sourceText, sourceLanguage, targetLanguage, mtTier) },
                                 onSpeak = onSpeak,
                                 clipboardManager = clipboardManager,
                                 context = context,
+                                isLandscape = false,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .heightIn(min = 100.dp)
+                                    .wrapContentHeight()
                             )
 
                             Spacer(Modifier.height(16.dp))
@@ -603,10 +805,12 @@ private fun TargetResultComposable(
     errorMessage: String?,
     translatedText: String,
     targetLanguage: String,
+    isTargetDownloaded: Boolean,
     onRetry: () -> Unit,
     onSpeak: (String, String) -> Unit,
     clipboardManager: ClipboardManager,
     context: Context,
+    isLandscape: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -615,58 +819,140 @@ private fun TargetResultComposable(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(12.dp)
-                .verticalScroll(rememberScrollState())
+            modifier = if (isLandscape) Modifier.fillMaxSize().padding(12.dp)
+                       else Modifier.fillMaxWidth().padding(14.dp)
         ) {
-            if (isLoading) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        text = if (isDownloadingModel) "Downloading offline language pack (~30MB)..." else "Translating...",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                }
-            } else if (!errorMessage.isNullOrBlank()) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = errorMessage,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    TextButton(
-                        onClick = onRetry,
-                        modifier = Modifier.align(Alignment.End)
+            // Header Row of Result Card
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Translate,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "Translation ($targetLanguage)",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+
+                Spacer(Modifier.weight(1f))
+
+                if (isTargetDownloaded) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFF10B981).copy(alpha = 0.15f)
                     ) {
-                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Retry")
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(12.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("OFFLINE READY", color = Color(0xFF10B981), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                } else {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.CloudDownload, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(12.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("PACK NEEDED", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
-            } else if (translatedText.isNotBlank()) {
-                SelectionContainer {
-                    Text(
-                        text = translatedText,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                }
+            }
 
-                Spacer(Modifier.height(8.dp))
+            // Body
+            val contentModifier = if (isLandscape) {
+                Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())
+            } else {
+                Modifier.fillMaxWidth()
+            }
+
+            Box(modifier = contentModifier) {
+                if (isLoading) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            text = if (isDownloadingModel) "Downloading offline language pack (~30MB)..." else "Translating...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                } else if (!errorMessage.isNullOrBlank()) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = errorMessage,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        TextButton(
+                            onClick = onRetry,
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Retry")
+                        }
+                    }
+                } else if (translatedText.isNotBlank()) {
+                    SelectionContainer {
+                        Text(
+                            text = translatedText,
+                            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp, lineHeight = 26.sp),
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Translate,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.4f),
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = "Translation will appear here...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.75f)
+                        )
+                    }
+                }
+            }
+
+            if (translatedText.isNotBlank() && !isLoading) {
+                Spacer(Modifier.height(10.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -703,12 +989,6 @@ private fun TargetResultComposable(
                         )
                     }
                 }
-            } else {
-                Text(
-                    text = "Translation will appear here...",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f)
-                )
             }
         }
     }

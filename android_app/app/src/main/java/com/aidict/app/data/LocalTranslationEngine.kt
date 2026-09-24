@@ -7,7 +7,12 @@ import com.google.mlkit.nl.translate.TranslateLanguage
 import com.google.mlkit.nl.translate.TranslateRemoteModel
 import com.google.mlkit.nl.translate.Translation
 import com.google.mlkit.nl.translate.TranslatorOptions
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.util.Locale
@@ -141,6 +146,7 @@ object LocalTranslationEngine {
                 onDownloadingModel?.invoke(true)
                 translator.downloadModelIfNeeded(conditions).await()
                 onDownloadingModel?.invoke(false)
+                refreshDownloadedModels()
 
                 val translated = translator.translate(trimmedText).await()
 
@@ -173,18 +179,45 @@ object LocalTranslationEngine {
         return LANGUAGE_NAME_TO_TAG.entries.map { it.key to it.value }.sortedBy { it.first }
     }
 
+    private val _downloadedModelsFlow = MutableStateFlow<Set<String>>(emptySet())
+    val downloadedModelsFlow: StateFlow<Set<String>> = _downloadedModelsFlow.asStateFlow()
+
+    init {
+        CoroutineScope(Dispatchers.IO).launch {
+            refreshDownloadedModels()
+        }
+    }
+
+    suspend fun refreshDownloadedModels(): Set<String> = withContext(Dispatchers.IO) {
+        val models = getDownloadedModels()
+        _downloadedModelsFlow.value = models
+        models
+    }
+
+    fun isLanguageDownloaded(languageName: String, downloadedTags: Set<String>): Boolean {
+        if (languageName.equals("Auto Detect", ignoreCase = true)) return true
+        val tag = getLanguageTag(languageName) ?: return false
+        return downloadedTags.contains(tag)
+    }
+
+    fun isTagDownloaded(tag: String, downloadedTags: Set<String>): Boolean {
+        return downloadedTags.contains(tag)
+    }
+
     suspend fun getDownloadedModels(): Set<String> = withContext(Dispatchers.IO) {
         try {
             val modelManager = RemoteModelManager.getInstance()
             val models = modelManager.getDownloadedModels(TranslateRemoteModel::class.java).await()
-            models.map { it.language }.toSet()
+            val set = models.map { it.language }.toSet()
+            _downloadedModelsFlow.value = set
+            set
         } catch (e: Exception) {
             emptySet()
         }
     }
 
     suspend fun getModelStatuses(): List<ModelLanguageInfo> = withContext(Dispatchers.IO) {
-        val downloadedTags = getDownloadedModels()
+        val downloadedTags = refreshDownloadedModels()
         LANGUAGE_NAME_TO_TAG.entries.map { (name, tag) ->
             ModelLanguageInfo(
                 name = name,
@@ -199,6 +232,7 @@ object LocalTranslationEngine {
             val modelManager = RemoteModelManager.getInstance()
             val model = TranslateRemoteModel.Builder(languageTag).build()
             modelManager.deleteDownloadedModel(model).await()
+            refreshDownloadedModels()
             true
         } catch (e: Exception) {
             false
@@ -214,6 +248,7 @@ object LocalTranslationEngine {
                 conditionsBuilder.requireWifi()
             }
             modelManager.download(model, conditionsBuilder.build()).await()
+            refreshDownloadedModels()
             true
         } catch (e: Exception) {
             false
