@@ -73,7 +73,10 @@ fun SearchScreen(
         targetLang = viewModel.getProfileSetting(profileId, "SEARCH_TARGET") ?: "English"
     }
 
-    Column(modifier = modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+
+    Column(modifier = modifier.fillMaxSize().padding(horizontal = if (isLandscape) 8.dp else 16.dp, vertical = if (isLandscape) 2.dp else 8.dp)) {
 
         // Error Banner Card
         state.error?.let { errorText ->

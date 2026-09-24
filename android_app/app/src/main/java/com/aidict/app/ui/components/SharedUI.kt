@@ -164,16 +164,19 @@ fun ChatInputBar(
     extraContent: @Composable (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+
     Surface(
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(if (isLandscape) 16.dp else 24.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
         tonalElevation = 2.dp,
-        modifier = modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp)
+        modifier = modifier.fillMaxWidth().padding(top = if (isLandscape) 2.dp else 8.dp, bottom = if (isLandscape) 2.dp else 8.dp)
     ) {
-        Column(modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 8.dp)) {
+        Column(modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = if (isLandscape) 2.dp else 4.dp, bottom = if (isLandscape) 2.dp else 8.dp)) {
             if (sourceLang != null && targetLang != null && onSourceLangChange != null && onTargetLangChange != null) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(start = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(start = 8.dp, bottom = if (isLandscape) 2.dp else 4.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -183,9 +186,9 @@ fun ChatInputBar(
                             onSourceLangChange(targetLang)
                             onTargetLangChange(sourceLang)
                         },
-                        modifier = Modifier.padding(horizontal = 4.dp).size(24.dp)
+                        modifier = Modifier.padding(horizontal = 4.dp).size(if (isLandscape) 20.dp else 24.dp)
                     ) {
-                        Icon(Icons.Default.SwapHoriz, contentDescription = "Swap Languages", modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.SwapHoriz, contentDescription = "Swap Languages", modifier = Modifier.size(if (isLandscape) 14.dp else 16.dp))
                     }
                     SmallLanguageSelector(availableLanguages = availableLanguages, currentValue = targetLang, onSelected = onTargetLangChange)
                 }
@@ -197,7 +200,7 @@ fun ChatInputBar(
 
             if (suggestions.isNotEmpty() && onSuggestionClick != null) {
                 androidx.compose.foundation.lazy.LazyColumn(
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 120.dp).padding(horizontal = 8.dp, vertical = 4.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(max = if (isLandscape) 80.dp else 120.dp).padding(horizontal = 8.dp, vertical = 2.dp),
                     reverseLayout = true
                 ) {
                     items(suggestions) { word ->
@@ -207,11 +210,11 @@ fun ChatInputBar(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { onSuggestionClick(word) }
-                                .padding(vertical = 8.dp, horizontal = 4.dp)
+                                .padding(vertical = if (isLandscape) 4.dp else 8.dp, horizontal = 4.dp)
                         )
                     }
                 }
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
             }
 
             Row(
@@ -222,8 +225,8 @@ fun ChatInputBar(
                     androidx.compose.foundation.layout.Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .padding(bottom = 8.dp, start = 8.dp, end = 8.dp)
-                            .size(40.dp)
+                            .padding(bottom = if (isLandscape) 4.dp else 8.dp, start = 8.dp, end = 4.dp)
+                            .size(if (isLandscape) 32.dp else 40.dp)
                             .background(if (autoNewSearch) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer, CircleShape)
                             .clip(CircleShape)
                             .then(
@@ -238,7 +241,7 @@ fun ChatInputBar(
                             if (autoNewSearch) Icons.Default.Bolt else Icons.Default.Add, 
                             contentDescription = "New Search", 
                             tint = if (autoNewSearch) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(if (isLandscape) 18.dp else 24.dp)
                         )
                     }
                 }
@@ -249,7 +252,7 @@ fun ChatInputBar(
                     placeholder = { Text(placeholder) },
                     modifier = Modifier.weight(1f),
                     minLines = 1,
-                    maxLines = 4,
+                    maxLines = if (isLandscape) 2 else 4,
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions.Default.copy(
                         imeAction = if (enterToSend) androidx.compose.ui.text.input.ImeAction.Send else androidx.compose.ui.text.input.ImeAction.Default
                     ),
@@ -263,12 +266,13 @@ fun ChatInputBar(
                         unfocusedContainerColor = Color.Transparent
                     )
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(if (isLandscape) 4.dp else 8.dp))
                 IconButton(
                     onClick = onSend,
                     enabled = inputTerm.isNotBlank(),
                     modifier = Modifier
-                        .padding(bottom = 8.dp)
+                        .padding(bottom = if (isLandscape) 4.dp else 8.dp)
+                        .size(if (isLandscape) 32.dp else 40.dp)
                         .background(
                             if (inputTerm.isNotBlank()) MaterialTheme.colorScheme.primary 
                             else MaterialTheme.colorScheme.primary.copy(alpha = 0.38f), 
@@ -277,7 +281,7 @@ fun ChatInputBar(
                 ) {
                     if (isLoading && inputTerm.isBlank()) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(if (isLandscape) 14.dp else 18.dp),
                             strokeWidth = 2.dp,
                             color = MaterialTheme.colorScheme.onPrimary
                         )
@@ -285,7 +289,8 @@ fun ChatInputBar(
                         Icon(
                             if (isFollowUp && !autoNewSearch) Icons.AutoMirrored.Filled.Send else Icons.Default.Search, 
                             contentDescription = "Send",
-                            tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = if (inputTerm.isNotBlank()) 1f else 0.5f)
+                            tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = if (inputTerm.isNotBlank()) 1f else 0.5f),
+                            modifier = Modifier.size(if (isLandscape) 18.dp else 24.dp)
                         )
                     }
                 }

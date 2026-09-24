@@ -31,7 +31,10 @@ fun NotesScreen(viewModel: NotesViewModel) {
     var selectionMode by remember { mutableStateOf(false) }
     val selectedNotes = remember { mutableStateListOf<Int>() }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = if (isLandscape) 8.dp else 16.dp, vertical = if (isLandscape) 2.dp else 16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Text("Notes", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
             if (selectionMode) {

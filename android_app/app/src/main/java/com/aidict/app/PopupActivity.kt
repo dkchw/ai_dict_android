@@ -233,12 +233,12 @@ class PopupActivity : ComponentActivity() {
 
                     val isTablet = windowSizeClass.widthSizeClass == androidx.compose.material3.windowsizeclass.WindowWidthSizeClass.Expanded || windowSizeClass.widthSizeClass == androidx.compose.material3.windowsizeclass.WindowWidthSizeClass.Medium
                     val defaultWidth = if (isLandscape) {
-                        if (isTablet) 0.88f else 0.96f
+                        if (isTablet) 0.96f else 0.99f
                     } else {
                         if (isTablet) 0.6f else 0.95f
                     }
                     val defaultHeight = if (isLandscape) {
-                        0.96f
+                        0.98f
                     } else {
                         if (isTablet) 0.8f else 0.9f
                     }
@@ -259,26 +259,34 @@ class PopupActivity : ComponentActivity() {
                         val popupWidthStr by settingsViewModel.getSettingFlow("POPUP_WIDTH", defaultWidth.toString()).collectAsState()
                         val popupHeightStr by settingsViewModel.getSettingFlow("POPUP_HEIGHT", defaultHeight.toString()).collectAsState()
                         
-                        val popupWidth = popupWidthStr.toFloatOrNull()?.coerceIn(0.3f, 1.0f) ?: defaultWidth
+                        // In landscape, dedicate maximum screen estate (96-99%) so content is not squished
+                        val popupWidth = if (isLandscape) {
+                            if (isTablet) 0.96f else 0.99f
+                        } else {
+                            popupWidthStr.toFloatOrNull()?.coerceIn(0.3f, 1.0f) ?: defaultWidth
+                        }
                         val popupHeight = if (isLandscape) {
-                            popupHeightStr.toFloatOrNull()?.coerceIn(0.7f, 1.0f) ?: defaultHeight
+                            0.98f
                         } else {
                             popupHeightStr.toFloatOrNull()?.coerceIn(0.3f, 1.0f) ?: defaultHeight
                         }
 
                         Surface(
-                            shape = RoundedCornerShape(if (isLandscape) 12.dp else 16.dp),
+                            shape = RoundedCornerShape(if (isLandscape) 8.dp else 16.dp),
                             color = MaterialTheme.colorScheme.background,
                             modifier = Modifier
                                 .fillMaxWidth(popupWidth)
-                                .heightIn(max = screenHeight * popupHeight)
+                                .then(
+                                    if (isLandscape) Modifier.fillMaxHeight(popupHeight)
+                                    else Modifier.heightIn(max = screenHeight * popupHeight)
+                                )
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null
                                 ) {
                                     // Do nothing on internal clicks
                                 }
-                                .clip(RoundedCornerShape(if (isLandscape) 12.dp else 16.dp))
+                                .clip(RoundedCornerShape(if (isLandscape) 8.dp else 16.dp))
                         ) {
                             AppNavigation(
                                 appViewModel = appViewModel,

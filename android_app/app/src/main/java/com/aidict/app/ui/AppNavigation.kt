@@ -11,6 +11,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.ExperimentalFoundationApi
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.*
@@ -80,6 +81,8 @@ fun AppNavigation(
     navigationTrigger: Long = 0L,
     onColorExtracted: (androidx.compose.ui.graphics.Color?) -> Unit
 ) {
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
     val isExpanded = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Expanded
     
     var currentScreen by remember { mutableStateOf(Screen.MAIN) }
@@ -265,7 +268,7 @@ fun AppNavigation(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp)
+                    .height(if (isLandscape) 40.dp else 48.dp)
                     .background(androidx.compose.ui.graphics.Color.Transparent)
                     .padding(horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -301,7 +304,7 @@ fun AppNavigation(
                     }
                     
                     Column(modifier = Modifier.padding(start = 4.dp), horizontalAlignment = Alignment.Start) {
-                        Text("AI Dict", style = MaterialTheme.typography.titleMedium)
+                        Text("AI Dict", style = if (isLandscape) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium)
                         var expanded by remember { mutableStateOf(false) }
                         Box {
                             Row(
@@ -361,7 +364,7 @@ fun AppNavigation(
             }
         },
         bottomBar = {
-            if (currentScreen == Screen.MAIN) {
+            if (currentScreen == Screen.MAIN && !isLandscape) {
                 Row(
                     modifier = Modifier.fillMaxWidth().height(48.dp).background(androidx.compose.ui.graphics.Color.Transparent),
                     horizontalArrangement = Arrangement.SpaceEvenly,
@@ -391,8 +394,45 @@ fun AppNavigation(
             }
         }
     ) { paddingValues ->
-        Surface(modifier = Modifier.padding(paddingValues).fillMaxSize(), color = androidx.compose.ui.graphics.Color.Transparent) {
-            when (currentScreen) {
+        Row(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
+            if (currentScreen == Screen.MAIN && isLandscape) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
+                    modifier = Modifier.fillMaxHeight().width(52.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxHeight().padding(vertical = 4.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        modes.forEachIndexed { index, tab ->
+                            val isSelected = currentMode == index
+                            IconButton(
+                                onClick = {
+                                    if (currentMode != index) {
+                                        coroutineScope.launch { pagerState.animateScrollToPage(index) }
+                                    }
+                                },
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .background(
+                                        if (isSelected) MaterialTheme.colorScheme.primaryContainer else androidx.compose.ui.graphics.Color.Transparent,
+                                        CircleShape
+                                    )
+                            ) {
+                                Icon(
+                                    tab.icon,
+                                    contentDescription = tab.title,
+                                    tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            Surface(modifier = Modifier.weight(1f).fillMaxHeight(), color = androidx.compose.ui.graphics.Color.Transparent) {
+                when (currentScreen) {
                                 Screen.SETTINGS -> SettingsScreen(settingsViewModel)
                 Screen.NOTES -> NotesScreen(notesViewModel)
                 Screen.HISTORY -> {
@@ -620,6 +660,7 @@ fun AppNavigation(
             }
         }
     }
+}
 }
 }
 

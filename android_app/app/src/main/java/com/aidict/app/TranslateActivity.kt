@@ -215,6 +215,10 @@ fun TranslateScreenUI(
         doTranslate(sourceText, sourceLanguage, targetLanguage, mtTier)
     }
 
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val isTablet = configuration.screenWidthDp >= 600
+
     MaterialTheme(colorScheme = colorScheme) {
         Box(
             modifier = Modifier
@@ -230,23 +234,25 @@ fun TranslateScreenUI(
         ) {
             Surface(
                 modifier = Modifier
-                    .fillMaxWidth(0.92f)
-                    .widthIn(max = 520.dp)
-                    .padding(vertical = 24.dp)
+                    .fillMaxWidth(if (isLandscape) (if (isTablet) 0.96f else 0.99f) else if (isTablet) 0.85f else 0.92f)
+                    .then(
+                        if (isLandscape) Modifier.fillMaxHeight(0.96f)
+                        else Modifier.widthIn(max = 520.dp)
+                    )
+                    .padding(vertical = if (isLandscape) 4.dp else 24.dp)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
                     ) { /* prevent click-through */ },
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(if (isLandscape) 12.dp else 20.dp),
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 8.dp,
                 shadowElevation = 12.dp
             ) {
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                        .verticalScroll(rememberScrollState())
+                        .fillMaxSize()
+                        .padding(if (isLandscape) 10.dp else 16.dp)
                 ) {
                     // Header Bar
                     Row(
@@ -257,12 +263,12 @@ fun TranslateScreenUI(
                             imageVector = Icons.Default.Translate,
                             contentDescription = "Translate",
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(if (isLandscape) 20.dp else 24.dp)
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
                             text = "AI Dict Translate",
-                            style = MaterialTheme.typography.titleMedium,
+                            style = if (isLandscape) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -302,6 +308,8 @@ fun TranslateScreenUI(
                             )
                         )
 
+                        Spacer(Modifier.width(4.dp))
+
                         IconButton(
                             onClick = { showManageModelsDialog = true },
                             modifier = Modifier.size(32.dp)
@@ -325,14 +333,14 @@ fun TranslateScreenUI(
                         ManageOfflineModelsDialog(onDismiss = { showManageModelsDialog = false })
                     }
 
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(if (isLandscape) 4.dp else 12.dp))
 
                     // Language Selector Bar
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                            .padding(horizontal = 8.dp, vertical = if (isLandscape) 2.dp else 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
@@ -394,13 +402,13 @@ fun TranslateScreenUI(
                                     }
                                 }
                             },
-                            modifier = Modifier.size(36.dp)
+                            modifier = Modifier.size(if (isLandscape) 30.dp else 36.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.CompareArrows,
                                 contentDescription = "Swap Languages",
                                 tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(if (isLandscape) 18.dp else 20.dp)
                             )
                         }
 
@@ -439,216 +447,376 @@ fun TranslateScreenUI(
                         }
                     }
 
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(if (isLandscape) 4.dp else 12.dp))
 
-                    // Source Text Input Box
-                    OutlinedTextField(
-                        value = sourceText,
-                        onValueChange = { sourceText = it },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 100.dp, max = 160.dp),
-                        placeholder = { Text("Enter text to translate...") },
-                        textStyle = MaterialTheme.typography.bodyLarge,
-                        shape = RoundedCornerShape(12.dp),
-                        trailingIcon = {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                if (sourceText.isNotBlank()) {
-                                    IconButton(onClick = { sourceText = "" }, modifier = Modifier.size(32.dp)) {
-                                        Icon(Icons.Default.Clear, contentDescription = "Clear", modifier = Modifier.size(18.dp))
-                                    }
-                                } else {
-                                    IconButton(
-                                        onClick = {
-                                            val clip = clipboardManager.primaryClip?.getItemAt(0)?.text?.toString() ?: ""
-                                            if (clip.isNotBlank()) {
-                                                sourceText = clip
-                                            }
-                                        },
-                                        modifier = Modifier.size(32.dp)
-                                    ) {
-                                        Icon(Icons.Default.ContentPaste, contentDescription = "Paste", modifier = Modifier.size(18.dp))
-                                    }
-                                }
-                                if (sourceText.isNotBlank()) {
-                                    IconButton(
-                                        onClick = { onSpeak(sourceText, detectedSourceLang ?: sourceLanguage) },
-                                        modifier = Modifier.size(32.dp)
-                                    ) {
-                                        Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = "Listen", modifier = Modifier.size(18.dp))
-                                    }
-                                }
+                    if (isLandscape) {
+                        // Landscape 2-Column Side-by-Side Layout
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // Left: Source Box
+                            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                                SourceInputComposable(
+                                    sourceText = sourceText,
+                                    onSourceTextChange = { sourceText = it },
+                                    detectedSourceLang = detectedSourceLang,
+                                    sourceLanguage = sourceLanguage,
+                                    onSpeak = onSpeak,
+                                    clipboardManager = clipboardManager,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+
+                            // Right: Result Card
+                            Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                                TargetResultComposable(
+                                    isLoading = isLoading,
+                                    isDownloadingModel = isDownloadingModel,
+                                    errorMessage = errorMessage,
+                                    translatedText = translatedText,
+                                    targetLanguage = targetLanguage,
+                                    onRetry = { doTranslate(sourceText, sourceLanguage, targetLanguage, mtTier) },
+                                    onSpeak = onSpeak,
+                                    clipboardManager = clipboardManager,
+                                    context = context,
+                                    modifier = Modifier.fillMaxSize()
+                                )
                             }
                         }
-                    )
 
-                    Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(4.dp))
 
-                    // Translated Result Area
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 100.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
-                    ) {
+                        // Compact Deepen Bar
+                        AiDeepenBar(
+                            isLandscape = true,
+                            sourceText = sourceText,
+                            onSendToAiDict = onSendToAiDict
+                        )
+                    } else {
+                        // Portrait Vertical Scroll Layout
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(12.dp)
+                                .weight(1f)
+                                .verticalScroll(rememberScrollState())
                         ) {
-                            if (isLoading) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 16.dp),
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(20.dp),
-                                        strokeWidth = 2.dp,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                    Spacer(Modifier.width(10.dp))
-                                    Text(
-                                        text = if (isDownloadingModel) "Downloading offline language pack (~30MB)..." else "Translating...",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
-                                }
-                            } else if (!errorMessage.isNullOrBlank()) {
-                                Column(modifier = Modifier.fillMaxWidth()) {
-                                    Text(
-                                        text = errorMessage!!,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                    Spacer(Modifier.height(6.dp))
-                                    TextButton(
-                                        onClick = { doTranslate(sourceText, sourceLanguage, targetLanguage, mtTier) },
-                                        modifier = Modifier.align(Alignment.End)
-                                    ) {
-                                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
-                                        Spacer(Modifier.width(4.dp))
-                                        Text("Retry")
-                                    }
-                                }
-                            } else if (translatedText.isNotBlank()) {
-                                SelectionContainer {
-                                    Text(
-                                        text = translatedText,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
-                                }
+                            SourceInputComposable(
+                                sourceText = sourceText,
+                                onSourceTextChange = { sourceText = it },
+                                detectedSourceLang = detectedSourceLang,
+                                sourceLanguage = sourceLanguage,
+                                onSpeak = onSpeak,
+                                clipboardManager = clipboardManager,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 100.dp, max = 160.dp)
+                            )
 
-                                Spacer(Modifier.height(8.dp))
+                            Spacer(Modifier.height(12.dp))
 
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.End
-                                ) {
-                                    IconButton(
-                                        onClick = { onSpeak(translatedText, targetLanguage) },
-                                        modifier = Modifier.size(32.dp)
-                                    ) {
-                                        Icon(
-                                            Icons.AutoMirrored.Filled.VolumeUp,
-                                            contentDescription = "Listen translation",
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
+                            TargetResultComposable(
+                                isLoading = isLoading,
+                                isDownloadingModel = isDownloadingModel,
+                                errorMessage = errorMessage,
+                                translatedText = translatedText,
+                                targetLanguage = targetLanguage,
+                                onRetry = { doTranslate(sourceText, sourceLanguage, targetLanguage, mtTier) },
+                                onSpeak = onSpeak,
+                                clipboardManager = clipboardManager,
+                                context = context,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 100.dp)
+                            )
 
-                                    Spacer(Modifier.width(4.dp))
+                            Spacer(Modifier.height(16.dp))
 
-                                    IconButton(
-                                        onClick = {
-                                            val clip = ClipData.newPlainText("Translation", translatedText)
-                                            clipboardManager.setPrimaryClip(clip)
-                                            Toast.makeText(context, "Translation copied to clipboard", Toast.LENGTH_SHORT).show()
-                                        },
-                                        modifier = Modifier.size(32.dp)
-                                    ) {
-                                        Icon(
-                                            Icons.Default.ContentCopy,
-                                            contentDescription = "Copy translation",
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-                                }
-                            } else {
-                                Text(
-                                    text = "Translation will appear here...",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f)
-                                )
-                            }
+                            AiDeepenBar(
+                                isLandscape = false,
+                                sourceText = sourceText,
+                                onSendToAiDict = onSendToAiDict
+                            )
                         }
                     }
+                }
+            }
+        }
+    }
+}
 
-                    Spacer(Modifier.height(16.dp))
-
-                    // Deepen with AI LLM Section
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+@Composable
+private fun SourceInputComposable(
+    sourceText: String,
+    onSourceTextChange: (String) -> Unit,
+    detectedSourceLang: String?,
+    sourceLanguage: String,
+    onSpeak: (String, String) -> Unit,
+    clipboardManager: ClipboardManager,
+    modifier: Modifier = Modifier
+) {
+    OutlinedTextField(
+        value = sourceText,
+        onValueChange = onSourceTextChange,
+        modifier = modifier,
+        placeholder = { Text("Enter text to translate...") },
+        textStyle = MaterialTheme.typography.bodyLarge,
+        shape = RoundedCornerShape(12.dp),
+        trailingIcon = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (sourceText.isNotBlank()) {
+                    IconButton(onClick = { onSourceTextChange("") }, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Clear, contentDescription = "Clear", modifier = Modifier.size(18.dp))
+                    }
+                } else {
+                    IconButton(
+                        onClick = {
+                            val clip = clipboardManager.primaryClip?.getItemAt(0)?.text?.toString() ?: ""
+                            if (clip.isNotBlank()) {
+                                onSourceTextChange(clip)
+                            }
+                        },
+                        modifier = Modifier.size(32.dp)
                     ) {
-                        Column(modifier = Modifier.padding(10.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.AutoAwesome,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(Modifier.width(6.dp))
-                                Text(
-                                    text = "Need deeper analysis or grammar polish?",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
+                        Icon(Icons.Default.ContentPaste, contentDescription = "Paste", modifier = Modifier.size(18.dp))
+                    }
+                }
+                if (sourceText.isNotBlank()) {
+                    IconButton(
+                        onClick = { onSpeak(sourceText, detectedSourceLang ?: sourceLanguage) },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = "Listen", modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
+        }
+    )
+}
 
-                            Spacer(Modifier.height(8.dp))
+@Composable
+private fun TargetResultComposable(
+    isLoading: Boolean,
+    isDownloadingModel: Boolean,
+    errorMessage: String?,
+    translatedText: String,
+    targetLanguage: String,
+    onRetry: () -> Unit,
+    onSpeak: (String, String) -> Unit,
+    clipboardManager: ClipboardManager,
+    context: Context,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            if (isLoading) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        text = if (isDownloadingModel) "Downloading offline language pack (~30MB)..." else "Translating...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+            } else if (!errorMessage.isNullOrBlank()) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = errorMessage,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    TextButton(
+                        onClick = onRetry,
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Retry")
+                    }
+                }
+            } else if (translatedText.isNotBlank()) {
+                SelectionContainer {
+                    Text(
+                        text = translatedText,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                FilledTonalButton(
-                                    onClick = { onSendToAiDict(sourceText, "dict") },
-                                    modifier = Modifier.weight(1f),
-                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp)
-                                ) {
-                                    Text("📚 Dict", style = MaterialTheme.typography.labelSmall)
-                                }
+                Spacer(Modifier.height(8.dp))
 
-                                FilledTonalButton(
-                                    onClick = { onSendToAiDict(sourceText, "explain") },
-                                    modifier = Modifier.weight(1f),
-                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp)
-                                ) {
-                                    Text("🧠 Explain", style = MaterialTheme.typography.labelSmall)
-                                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    IconButton(
+                        onClick = { onSpeak(translatedText, targetLanguage) },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.VolumeUp,
+                            contentDescription = "Listen translation",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
 
-                                FilledTonalButton(
-                                    onClick = { onSendToAiDict(sourceText, "correct") },
-                                    modifier = Modifier.weight(1f),
-                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp)
-                                ) {
-                                    Text("✍️ Correct", style = MaterialTheme.typography.labelSmall)
-                                }
-                            }
-                        }
+                    Spacer(Modifier.width(4.dp))
+
+                    IconButton(
+                        onClick = {
+                            val clip = ClipData.newPlainText("Translation", translatedText)
+                            clipboardManager.setPrimaryClip(clip)
+                            Toast.makeText(context, "Translation copied to clipboard", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.ContentCopy,
+                            contentDescription = "Copy translation",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            } else {
+                Text(
+                    text = "Translation will appear here...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AiDeepenBar(
+    isLandscape: Boolean,
+    sourceText: String,
+    onSendToAiDict: (String, String) -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+    ) {
+        if (isLandscape) {
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.AutoAwesome,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = "Deepen with AI LLM:",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(Modifier.weight(1f))
+                FilledTonalButton(
+                    onClick = { onSendToAiDict(sourceText, "dict") },
+                    modifier = Modifier.height(28.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Text("📚 Dict", style = MaterialTheme.typography.labelSmall)
+                }
+                Spacer(Modifier.width(4.dp))
+                FilledTonalButton(
+                    onClick = { onSendToAiDict(sourceText, "explain") },
+                    modifier = Modifier.height(28.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Text("🧠 Explain", style = MaterialTheme.typography.labelSmall)
+                }
+                Spacer(Modifier.width(4.dp))
+                FilledTonalButton(
+                    onClick = { onSendToAiDict(sourceText, "correct") },
+                    modifier = Modifier.height(28.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Text("✍️ Correct", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        } else {
+            Column(modifier = Modifier.padding(10.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = "Need deeper analysis or grammar polish?",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    FilledTonalButton(
+                        onClick = { onSendToAiDict(sourceText, "dict") },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp)
+                    ) {
+                        Text("📚 Dict", style = MaterialTheme.typography.labelSmall)
+                    }
+
+                    FilledTonalButton(
+                        onClick = { onSendToAiDict(sourceText, "explain") },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp)
+                    ) {
+                        Text("🧠 Explain", style = MaterialTheme.typography.labelSmall)
+                    }
+
+                    FilledTonalButton(
+                        onClick = { onSendToAiDict(sourceText, "correct") },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp)
+                    ) {
+                        Text("✍️ Correct", style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }

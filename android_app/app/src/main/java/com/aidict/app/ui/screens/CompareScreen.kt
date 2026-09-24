@@ -61,7 +61,10 @@ fun CompareScreen(
     var showRenameDialog by remember { mutableStateOf(false) }
     val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
 
-    Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+
+    Column(modifier = modifier.fillMaxSize().padding(horizontal = if (isLandscape) 8.dp else 16.dp, vertical = if (isLandscape) 2.dp else 16.dp)) {
         // Error Banner
         state.error?.let { errorMsg ->
             Card(
