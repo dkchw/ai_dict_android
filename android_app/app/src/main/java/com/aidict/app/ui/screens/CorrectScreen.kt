@@ -15,6 +15,9 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.automirrored.filled.CompareArrows
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Translate
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Star
@@ -543,62 +546,14 @@ fun CorrectScreen(
             onTargetLangChange = if (!isFollowUp || autoNewSearch) { { targetLang = it; viewModel.saveProfileSetting(profileId, "CORRECT_TARGET", it) } } else null,
             extraContent = if (!isFollowUp || autoNewSearch) {
                 {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            FilterChip(
-                                selected = correctType == "both",
-                                onClick = {
-                                    correctType = "both"
-                                    viewModel.saveProfileSetting(profileId, "CORRECT_TYPE", "both")
-                                },
-                                label = { Text("Correction & Translation", style = MaterialTheme.typography.labelSmall) },
-                                leadingIcon = if (correctType == "both") {
-                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
-                                } else null,
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                ),
-                                modifier = Modifier.padding(end = 4.dp)
-                            )
-                            FilterChip(
-                                selected = correctType == "correction_only",
-                                onClick = {
-                                    correctType = "correction_only"
-                                    viewModel.saveProfileSetting(profileId, "CORRECT_TYPE", "correction_only")
-                                },
-                                label = { Text("Correction Only", style = MaterialTheme.typography.labelSmall) },
-                                leadingIcon = if (correctType == "correction_only") {
-                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
-                                } else null,
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                ),
-                                modifier = Modifier.padding(horizontal = 2.dp)
-                            )
-                            FilterChip(
-                                selected = false,
-                                onClick = {
-                                    correctType = "machine_translate"
-                                    viewModel.saveProfileSetting(profileId, "CORRECT_TYPE", "machine_translate")
-                                },
-                                label = { Text("Local MT", style = MaterialTheme.typography.labelSmall) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                ),
-                                modifier = Modifier.padding(start = 4.dp)
-                            )
-                        }
-                    }
+                    CorrectModeSwitchHeader(
+                        correctType = correctType,
+                        onSelectMode = { newType ->
+                            correctType = newType
+                            viewModel.saveProfileSetting(profileId, "CORRECT_TYPE", newType)
+                        },
+                        isLandscape = isLandscape
+                    )
                 }
             } else null,
             onClear = { viewModel.clearCurrentSearch("correct") },
@@ -610,6 +565,100 @@ fun CorrectScreen(
             },
             placeholder = if (isFollowUp && !autoNewSearch) "Ask follow-up question..." else if (correctType == "correction_only") "Paste text to correct & polish..." else "Paste text to correct & translate..."
         )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CorrectModeSwitchHeader(
+    correctType: String,
+    onSelectMode: (String) -> Unit,
+    isLandscape: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = if (isLandscape) 1.dp else 2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        val isMt = correctType == "machine_translate"
+
+        // Top: Machine Translator Button
+        FilterChip(
+            selected = isMt,
+            onClick = {
+                if (!isMt) onSelectMode("machine_translate")
+            },
+            label = {
+                Text(
+                    text = "🌐 Machine Translator",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = if (isMt) FontWeight.Bold else FontWeight.SemiBold
+                )
+            },
+            leadingIcon = {
+                Icon(
+                    imageVector = if (isMt) Icons.Default.Check else Icons.Default.Translate,
+                    contentDescription = null,
+                    tint = if (isMt) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(15.dp)
+                )
+            },
+            trailingIcon = if (!isMt) {
+                {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(13.dp)
+                    )
+                }
+            } else null,
+            colors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
+                labelColor = MaterialTheme.colorScheme.onSurface
+            ),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.padding(bottom = if (isLandscape) 2.dp else 4.dp)
+        )
+
+        // Bottom: Correction & Translation | Correction Only
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val isBoth = correctType == "both"
+            FilterChip(
+                selected = isBoth,
+                onClick = { onSelectMode("both") },
+                label = { Text("Correction & Translation", style = MaterialTheme.typography.labelSmall) },
+                leadingIcon = if (isBoth) {
+                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                } else null,
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                ),
+                modifier = Modifier.padding(end = 4.dp)
+            )
+
+            val isOnly = correctType == "correction_only"
+            FilterChip(
+                selected = isOnly,
+                onClick = { onSelectMode("correction_only") },
+                label = { Text("Correction Only", style = MaterialTheme.typography.labelSmall) },
+                leadingIcon = if (isOnly) {
+                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                } else null,
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                ),
+                modifier = Modifier.padding(start = 2.dp)
+            )
         }
     }
 }
@@ -652,38 +701,12 @@ fun NormalTranslatorView(
     Column(
         modifier = modifier.fillMaxSize()
     ) {
-        // Mode Selector Row
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            FilterChip(
-                selected = false,
-                onClick = { onSwitchMode("both") },
-                label = { Text("Correction & Translation", style = MaterialTheme.typography.labelSmall) },
-                modifier = Modifier.padding(end = 4.dp)
-            )
-            FilterChip(
-                selected = false,
-                onClick = { onSwitchMode("correction_only") },
-                label = { Text("Correction Only", style = MaterialTheme.typography.labelSmall) },
-                modifier = Modifier.padding(horizontal = 2.dp)
-            )
-            FilterChip(
-                selected = true,
-                onClick = { },
-                label = { Text("Local MT", style = MaterialTheme.typography.labelSmall) },
-                leadingIcon = { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                ),
-                modifier = Modifier.padding(start = 4.dp)
-            )
-        }
+        // Mode Selector: Machine Translator on top, Correction modes below
+        CorrectModeSwitchHeader(
+            correctType = "machine_translate",
+            onSelectMode = onSwitchMode,
+            isLandscape = isLandscape
+        )
 
         Spacer(Modifier.height(if (isLandscape) 2.dp else 6.dp))
 
