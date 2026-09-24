@@ -17,6 +17,7 @@ import com.aidict.app.data.LlmRepository
 import com.aidict.app.data.entities.ChatMessage
 import com.aidict.app.data.entities.Word
 import com.aidict.app.utils.MarkdownParser
+import com.aidict.app.data.LocalTranslationEngine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -974,6 +975,99 @@ class SearchViewModel(
         }
     }
 
+    fun translateLocalMachine(
+        text: String,
+        sourceLang: String,
+        targetLang: String,
+        profileId: Int,
+        tier: LocalTranslationEngine.Tier = LocalTranslationEngine.Tier.NORMAL
+    ) {
+        val cleanText = text.trim()
+        if (cleanText.isBlank()) return
+        clearSuggestions()
+        val _uiState = _correctState
+        bgScope.launch {
+            var savedMsg: com.aidict.app.data.entities.ChatMessage? = null
+            var savedWord: com.aidict.app.data.entities.Word? = null
+            var wordId: Int? = null
+            try {
+                val sessionId = getOrCreateActiveSessionId(profileId)
+                val langKey = "$sourceLang -> $targetLang [MT:${tier.id}]"
+                val existingWord = database.appDao().findWordExact(profileId, "correct", cleanText, langKey)
+                if (existingWord != null) {
+                    val existingMsgs = database.appDao().getChatMessagesSync(existingWord.id)
+                    val hasValidOutput = existingMsgs.any { it.role == "assistant" && it.content.isNotBlank() && !it.content.startsWith("Generating") && !it.content.contains("Generation Failed") }
+                    if (hasValidOutput) {
+                        database.appDao().incrementSearchCount(existingWord.id)
+                        val updatedWord = existingWord.copy(searchCount = existingWord.searchCount + 1, sessionId = sessionId)
+                        database.appDao().updateWord(updatedWord)
+                        loadWord(updatedWord)
+                        return@launch
+                    }
+                    savedWord = existingWord
+                }
+                val currentWordId = savedWord?.id ?: database.appDao().insertWord(
+                    com.aidict.app.data.entities.Word(profileId = profileId, term = cleanText, language = langKey, sessionId = sessionId, mode = "correct")
+                ).toInt()
+                wordId = currentWordId
+                if (savedWord == null) {
+                    savedWord = com.aidict.app.data.entities.Word(id = currentWordId, profileId = profileId, term = cleanText, language = langKey, sessionId = sessionId, mode = "correct")
+                }
+                notifyBackgroundStatus("Translating text (Offline MT)")
+                val initialMsg = com.aidict.app.data.entities.ChatMessage(wordId = currentWordId, role = "assistant", content = "Translating with local model...")
+                val msgId = database.appDao().insertChatMessage(initialMsg).toInt()
+                savedMsg = initialMsg.copy(id = msgId)
+                _uiState.value = SearchState(isLoading = true, word = savedWord, chatMessages = listOf(savedMsg), currentStream = "", error = null)
+
+                val result = LocalTranslationEngine.translate(
+                    text = cleanText,
+                    sourceLanguage = sourceLang,
+                    targetLanguage = targetLang,
+                    tier = tier,
+                    onDownloadingModel = { isDownloading ->
+                        if (isDownloading && _uiState.value.word?.id == currentWordId) {
+                            _uiState.value = _uiState.value.copy(currentStream = "⏳ Downloading offline language model pack (~30MB)...")
+                        }
+                    }
+                )
+
+                if (result.isSuccess) {
+                    val res = result.getOrThrow()
+                    val markdownResult = buildString {
+                        append("### 🌐 Machine Translation (${res.tier.displayName})\n\n")
+                        append("> **Detected/Source:** ${res.sourceLanguageName} ➔ **Target:** ${res.targetLanguageName}\n\n")
+                        append("#### Translation:\n")
+                        append("${res.translatedText}\n\n")
+                        append("---\n")
+                        append("💡 *Local on-device translation. To get in-depth grammar correction, contextual nuances, or alternative phrasings, switch to **Correction & Translation** or click **Resume with AI LLM**.*")
+                    }
+                    val finalMsg = savedMsg.copy(content = markdownResult)
+                    database.appDao().insertChatMessage(finalMsg)
+                    if (_uiState.value.word?.id == currentWordId) {
+                        val updatedMsgs = database.appDao().getChatMessagesSync(currentWordId)
+                        _uiState.value = SearchState(isLoading = false, word = savedWord, chatMessages = updatedMsgs, currentStream = "")
+                    }
+                } else {
+                    throw result.exceptionOrNull() ?: Exception("Local translation failed")
+                }
+            } catch (e: Exception) {
+                val errorDetail = e.localizedMessage?.takeIf { it.isNotBlank() } ?: "Local machine translation error (${e.javaClass.simpleName})"
+                val failureMarkdown = formatFailureMarkdown(errorDetail)
+                val targetWordId = wordId ?: savedWord?.id
+                if (targetWordId != null) {
+                    val userMsg = savedMsg?.copy(content = failureMarkdown) ?: com.aidict.app.data.entities.ChatMessage(wordId = targetWordId, role = "assistant", content = failureMarkdown)
+                    database.appDao().insertChatMessage(userMsg)
+                    val updated = database.appDao().getChatMessagesSync(targetWordId)
+                    if (_uiState.value.word?.id == targetWordId) {
+                        _uiState.value = _uiState.value.copy(isLoading = false, chatMessages = updated, currentStream = "", error = errorDetail)
+                    }
+                }
+            } finally {
+                notifyBackgroundStatus()
+            }
+        }
+    }
+
     fun moveWordToModeAndRegenerate(word: com.aidict.app.data.entities.Word, targetMode: String) {
         val cleanMode = targetMode.lowercase()
         bgScope.launch {
@@ -1020,8 +1114,14 @@ class SearchViewModel(
                     val sourceLang = getProfileSetting(profileId, "CORRECT_SOURCE") ?: "Auto Detect"
                     val targetLang = getProfileSetting(profileId, "CORRECT_TARGET") ?: "English"
                     val correctType = getProfileSetting(profileId, "CORRECT_TYPE") ?: "both"
-                    val isCorrectionOnly = correctType == "correction_only"
-                    streamCorrect(word.term, sourceLang, targetLang, profileId, isCorrectionOnly)
+                    if (correctType == "machine_translate") {
+                        val tierStr = getProfileSetting(profileId, "CORRECT_MT_TIER") ?: "normal"
+                        val tier = if (tierStr == "strong") LocalTranslationEngine.Tier.STRONG else LocalTranslationEngine.Tier.NORMAL
+                        translateLocalMachine(word.term, sourceLang, targetLang, profileId, tier)
+                    } else {
+                        val isCorrectionOnly = correctType == "correction_only"
+                        streamCorrect(word.term, sourceLang, targetLang, profileId, isCorrectionOnly)
+                    }
                 }
             }
         }

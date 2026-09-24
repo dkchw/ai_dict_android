@@ -52,11 +52,14 @@ fun CorrectScreen(
     var sourceLang by remember { mutableStateOf("Auto Detect") }
     var targetLang by remember { mutableStateOf("English") }
     var correctType by remember { mutableStateOf("both") }
+    var mtTier by remember { mutableStateOf(com.aidict.app.data.LocalTranslationEngine.Tier.NORMAL) }
 
     LaunchedEffect(profileId) {
         sourceLang = viewModel.getProfileSetting(profileId, "CORRECT_SOURCE") ?: "Auto Detect"
         targetLang = viewModel.getProfileSetting(profileId, "CORRECT_TARGET") ?: "English"
         correctType = viewModel.getProfileSetting(profileId, "CORRECT_TYPE") ?: "both"
+        val tierStr = viewModel.getProfileSetting(profileId, "CORRECT_MT_TIER") ?: "normal"
+        mtTier = if (tierStr == "strong") com.aidict.app.data.LocalTranslationEngine.Tier.STRONG else com.aidict.app.data.LocalTranslationEngine.Tier.NORMAL
     }
 
     val context = LocalContext.current
@@ -323,6 +326,22 @@ fun CorrectScreen(
                                             color = if (isError) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSecondaryContainer,
                                             searchQuery = chatSearchQuery
                                         )
+                                        if (msg.content.contains("Machine Translation") && !isError) {
+                                            Spacer(Modifier.height(8.dp))
+                                            FilledTonalButton(
+                                                onClick = {
+                                                    state.word?.let { w ->
+                                                        viewModel.streamCorrect(w.term, sourceLang, targetLang, profileId, isCorrectionOnly = false)
+                                                    }
+                                                },
+                                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                                modifier = Modifier.padding(top = 2.dp)
+                                            ) {
+                                                Icon(Icons.Default.Autorenew, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                Spacer(Modifier.width(6.dp))
+                                                Text("✨ Deepen with AI LLM", style = MaterialTheme.typography.labelSmall)
+                                            }
+                                        }
                                         if (isError) {
                                             Spacer(Modifier.height(8.dp))
                                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -430,8 +449,12 @@ fun CorrectScreen(
             onSend = {
                 val query = viewModel.correctInput
                 if (autoNewSearch || !isFollowUp) {
-                    val isOnly = correctType == "correction_only"
-                    viewModel.streamCorrect(query, sourceLang, targetLang, profileId, isOnly)
+                    if (correctType == "machine_translate") {
+                        viewModel.translateLocalMachine(query, sourceLang, targetLang, profileId, mtTier)
+                    } else {
+                        val isOnly = correctType == "correction_only"
+                        viewModel.streamCorrect(query, sourceLang, targetLang, profileId, isOnly)
+                    }
                 } else {
                     viewModel.sendFollowUpMessage(query, "correct")
                 }
@@ -448,43 +471,104 @@ fun CorrectScreen(
             onTargetLangChange = if (!isFollowUp || autoNewSearch) { { targetLang = it; viewModel.saveProfileSetting(profileId, "CORRECT_TARGET", it) } } else null,
             extraContent = if (!isFollowUp || autoNewSearch) {
                 {
-                    Row(
+                    Column(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        FilterChip(
-                            selected = correctType != "correction_only",
-                            onClick = {
-                                correctType = "both"
-                                viewModel.saveProfileSetting(profileId, "CORRECT_TYPE", "both")
-                            },
-                            label = { Text("Correction & Translation", style = MaterialTheme.typography.labelSmall) },
-                            leadingIcon = if (correctType != "correction_only") {
-                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
-                            } else null,
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                            ),
-                            modifier = Modifier.padding(end = 4.dp)
-                        )
-                        FilterChip(
-                            selected = correctType == "correction_only",
-                            onClick = {
-                                correctType = "correction_only"
-                                viewModel.saveProfileSetting(profileId, "CORRECT_TYPE", "correction_only")
-                            },
-                            label = { Text("Correction Only", style = MaterialTheme.typography.labelSmall) },
-                            leadingIcon = if (correctType == "correction_only") {
-                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
-                            } else null,
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                            ),
-                            modifier = Modifier.padding(start = 4.dp)
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            FilterChip(
+                                selected = correctType == "both",
+                                onClick = {
+                                    correctType = "both"
+                                    viewModel.saveProfileSetting(profileId, "CORRECT_TYPE", "both")
+                                },
+                                label = { Text("Correction & Translation", style = MaterialTheme.typography.labelSmall) },
+                                leadingIcon = if (correctType == "both") {
+                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                                } else null,
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                modifier = Modifier.padding(end = 4.dp)
+                            )
+                            FilterChip(
+                                selected = correctType == "correction_only",
+                                onClick = {
+                                    correctType = "correction_only"
+                                    viewModel.saveProfileSetting(profileId, "CORRECT_TYPE", "correction_only")
+                                },
+                                label = { Text("Correction Only", style = MaterialTheme.typography.labelSmall) },
+                                leadingIcon = if (correctType == "correction_only") {
+                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                                } else null,
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                modifier = Modifier.padding(horizontal = 2.dp)
+                            )
+                            FilterChip(
+                                selected = correctType == "machine_translate",
+                                onClick = {
+                                    correctType = "machine_translate"
+                                    viewModel.saveProfileSetting(profileId, "CORRECT_TYPE", "machine_translate")
+                                },
+                                label = { Text("Local MT", style = MaterialTheme.typography.labelSmall) },
+                                leadingIcon = if (correctType == "machine_translate") {
+                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                                } else null,
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                modifier = Modifier.padding(start = 4.dp)
+                            )
+                        }
+                        if (correctType == "machine_translate") {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                FilterChip(
+                                    selected = mtTier == com.aidict.app.data.LocalTranslationEngine.Tier.NORMAL,
+                                    onClick = {
+                                        mtTier = com.aidict.app.data.LocalTranslationEngine.Tier.NORMAL
+                                        viewModel.saveProfileSetting(profileId, "CORRECT_MT_TIER", "normal")
+                                    },
+                                    label = { Text("Normal (Offline Opus-MT / ML Kit)", style = MaterialTheme.typography.labelSmall) },
+                                    leadingIcon = if (mtTier == com.aidict.app.data.LocalTranslationEngine.Tier.NORMAL) {
+                                        { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                                    } else null,
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                    ),
+                                    modifier = Modifier.padding(end = 4.dp)
+                                )
+                                FilterChip(
+                                    selected = mtTier == com.aidict.app.data.LocalTranslationEngine.Tier.STRONG,
+                                    onClick = {
+                                        mtTier = com.aidict.app.data.LocalTranslationEngine.Tier.STRONG
+                                        viewModel.saveProfileSetting(profileId, "CORRECT_MT_TIER", "strong")
+                                    },
+                                    label = { Text("Strong (NLLB-200)", style = MaterialTheme.typography.labelSmall) },
+                                    leadingIcon = if (mtTier == com.aidict.app.data.LocalTranslationEngine.Tier.STRONG) {
+                                        { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                                    } else null,
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                    ),
+                                    modifier = Modifier.padding(start = 4.dp)
+                                )
+                            }
+                        }
                     }
                 }
             } else null,
@@ -495,7 +579,11 @@ fun CorrectScreen(
                 viewModel.correctInput = ""
                 viewModel.clearSuggestions()
             },
-            placeholder = if (isFollowUp && !autoNewSearch) "Ask follow-up question..." else if (correctType == "correction_only") "Paste text to correct & polish..." else "Paste text to correct & translate..."
+            placeholder = if (isFollowUp && !autoNewSearch) "Ask follow-up question..." else when (correctType) {
+                "correction_only" -> "Paste text to correct & polish..."
+                "machine_translate" -> "Enter text for local machine translation..."
+                else -> "Paste text to correct & translate..."
+            }
         )
     }
 }

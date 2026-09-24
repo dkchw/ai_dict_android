@@ -120,7 +120,15 @@ class PopupActivity : ComponentActivity() {
             val targetQuery = currentTrigger?.text?.trim() ?: ""
             val words = if (targetQuery.isNotBlank()) targetQuery.split(Regex("\\s+")).filter { it.isNotBlank() } else emptyList()
             val isMultiWordExplain = words.size > 3
-            val targetMode = if (isMultiWordExplain) 3 else 0
+            val explicitModeStr = intent.getStringExtra("EXTRA_MODE")
+            val targetMode = when (explicitModeStr?.lowercase()) {
+                "dict" -> 0
+                "compare" -> 1
+                "translate" -> 2
+                "explain" -> 3
+                "correct" -> 4
+                else -> if (isMultiWordExplain) 3 else 0
+            }
 
             LaunchedEffect(currentTrigger) {
                 if (currentTrigger != null && currentTrigger.text.isNotBlank()) {
@@ -130,18 +138,53 @@ class PopupActivity : ComponentActivity() {
 
                     kotlinx.coroutines.delay(100) // Brief delay to ensure UI and AppViewModel are ready
                     val profileId = appViewModel.uiState.value.activeProfile?.id ?: 1
-                    if (explainMode) {
-                        searchViewModel.clearCurrentSearch("explain")
-                        searchViewModel.explainInput = text
-                        val sourceLang = searchViewModel.getProfileSetting(profileId, "EXPLAIN_SOURCE") ?: "Auto Detect"
-                        val targetLang = searchViewModel.getProfileSetting(profileId, "EXPLAIN_TARGET") ?: "English"
-                        searchViewModel.streamExplain(text, sourceLang, targetLang, profileId)
-                    } else {
-                        searchViewModel.clearCurrentSearch("dict")
-                        searchViewModel.searchInput = text
-                        val sourceLang = searchViewModel.getProfileSetting(profileId, "DICT_SOURCE") ?: "Auto Detect"
-                        val targetLang = searchViewModel.getProfileSetting(profileId, "DICT_TARGET") ?: "English"
-                        searchViewModel.searchWord(text, sourceLang, targetLang, profileId)
+                    val explicitMode = intent.getStringExtra("EXTRA_MODE")?.lowercase()
+                    when (explicitMode) {
+                        "correct" -> {
+                            searchViewModel.clearCurrentSearch("correct")
+                            searchViewModel.correctInput = text
+                            val sourceLang = searchViewModel.getProfileSetting(profileId, "CORRECT_SOURCE") ?: "Auto Detect"
+                            val targetLang = searchViewModel.getProfileSetting(profileId, "CORRECT_TARGET") ?: "English"
+                            val correctType = searchViewModel.getProfileSetting(profileId, "CORRECT_TYPE") ?: "both"
+                            val isCorrectionOnly = correctType == "correction_only"
+                            searchViewModel.streamCorrect(text, sourceLang, targetLang, profileId, isCorrectionOnly)
+                        }
+                        "translate" -> {
+                            searchViewModel.clearCurrentSearch("translate")
+                            searchViewModel.translateInput = text
+                            val sourceLang = searchViewModel.getProfileSetting(profileId, "TRANSLATE_SOURCE") ?: "Auto Detect"
+                            val targetLang = searchViewModel.getProfileSetting(profileId, "TRANSLATE_TARGET") ?: "English"
+                            searchViewModel.streamTranslation(text, sourceLang, targetLang, profileId)
+                        }
+                        "dict" -> {
+                            searchViewModel.clearCurrentSearch("dict")
+                            searchViewModel.searchInput = text
+                            val sourceLang = searchViewModel.getProfileSetting(profileId, "DICT_SOURCE") ?: "Auto Detect"
+                            val targetLang = searchViewModel.getProfileSetting(profileId, "DICT_TARGET") ?: "English"
+                            searchViewModel.searchWord(text, sourceLang, targetLang, profileId)
+                        }
+                        "explain" -> {
+                            searchViewModel.clearCurrentSearch("explain")
+                            searchViewModel.explainInput = text
+                            val sourceLang = searchViewModel.getProfileSetting(profileId, "EXPLAIN_SOURCE") ?: "Auto Detect"
+                            val targetLang = searchViewModel.getProfileSetting(profileId, "EXPLAIN_TARGET") ?: "English"
+                            searchViewModel.streamExplain(text, sourceLang, targetLang, profileId)
+                        }
+                        else -> {
+                            if (explainMode) {
+                                searchViewModel.clearCurrentSearch("explain")
+                                searchViewModel.explainInput = text
+                                val sourceLang = searchViewModel.getProfileSetting(profileId, "EXPLAIN_SOURCE") ?: "Auto Detect"
+                                val targetLang = searchViewModel.getProfileSetting(profileId, "EXPLAIN_TARGET") ?: "English"
+                                searchViewModel.streamExplain(text, sourceLang, targetLang, profileId)
+                            } else {
+                                searchViewModel.clearCurrentSearch("dict")
+                                searchViewModel.searchInput = text
+                                val sourceLang = searchViewModel.getProfileSetting(profileId, "DICT_SOURCE") ?: "Auto Detect"
+                                val targetLang = searchViewModel.getProfileSetting(profileId, "DICT_TARGET") ?: "English"
+                                searchViewModel.searchWord(text, sourceLang, targetLang, profileId)
+                            }
+                        }
                     }
                 }
             }

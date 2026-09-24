@@ -6,4 +6,5 @@
     <string name="export_data">Export Data</string>
     <string name="import_data">Import Data</string>
     <string name="ask_ai_dict">Ask AI Dict</string>
+    <string name="translate_action">Translate</string>
 </resources>

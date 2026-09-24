@@ -70,6 +70,26 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".TranslateActivity"
+            android:theme="@style/Theme.AIDict.Transparent"
+            android:windowSoftInputMode="adjustResize"
+            android:exported="true"
+            android:taskAffinity=".TranslateTask"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:label="@string/translate_action">
+            <intent-filter>
+                <action android:name="android.intent.action.TRANSLATE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+                <data android:mimeType="text/*" />
+            </intent-filter>
+        </activity>
         <service
             android:name=".FloatingBubbleService"
             android:foregroundServiceType="specialUse|dataSync"

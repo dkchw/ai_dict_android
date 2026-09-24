@@ -13,8 +13,8 @@ android {
         applicationId = "com.aidict.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 105
-        versionName = "7.16"
+        versionCode = 106
+        versionName = "7.17"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -100,4 +100,9 @@ dependencies {
 dependencies {
     implementation("com.halilibo.compose-richtext:richtext-commonmark:1.0.0-alpha01")
     implementation("com.halilibo.compose-richtext:richtext-ui-material3:1.0.0-alpha01")
+
+    // On-Device Machine Translation & Language Identification
+    implementation("com.google.mlkit:translate:17.0.3")
+    implementation("com.google.mlkit:language-id:17.0.6")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
 }
